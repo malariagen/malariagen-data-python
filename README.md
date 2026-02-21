@@ -19,8 +19,17 @@ from the following locations:
 -   [Ag3 API
     docs](https://malariagen.github.io/malariagen-data-python/latest/Ag3.html)
 
+-   [Af1 API
+    docs](https://malariagen.github.io/malariagen-data-python/latest/Af1.html)
+
 -   [Amin1 API
     docs](https://malariagen.github.io/malariagen-data-python/latest/Amin1.html)
+
+-  [Adir1 API
+    docs](https://malariagen.github.io/malariagen-data-python/latest/Adir1.html)
+
+-   [Pf8 API
+    docs](https://malariagen.github.io/parasite-data/pf8/api.html)
 
 -   [Pf7 API
     docs](https://malariagen.github.io/parasite-data/pf7/api.html)
@@ -133,7 +142,7 @@ modifying the `docs/source/_static/switcher.json` file accordingly.
 
 If you use the `malariagen_data` package in a publication
 or include any of its functions or code in other materials (_e.g._ training resources),
-please cite: [doi.org/10.5281/zenodo.11173411](doi.org/10.5281/zenodo.11173411)
+please cite: [doi.org/10.5281/zenodo.11173411](https://doi.org/10.5281/zenodo.11173411)
 
 Some functions may require additional citations to acknowledge specific contributions. These are indicated in the description for each relevant function.
 

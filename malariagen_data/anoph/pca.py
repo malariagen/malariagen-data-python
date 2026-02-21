@@ -6,7 +6,7 @@ import pandas as pd
 import plotly.express as px  # type: ignore
 from numpydoc_decorator import doc  # type: ignore
 
-from ..util import CacheMiss, check_types, jitter
+from ..util import CacheMiss, _check_types, _jitter
 from . import base_params, pca_params, plotly_params
 from .snp_data import AnophelesSnpData
 
@@ -23,7 +23,7 @@ class AnophelesPca(
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Run a principal components analysis (PCA) using biallelic SNPs from
@@ -80,27 +80,44 @@ class AnophelesPca(
     ) -> Tuple[pca_params.df_pca, pca_params.evr]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "pca_v4"
+        name = "pca_v5"
 
-        # Normalize params for consistent hash value.
+        # Check that either sample_query xor sample_indices are provided.
+        base_params._validate_sample_selection_params(
+            sample_query=sample_query, sample_indices=sample_indices
+        )
+
+        ## Normalize params for consistent hash value.
+
+        # Note: `_prep_sample_selection_cache_params` converts `sample_query` and `sample_query_options` into `sample_indices`.
+        # So `sample_query` and `sample_query_options` should not be used beyond this point. (`sample_indices` should be used instead.)
         (
-            sample_sets_prepped,
-            sample_indices_prepped,
+            prepared_sample_sets,
+            prepared_sample_indices,
         ) = self._prep_sample_selection_cache_params(
             sample_sets=sample_sets,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
             sample_indices=sample_indices,
         )
-        region_prepped = self._prep_region_cache_param(region=region)
-        site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
+        prepared_region = self._prep_region_cache_param(region=region)
+        prepared_site_mask = self._prep_optional_site_mask_param(site_mask=site_mask)
+
+        # Delete original parameters to prevent accidental use.
+        del sample_sets
+        del sample_indices
+        del sample_query
+        del sample_query_options
+        del region
+        del site_mask
+
         params = dict(
-            region=region_prepped,
+            region=prepared_region,
             n_snps=n_snps,
             thin_offset=thin_offset,
-            sample_sets=sample_sets_prepped,
-            sample_indices=sample_indices_prepped,
-            site_mask=site_mask_prepped,
+            sample_sets=prepared_sample_sets,
+            sample_indices=prepared_sample_indices,
+            site_mask=prepared_site_mask,
             site_class=site_class,
             min_minor_ac=min_minor_ac,
             max_missing_an=max_missing_an,
@@ -127,21 +144,32 @@ class AnophelesPca(
         samples = results["samples"]
         loc_keep_fit = results["loc_keep_fit"]
 
-        # Load sample metadata.
+        # Create a new DataFrame containing the PCA coords data.
+        df_pca = pd.DataFrame(coords, index=samples)
+
+        # Name the index of the PCA data and set it to a string type.
+        df_pca.index.name = "sample_id"
+        # df_pca.index = df_pca.index.astype(str)
+
+        # Name the DataFrame's columns as PC1, PC2, etc.
+        df_pca.columns = pd.Index([f"PC{i+1}" for i in range(coords.shape[1])])
+
+        # Load the sample metadata.
         df_samples = self.sample_metadata(
-            sample_sets=sample_sets,
+            sample_sets=prepared_sample_sets,
         )
 
-        # Ensure aligned with genotype data.
-        df_samples = df_samples.set_index("sample_id").loc[samples].reset_index()
+        # Set the index of the sample metadata.
+        df_samples.set_index("sample_id", inplace=True)
 
-        # Combine coords and sample metadata.
-        df_coords = pd.DataFrame(
-            {f"PC{i + 1}": coords[:, i] for i in range(coords.shape[1])}
-        )
-        df_pca = df_samples.join(df_coords, how="inner")
-        # Add a column for which samples were included in fitting.
+        # Join the relevant sample metadata.
+        df_pca = df_pca.join(df_samples, how="left", on="sample_id")
+
+        # Add a column to indicate which samples were included in fitting.
         df_pca["pca_fit"] = loc_keep_fit
+
+        # Keep "sample_id" as a column, so that it can be specified as a `hover_name` in `plot_pca_coords`, etc.
+        df_pca.reset_index(inplace=True)
 
         return df_pca, evr
 
@@ -235,7 +263,7 @@ class AnophelesPca(
         )
         return results
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot explained variance ratios from a principal components analysis
@@ -280,7 +308,7 @@ class AnophelesPca(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot sample coordinates from a principal components analysis (PCA)
@@ -319,11 +347,14 @@ class AnophelesPca(
         # Apply jitter if desired - helps spread out points when tightly clustered.
         if jitter_frac:
             np.random.seed(random_seed)
-            data[x] = jitter(data[x], jitter_frac)
-            data[y] = jitter(data[y], jitter_frac)
+            data[x] = _jitter(data[x], jitter_frac)
+            data[y] = _jitter(data[y], jitter_frac)
 
         # Convenience variables.
-        data["country_location"] = data["country"] + " - " + data["location"]
+        # Prevent lint error (mypy): Unsupported operand types for + ("Series[Any]" and "str")
+        data["country_location"] = (
+            data["country"].astype(str) + " - " + data["location"].astype(str)
+        )
 
         # Normalise color and symbol parameters.
         symbol_prepped = self._setup_sample_symbol(
@@ -385,7 +416,7 @@ class AnophelesPca(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot sample coordinates from a principal components analysis (PCA)
@@ -422,12 +453,15 @@ class AnophelesPca(
         # Apply jitter if desired - helps spread out points when tightly clustered.
         if jitter_frac:
             np.random.seed(random_seed)
-            data[x] = jitter(data[x], jitter_frac)
-            data[y] = jitter(data[y], jitter_frac)
-            data[z] = jitter(data[z], jitter_frac)
+            data[x] = _jitter(data[x], jitter_frac)
+            data[y] = _jitter(data[y], jitter_frac)
+            data[z] = _jitter(data[z], jitter_frac)
 
         # Convenience variables.
-        data["country_location"] = data["country"] + " - " + data["location"]
+        # Prevent lint error (mypy): Unsupported operand types for + ("Series[Any]" and "str")
+        data["country_location"] = (
+            data["country"].astype(str) + " - " + data["location"].astype(str)
+        )
 
         # Normalise color and symbol parameters.
         symbol_prepped = self._setup_sample_symbol(

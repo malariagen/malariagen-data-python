@@ -24,7 +24,6 @@ import dask.array as da
 from dask.utils import parse_bytes
 import numba  # type: ignore
 import numpy as np
-import pandas
 import pandas as pd
 import plotly.express as px  # type: ignore
 import typeguard
@@ -44,7 +43,7 @@ DIM_SAMPLE = "samples"
 DIM_PLOIDY = "ploidy"
 
 
-def gff3_parse_attributes(attributes_string):
+def _gff3_parse_attributes(attributes_string):
     """Parse a string of GFF3 attributes ('key=value' pairs delimited by ';')
     and return a dictionary."""
 
@@ -75,9 +74,9 @@ gff3_cols = (
 )
 
 
-def read_gff3(buf, compression="gzip"):
+def _read_gff3(buf, compression="gzip"):
     # read as dataframe
-    df = pandas.read_csv(
+    df = pd.read_csv(
         buf,
         sep="\t",
         comment="#",
@@ -87,12 +86,12 @@ def read_gff3(buf, compression="gzip"):
     )
 
     # parse attributes
-    df["attributes"] = df["attributes"].apply(gff3_parse_attributes)
+    df["attributes"] = df["attributes"].apply(_gff3_parse_attributes)
 
     return df
 
 
-def unpack_gff3_attributes(df: pd.DataFrame, attributes: Tuple[str, ...]):
+def _unpack_gff3_attributes(df: pd.DataFrame, attributes: Tuple[str, ...]):
     df = df.copy()
 
     # discover all attribute keys
@@ -146,7 +145,7 @@ class SafeStore(BaseStore):
     def __len__(self):
         return len(self._store)
 
-    def __setitem__(self, item):
+    def __setitem__(self, key, value):  # __setitem__ expects 2 params (Pylint)
         raise NotImplementedError
 
     def __delitem__(self, item):
@@ -180,7 +179,7 @@ chunks_param_type: TypeAlias = Union[
 ]
 
 
-def da_from_zarr(
+def _da_from_zarr(
     z: zarr.core.Array,
     inline_array: bool,
     chunks: chunks_param_type,
@@ -282,7 +281,7 @@ def da_from_zarr(
     return d
 
 
-def dask_compress_dataset(ds, indexer, dim):
+def _dask_compress_dataset(ds, indexer, dim):
     """Temporary workaround for memory issues when attempting to
     index a xarray dataset with a Boolean array.
 
@@ -345,7 +344,7 @@ def _dask_compress_dataarray(a, indexer, indexer_computed, dim):
         # apply the indexing operation
         data = a.data
         if isinstance(data, da.Array):
-            v = da_compress(
+            v = _da_compress(
                 indexer=indexer,
                 data=a.data,
                 axis=axis,
@@ -357,7 +356,7 @@ def _dask_compress_dataarray(a, indexer, indexer_computed, dim):
     return v
 
 
-def da_compress(
+def _da_compress(
     indexer: da.Array | np.ndarray,
     data: da.Array,
     axis: int,
@@ -427,8 +426,10 @@ def da_compress(
     return v
 
 
-def init_filesystem(url, **kwargs):
+def _init_filesystem(url, **kwargs):
     """Initialise a fsspec filesystem from a given base URL and parameters."""
+
+    storage_options = None  # To prevent using before assignment (Pylint).
 
     # Special case Google Cloud Storage, authenticate the user.
     if "gs://" in url or "gcs://" in url:
@@ -496,7 +497,7 @@ def init_filesystem(url, **kwargs):
     return fs, path
 
 
-def init_zarr_store(fs, path):
+def _init_zarr_store(fs, path):
     """Initialise a zarr store (mapping) from a fsspec filesystem."""
 
     return SafeStore(FSMap(fs=fs, root=path, check=False, create=False))
@@ -628,7 +629,7 @@ contig_param_type: TypeAlias = Union[
 ]
 
 
-def parse_single_region(resource, region: single_region_param_type) -> Region:
+def _parse_single_region(resource, region: single_region_param_type) -> Region:
     if isinstance(region, Region):
         # The region is already a Region, nothing to do.
         return region
@@ -662,17 +663,17 @@ def parse_single_region(resource, region: single_region_param_type) -> Region:
     )
 
 
-def parse_multi_region(
+def _parse_multi_region(
     resource,
     region: region_param_type,
 ) -> List[Region]:
     if isinstance(region, (list, tuple)):
-        return [parse_single_region(resource, r) for r in region]
+        return [_parse_single_region(resource, r) for r in region]
     else:
-        return [parse_single_region(resource, region)]
+        return [_parse_single_region(resource, region)]
 
 
-def resolve_region(
+def _resolve_region(
     resource,
     region: region_param_type,
 ) -> Union[Region, List[Region]]:
@@ -684,12 +685,12 @@ def resolve_region(
     """
     if isinstance(region, (list, tuple)):
         # Multiple regions, normalise to list and resolve components.
-        return [parse_single_region(resource, r) for r in region]
+        return [_parse_single_region(resource, r) for r in region]
     else:
-        return parse_single_region(resource, region)
+        return _parse_single_region(resource, region)
 
 
-def locate_region(region: Region, pos: np.ndarray) -> slice:
+def _locate_region(region: Region, pos: np.ndarray) -> slice:
     """Get array slice and a parsed genomic region.
 
     Parameters
@@ -713,7 +714,7 @@ def locate_region(region: Region, pos: np.ndarray) -> slice:
     return loc_region
 
 
-def region_str(region: List[Region]) -> str:
+def _region_str(region: List[Region]) -> str:
     """Convert a region to a string representation.
 
     Parameters
@@ -781,7 +782,7 @@ def _simple_xarray_concat_arrays(
     return out
 
 
-def simple_xarray_concat(
+def _simple_xarray_concat(
     datasets: List[xr.Dataset], dim: str, attrs: Optional[Mapping] = None
 ) -> xr.Dataset:
     # Access the first dataset, this will be used as the template for
@@ -838,14 +839,14 @@ def simple_xarray_concat(
 #         )
 
 
-def da_concat(arrays: List[da.Array], **kwargs) -> da.Array:
+def _da_concat(arrays: List[da.Array], **kwargs) -> da.Array:
     if len(arrays) == 1:
         return arrays[0]
     else:
         return da.concatenate(arrays, **kwargs)
 
 
-def value_error(
+def _value_error(
     name,
     value,
     expectation,
@@ -856,14 +857,14 @@ def value_error(
     raise ValueError(message)
 
 
-def hash_params(params):
+def _hash_params(params):
     """Helper function to hash function parameters."""
     s = json.dumps(params, sort_keys=True, indent=4)
     h = hashlib.md5(s.encode()).hexdigest()
     return h, s
 
 
-def jitter(a, fraction):
+def _jitter(a, fraction):
     """Jitter data in `a` using the fraction `f`."""
     r = a.max() - a.min()
     return a + fraction * np.random.uniform(-r, r, a.shape)
@@ -928,7 +929,7 @@ class LoggingHelper:
             self._handler.setLevel(level)
 
 
-def jackknife_ci(stat_data, jack_stat, confidence_level):
+def _jackknife_ci(stat_data, jack_stat, confidence_level):
     """Compute a confidence interval from jackknife resampling.
 
     Parameters
@@ -987,7 +988,7 @@ def jackknife_ci(stat_data, jack_stat, confidence_level):
     return estimate, bias, std_err, ci_err, ci_low, ci_upp
 
 
-def plotly_discrete_legend(
+def _plotly_discrete_legend(
     color,
     color_values,
     **kwargs,
@@ -1060,7 +1061,7 @@ def plotly_discrete_legend(
     return fig
 
 
-def get_gcp_region(details):
+def _get_gcp_region(details):
     """Attempt to determine the current GCP region based on
     response from ipinfo."""
 
@@ -1102,7 +1103,7 @@ class ColabLocationError(RuntimeError):
     pass
 
 
-def check_colab_location(gcp_region: Optional[str]):
+def _check_colab_location(gcp_region: Optional[str]):
     """
     Sometimes, colab will allocate a VM outside the US, e.g., in
     Europe or Asia. Because the MalariaGEN GCS buckets are located
@@ -1126,7 +1127,7 @@ def check_colab_location(gcp_region: Optional[str]):
             )
 
 
-def check_types(f):
+def _check_types(f):
     """Simple decorator to provide runtime checking of parameter types.
 
     N.B., the typeguard package does have a decorator function called
@@ -1167,7 +1168,7 @@ def check_types(f):
 
 
 @numba.njit
-def true_runs(a):
+def _true_runs(a):
     in_run = False
     starts = []
     stops = []
@@ -1185,7 +1186,7 @@ def true_runs(a):
 
 
 @numba.njit(parallel=True)
-def pdist_abs_hamming(X):
+def _pdist_abs_hamming(X):
     n_obs = X.shape[0]
     n_ftr = X.shape[1]
     out = np.zeros((n_obs, n_obs), dtype=np.int32)
@@ -1203,7 +1204,7 @@ def pdist_abs_hamming(X):
 
 
 @numba.njit
-def square_to_condensed(i, j, n):
+def _square_to_condensed(i, j, n):
     """Convert distance matrix coordinates from square form (i, j) to condensed form."""
 
     assert i != j, "no diagonal elements in condensed matrix"
@@ -1213,7 +1214,7 @@ def square_to_condensed(i, j, n):
 
 
 @numba.njit(parallel=True)
-def multiallelic_diplotype_pdist(X, metric):
+def _multiallelic_diplotype_pdist(X, metric):
     """Optimised implementation of pairwise distance between diplotypes.
 
     N.B., here we assume the array X provides diplotypes as genotype allele
@@ -1241,14 +1242,14 @@ def multiallelic_diplotype_pdist(X, metric):
             d = metric(x, y)
 
             # Store result for the current pair.
-            k = square_to_condensed(i, j, n_samples)
+            k = _square_to_condensed(i, j, n_samples)
             out[k] = d
 
     return out
 
 
 @numba.njit
-def multiallelic_diplotype_mean_cityblock(x, y):
+def _multiallelic_diplotype_mean_cityblock(x, y):
     """Compute the mean cityblock distance between two diplotypes x and y. The
     diplotype vectors are expected as genotype allele counts, i.e., x and y
     should have the same shape (n_sites, n_alleles).
@@ -1298,7 +1299,7 @@ def multiallelic_diplotype_mean_cityblock(x, y):
 
 
 @numba.njit
-def multiallelic_diplotype_sqeuclidean(x, y):
+def _multiallelic_diplotype_sqeuclidean(x, y):
     n_sites = x.shape[0]
     n_alleles = x.shape[1]
     distance = np.float32(0)
@@ -1333,7 +1334,7 @@ def multiallelic_diplotype_sqeuclidean(x, y):
 
 
 @numba.njit
-def multiallelic_diplotype_mean_sqeuclidean(x, y):
+def _multiallelic_diplotype_mean_sqeuclidean(x, y):
     """Compute the mean squared euclidean distance between two diplotypes x and
     y. The diplotype vectors are expected as genotype allele counts, i.e., x and
     y should have the same shape (n_sites, n_alleles).
@@ -1344,7 +1345,7 @@ def multiallelic_diplotype_mean_sqeuclidean(x, y):
 
     """
 
-    distance, n_sites_called = multiallelic_diplotype_sqeuclidean(x, y)
+    distance, n_sites_called = _multiallelic_diplotype_sqeuclidean(x, y)
 
     # Compute the mean distance over sites with called genotypes.
     if n_sites_called > 0:
@@ -1356,7 +1357,7 @@ def multiallelic_diplotype_mean_sqeuclidean(x, y):
 
 
 @numba.njit
-def multiallelic_diplotype_mean_euclidean(x, y):
+def _multiallelic_diplotype_mean_euclidean(x, y):
     """Compute the mean euclidean distance between two diplotypes x and
     y. The diplotype vectors are expected as genotype allele counts, i.e., x and
     y should have the same shape (n_sites, n_alleles).
@@ -1367,7 +1368,7 @@ def multiallelic_diplotype_mean_euclidean(x, y):
 
     """
 
-    sqdistance, n_sites_called = multiallelic_diplotype_sqeuclidean(x, y)
+    sqdistance, n_sites_called = _multiallelic_diplotype_sqeuclidean(x, y)
     distance = np.sqrt(sqdistance)
 
     # Compute the mean distance over sites with called genotypes.
@@ -1380,7 +1381,7 @@ def multiallelic_diplotype_mean_euclidean(x, y):
 
 
 @numba.njit
-def trim_alleles(ac):
+def _trim_alleles(ac):
     """Remap allele indices to trim out unobserved alleles.
 
     The idea here is that our SNP data includes alleles which
@@ -1435,7 +1436,7 @@ def trim_alleles(ac):
 
 
 @numba.njit
-def apply_allele_mapping(x, mapping, max_allele):
+def _apply_allele_mapping(x, mapping, max_allele):
     """Transform an array x, where the columns correspond to alleles,
     according to an allele mapping.
 
@@ -1465,7 +1466,7 @@ def apply_allele_mapping(x, mapping, max_allele):
     return out
 
 
-def dask_apply_allele_mapping(v, mapping, max_allele):
+def _dask_apply_allele_mapping(v, mapping, max_allele):
     assert isinstance(v, da.Array)
     assert isinstance(mapping, np.ndarray)
     assert v.ndim == 2
@@ -1474,7 +1475,7 @@ def dask_apply_allele_mapping(v, mapping, max_allele):
     v = v.rechunk((v.chunks[0], -1))
     mapping = da.from_array(mapping, chunks=(v.chunks[0], -1))
     out = da.map_blocks(
-        lambda xb, mb: apply_allele_mapping(xb, mb, max_allele=max_allele),
+        lambda xb, mb: _apply_allele_mapping(xb, mb, max_allele=max_allele),
         v,
         mapping,
         dtype=v.dtype,
@@ -1483,7 +1484,7 @@ def dask_apply_allele_mapping(v, mapping, max_allele):
     return out
 
 
-def genotype_array_map_alleles(gt, mapping):
+def _genotype_array_map_alleles(gt, mapping):
     # Transform genotype calls via an allele mapping.
     # N.B., scikit-allel does not handle empty blocks well, so we
     # include some extra logic to handle that better.
@@ -1506,7 +1507,7 @@ def genotype_array_map_alleles(gt, mapping):
     return out
 
 
-def dask_genotype_array_map_alleles(gt, mapping):
+def _dask_genotype_array_map_alleles(gt, mapping):
     assert isinstance(gt, da.Array)
     assert isinstance(mapping, np.ndarray)
     assert gt.ndim == 3
@@ -1514,7 +1515,7 @@ def dask_genotype_array_map_alleles(gt, mapping):
     assert gt.shape[0] == mapping.shape[0]
     mapping = da.from_array(mapping, chunks=(gt.chunks[0], -1))
     gt_out = da.map_blocks(
-        genotype_array_map_alleles,
+        _genotype_array_map_alleles,
         gt,
         mapping[:, None, :],
         chunks=gt.chunks,
@@ -1523,7 +1524,7 @@ def dask_genotype_array_map_alleles(gt, mapping):
     return gt_out
 
 
-def pandas_apply(f, df, columns):
+def _pandas_apply(f, df, columns):
     """Optimised alternative to pandas apply."""
     df = df.reset_index(drop=True)
     iterator = zip(*[df[c].values for c in columns])
@@ -1531,24 +1532,24 @@ def pandas_apply(f, df, columns):
     return ret
 
 
-def compare_series_like(actual, expect):
+def _compare_series_like(actual, expect):
     """Compare pandas series-like objects for equality or floating point
     similarity, handling missing values appropriately."""
 
     # Handle object arrays, these don't get nans compared properly.
     t = actual.dtype
-    if t == object:
+
+    if t.kind == "O":
         expect = expect.fillna("NA")
         actual = actual.fillna("NA")
-
-    if t.kind == "f":
+    elif t.kind == "f":
         assert_allclose(actual.values, expect.values)
     else:
         assert_array_equal(actual.values, expect.values)
 
 
 @numba.njit
-def hash_columns(x):
+def _hash_columns(x):
     # Here we want to compute a hash for each column in the
     # input array. However, we assume the input array is in
     # C contiguous order, and therefore we scan the array
@@ -1569,11 +1570,11 @@ def hash_columns(x):
     return out
 
 
-def haplotype_frequencies(h):
+def _haplotype_frequencies(h):
     """Compute haplotype frequencies, returning a dictionary that maps
     haplotype hash values to frequencies."""
     n = h.shape[1]
-    hashes = hash_columns(np.asarray(h))
+    hashes = _hash_columns(np.asarray(h))
     count = Counter(hashes)
     freqs = {key: count / n for key, count in count.items()}
     counts = {key: count for key, count in count.items()}
@@ -1581,7 +1582,7 @@ def haplotype_frequencies(h):
     return freqs, counts, nobs
 
 
-def distributed_client():
+def _distributed_client():
     from distributed import get_client
 
     try:
@@ -1589,17 +1590,3 @@ def distributed_client():
     except ValueError:
         client = None
     return client
-
-
-def add_frequency_ci(*, ds, ci_method):
-    from statsmodels.stats.proportion import proportion_confint  # type: ignore
-
-    if ci_method is not None:
-        count = ds["event_count"].values
-        nobs = ds["event_nobs"].values
-        with np.errstate(divide="ignore", invalid="ignore"):
-            frq_ci_low, frq_ci_upp = proportion_confint(
-                count=count, nobs=nobs, method=ci_method
-            )
-        ds["event_frequency_ci_low"] = ("variants", "cohorts"), frq_ci_low
-        ds["event_frequency_ci_upp"] = ("variants", "cohorts"), frq_ci_upp

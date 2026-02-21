@@ -10,7 +10,7 @@ from plotly.subplots import make_subplots as go_make_subplots  # type: ignore
 
 from malariagen_data.anoph import plotly_params
 
-from ..util import DIM_SAMPLE, check_types, init_zarr_store, simple_xarray_concat
+from ..util import DIM_SAMPLE, _check_types, _init_zarr_store, _simple_xarray_concat
 from . import aim_params, base_params
 from .genome_features import AnophelesGenomeFeaturesData
 from .genome_sequence import AnophelesGenomeSequenceData
@@ -62,7 +62,7 @@ class AnophelesAimData(
         else:
             raise ValueError(f"Invalid aims parameter, must be one of {self.aim_ids}.")
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access ancestry informative marker variants.",
         returns="""
@@ -84,7 +84,7 @@ class AnophelesAimData(
             path = f"{self._base_path}/reference/aim_defs_{analysis}/{aims}.zarr"
 
             # Initialise and open the zarr data.
-            store = init_zarr_store(fs=self._fs, path=path)
+            store = _init_zarr_store(fs=self._fs, path=path)
             ds = xr.open_zarr(store, concat_characters=False)
             ds = ds.set_coords(["variant_contig", "variant_position"])
 
@@ -105,12 +105,12 @@ class AnophelesAimData(
         path = f"{self._base_path}/{release_path}/aim_calls_{analysis}/{sample_set}/{aims}.zarr"
 
         # Initialise and open the zarr data.
-        store = init_zarr_store(fs=self._fs, path=path)
+        store = _init_zarr_store(fs=self._fs, path=path)
         ds = xr.open_zarr(store=store, concat_characters=False)
         ds = ds.set_coords(["variant_contig", "variant_position", "sample_id"])
         return ds
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Access ancestry informative marker SNP sites, alleles and genotype
@@ -138,31 +138,45 @@ class AnophelesAimData(
     ) -> xr.Dataset:
         self._require_aim_analysis()
 
-        # Normalise parameters.
-        aims = self._prep_aims_param(aims=aims)
-        sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
+        # Prepare parameters.
+        prepared_aims = self._prep_aims_param(aims=aims)
+        del aims
+        prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         del sample_sets
+        prepared_sample_query = self._prep_sample_query_param(sample_query=sample_query)
+        del sample_query
 
-        # Access SNP calls and concatenate multiple sample sets and/or regions.
-        ly = []
-        for s in sample_sets_prepped:
-            y = self._aim_calls_dataset(
-                aims=aims,
-                sample_set=s,
+        # Start a list of AIM calls Datasets, one for each sample set.
+        aim_calls_datasets = []
+
+        # For each sample set...
+        for sample_set in prepared_sample_sets:
+            # Get the AIM calls for all samples in the set, as a Xarray Dataset.
+            aim_calls_dataset = self._aim_calls_dataset(
+                aims=prepared_aims,
+                sample_set=sample_set,
             )
-            ly.append(y)
+
+            # Add this Dataset to the list.
+            aim_calls_datasets.append(aim_calls_dataset)
 
         # Concatenate data from multiple sample sets.
-        ds = simple_xarray_concat(ly, dim=DIM_SAMPLE)
+        ds = _simple_xarray_concat(aim_calls_datasets, dim=DIM_SAMPLE)
 
-        # Handle sample query.
-        if sample_query is not None:
-            df_samples = self.sample_metadata(sample_sets=sample_sets_prepped)
+        # If there's a sample query...
+        if prepared_sample_query is not None:
+            # Get the relevant sample metadata.
+            df_samples = self.sample_metadata(sample_sets=prepared_sample_sets)
+
+            # If there are no sample query options, then default to an empty dict.
             sample_query_options = sample_query_options or {}
-            loc_samples = df_samples.eval(sample_query, **sample_query_options).values
-            if np.count_nonzero(loc_samples) == 0:
-                raise ValueError(f"No samples found for query {sample_query!r}")
-            ds = ds.isel(samples=loc_samples)
+
+            ds = self._filter_sample_dataset(
+                ds=ds,
+                df_samples=df_samples,
+                sample_query=prepared_sample_query,
+                sample_query_options=sample_query_options,
+            )
 
         return ds
 

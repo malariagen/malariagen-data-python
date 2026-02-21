@@ -106,7 +106,7 @@ samples: TypeAlias = Annotated[
 ]
 
 
-def validate_sample_selection_params(
+def _validate_sample_selection_params(
     *,
     sample_query: Optional[sample_query],
     sample_indices: Optional[sample_indices],

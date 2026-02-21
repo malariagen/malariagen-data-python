@@ -9,11 +9,11 @@ from pandas.io.common import infer_compression  # type: ignore
 
 from ..util import (
     Region,
-    check_types,
-    parse_multi_region,
-    parse_single_region,
-    read_gff3,
-    unpack_gff3_attributes,
+    _check_types,
+    _parse_multi_region,
+    _parse_single_region,
+    _read_gff3,
+    _unpack_gff3_attributes,
 )
 from . import base_params, gplt_params
 from .genome_sequence import AnophelesGenomeSequenceData
@@ -64,9 +64,9 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             path = f"{self._base_path}/{self._geneset_gff3_path}"
             compression = infer_compression(path, compression="infer")
             with self._fs.open(path, mode="rb") as f:
-                df = read_gff3(f, compression=compression)
+                df = _read_gff3(f, compression=compression)
             if attributes:
-                df = unpack_gff3_attributes(df, attributes=attributes)
+                df = _unpack_gff3_attributes(df, attributes=attributes)
             self._cache_genome_features[attributes] = df
 
         return df
@@ -116,7 +116,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             attributes_normed = tuple(attributes)
         return attributes_normed
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access genome feature annotations.",
         returns="A dataframe of genome annotations, one row per feature. The dataframe follows the GFF3 format (https://github.com/The-Sequence-Ontology/Specifications/blob/master/gff3.md), including extra attributes `ID`, `Parent`, `Name` and `description` depending on the dataset.",
@@ -134,7 +134,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         with self._spinner(desc="Load genome features"):
             if region is not None:
                 debug("Handle region.")
-                regions = parse_multi_region(self, region)
+                regions = _parse_multi_region(self, region)
                 del region
 
                 debug("Apply region query.")
@@ -179,7 +179,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         return df_children.copy()
 
-    @check_types
+    @_check_types
     @doc(summary="Plot a transcript, using bokeh.")
     def plot_transcript(
         self,
@@ -316,7 +316,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot a genes track, using bokeh.",
     )
@@ -339,7 +339,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         debug = self._log.debug
 
         debug("handle region parameter - this determines the genome region to plot")
-        resolved_region: Region = parse_single_region(self, region)
+        resolved_region: Region = _parse_single_region(self, region)
         del region
 
         debug("handle region bounds")

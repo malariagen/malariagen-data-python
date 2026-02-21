@@ -11,12 +11,12 @@ from ..util import (
     DIM_SAMPLE,
     DIM_VARIANT,
     Region,
-    check_types,
-    da_from_zarr,
-    init_zarr_store,
-    parse_multi_region,
-    parse_single_region,
-    simple_xarray_concat,
+    _check_types,
+    _da_from_zarr,
+    _init_zarr_store,
+    _parse_multi_region,
+    _parse_single_region,
+    _simple_xarray_concat,
 )
 from . import base_params, cnv_params, gplt_params
 from .genome_features import AnophelesGenomeFeaturesData
@@ -68,7 +68,7 @@ class AnophelesCnvData(
         """
         return tuple(self.config.get("COVERAGE_CALLS_ANALYSIS_IDS", ()))  # ensure tuple
 
-    @check_types
+    @_check_types
     @doc(
         summary="Open CNV HMM zarr.",
         returns="Zarr hierarchy or None.",
@@ -83,7 +83,7 @@ class AnophelesCnvData(
 
             # If CNV HMM data exists for this sample set then return the zarr,
             # Otherwise return None.
-            store = init_zarr_store(fs=self._fs, path=path)
+            store = _init_zarr_store(fs=self._fs, path=path)
             try:
                 root = zarr.open_consolidated(store=store)
             except FileNotFoundError:
@@ -109,11 +109,11 @@ class AnophelesCnvData(
         pos = root[f"{contig}/variants/POS"]
         coords["variant_position"] = (
             [DIM_VARIANT],
-            da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
+            _da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
         )
         coords["variant_end"] = (
             [DIM_VARIANT],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/variants/END"], inline_array=inline_array, chunks=chunks
             ),
         )
@@ -127,13 +127,13 @@ class AnophelesCnvData(
         debug("call arrays")
         data_vars["call_CN"] = (
             [DIM_VARIANT, DIM_SAMPLE],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/calldata/CN"], inline_array=inline_array, chunks=chunks
             ),
         )
         data_vars["call_RawCov"] = (
             [DIM_VARIANT, DIM_SAMPLE],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/calldata/RawCov"],
                 inline_array=inline_array,
                 chunks=chunks,
@@ -141,7 +141,7 @@ class AnophelesCnvData(
         )
         data_vars["call_NormCov"] = (
             [DIM_VARIANT, DIM_SAMPLE],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/calldata/NormCov"],
                 inline_array=inline_array,
                 chunks=chunks,
@@ -151,12 +151,12 @@ class AnophelesCnvData(
         debug("sample arrays")
         coords["sample_id"] = (
             [DIM_SAMPLE],
-            da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
+            _da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
         )
         for field in "sample_coverage_variance", "sample_is_high_variance":
             data_vars[field] = (
                 [DIM_SAMPLE],
-                da_from_zarr(root[field], inline_array=inline_array, chunks=chunks),
+                _da_from_zarr(root[field], inline_array=inline_array, chunks=chunks),
             )
 
         debug("set up attributes")
@@ -167,7 +167,7 @@ class AnophelesCnvData(
 
         return ds
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access CNV HMM data from CNV calling.",
         returns="""A dataset with 2 dimensions:
@@ -197,8 +197,13 @@ class AnophelesCnvData(
         debug = self._log.debug
 
         debug("normalise parameters")
-        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-        regions: List[Region] = parse_multi_region(self, region)
+        prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        prepared_sample_query = self._prep_sample_query_param(sample_query=sample_query)
+        regions: List[Region] = _parse_multi_region(self, region)
+
+        # Delete original parameters to prevent accidental use.
+        del sample_sets
+        del sample_query
         del region
 
         with self._spinner("Access CNV HMM data"):
@@ -206,7 +211,7 @@ class AnophelesCnvData(
             lx = []
             for r in regions:
                 ly = []
-                for s in sample_sets:
+                for s in prepared_sample_sets:
                     y = self._cnv_hmm_dataset(
                         contig=r.contig,
                         sample_set=s,
@@ -225,7 +230,7 @@ class AnophelesCnvData(
                     raise ValueError("No data found for requested sample sets.")
 
                 debug("concatenate data from multiple sample sets")
-                x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
+                x = _simple_xarray_concat(ly, dim=DIM_SAMPLE)
 
                 debug("handle region, do this only once - optimisation")
                 if r.start is not None or r.end is not None:
@@ -235,43 +240,42 @@ class AnophelesCnvData(
                     # noinspection PyArgumentList
                     other = pd.Interval(r.start, r.end, closed="both")
                     loc_region = index.overlaps(other)  # type: ignore
-                    x = x.isel(variants=loc_region)
+                    # Convert boolean mask to integer indices for NumPy 2.x compatibility
+                    variant_indices = np.where(loc_region)[0]
+                    x = x.isel(variants=variant_indices)
 
                 lx.append(x)
 
             debug("concatenate data from multiple regions")
-            ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
+            ds = _simple_xarray_concat(lx, dim=DIM_VARIANT)
 
             debug("handle sample query")
-            if sample_query is not None:
-                debug("load sample metadata")
-                df_samples = self.sample_metadata(sample_sets=sample_sets)
+            # If there's a sample query...
+            if prepared_sample_query is not None:
+                # Get the relevant sample metadata.
+                df_samples = self.sample_metadata(sample_sets=prepared_sample_sets)
 
-                debug("align sample metadata with CNV data")
-                cnv_samples = ds["sample_id"].values.tolist()
-                df_samples_cnv = (
-                    df_samples.set_index("sample_id").loc[cnv_samples].reset_index()
-                )
-
-                debug("apply the query")
+                # If there are no sample query options, then default to an empty dict.
                 sample_query_options = sample_query_options or {}
-                loc_query_samples = df_samples_cnv.eval(
-                    sample_query, **sample_query_options
-                ).values
-                if np.count_nonzero(loc_query_samples) == 0:
-                    raise ValueError(f"No samples found for query {sample_query!r}")
 
-                ds = ds.isel(samples=loc_query_samples)
+                ds = self._filter_sample_dataset(
+                    ds=ds,
+                    df_samples=df_samples,
+                    sample_query=prepared_sample_query,
+                    sample_query_options=sample_query_options,
+                )
 
             debug("handle coverage variance filter")
             if max_coverage_variance is not None:
                 cov_var = ds["sample_coverage_variance"].values
                 loc_pass_samples = cov_var <= max_coverage_variance
-                ds = ds.isel(samples=loc_pass_samples)
+                # Convert boolean mask to integer indices for NumPy 2.x compatibility
+                sample_indices = np.where(loc_pass_samples)[0]
+                ds = ds.isel(samples=sample_indices)
 
         return ds
 
-    @check_types
+    @_check_types
     @doc(
         summary="Open CNV coverage calls zarr.",
         returns="Zarr hierarchy.",
@@ -294,7 +298,7 @@ class AnophelesCnvData(
                 raise ValueError(
                     f"CNV coverage calls analysis f{analysis!r} not implemented for sample set {sample_set!r}"
                 )
-            store = init_zarr_store(fs=self._fs, path=path)
+            store = _init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_cnv_coverage_calls[key] = root
         return root
@@ -320,11 +324,11 @@ class AnophelesCnvData(
         pos = root[f"{contig}/variants/POS"]
         coords["variant_position"] = (
             [DIM_VARIANT],
-            da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
+            _da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
         )
         coords["variant_end"] = (
             [DIM_VARIANT],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/variants/END"], inline_array=inline_array, chunks=chunks
             ),
         )
@@ -335,13 +339,13 @@ class AnophelesCnvData(
         )
         coords["variant_id"] = (
             [DIM_VARIANT],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/variants/ID"], inline_array=inline_array, chunks=chunks
             ),
         )
         data_vars["variant_CIPOS"] = (
             [DIM_VARIANT],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/variants/CIPOS"],
                 inline_array=inline_array,
                 chunks=chunks,
@@ -349,7 +353,7 @@ class AnophelesCnvData(
         )
         data_vars["variant_CIEND"] = (
             [DIM_VARIANT],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/variants/CIEND"],
                 inline_array=inline_array,
                 chunks=chunks,
@@ -357,7 +361,7 @@ class AnophelesCnvData(
         )
         data_vars["variant_filter_pass"] = (
             [DIM_VARIANT],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/variants/FILTER_PASS"],
                 inline_array=inline_array,
                 chunks=chunks,
@@ -367,7 +371,7 @@ class AnophelesCnvData(
         debug("call arrays")
         data_vars["call_genotype"] = (
             [DIM_VARIANT, DIM_SAMPLE],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/calldata/GT"], inline_array=inline_array, chunks=chunks
             ),
         )
@@ -375,7 +379,7 @@ class AnophelesCnvData(
         debug("sample arrays")
         coords["sample_id"] = (
             [DIM_SAMPLE],
-            da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
+            _da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
         )
 
         debug("set up attributes")
@@ -386,7 +390,7 @@ class AnophelesCnvData(
 
         return ds
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access CNV HMM data from genome-wide CNV discovery and filtering.",
         returns="""A dataset with 2 dimensions:
@@ -418,8 +422,12 @@ class AnophelesCnvData(
         # calling is done independently in different sample sets.
 
         debug("normalise parameters")
-        regions: List[Region] = parse_multi_region(self, region)
+        regions: List[Region] = _parse_multi_region(self, region)
+        prepared_sample_set = self._prep_sample_sets_param(sample_sets=sample_set)[0]
+
+        # Delete original parameters to prevent accidental use.
         del region
+        del sample_set
 
         debug("access data and concatenate as needed")
         lx = []
@@ -427,7 +435,7 @@ class AnophelesCnvData(
             debug("obtain coverage calls for the contig")
             x = self._cnv_coverage_calls_dataset(
                 contig=r.contig,
-                sample_set=sample_set,
+                sample_set=prepared_sample_set,
                 analysis=analysis,
                 inline_array=inline_array,
                 chunks=chunks,
@@ -441,14 +449,33 @@ class AnophelesCnvData(
                 # noinspection PyArgumentList
                 other = pd.Interval(r.start, r.end, closed="both")
                 loc_region = index.overlaps(other)  # type: ignore
-                x = x.isel(variants=loc_region)
+                # Convert boolean mask to integer indices for NumPy 2.x compatibility
+                variant_indices = np.where(loc_region)[0]
+                x = x.isel(variants=variant_indices)
 
             lx.append(x)
-        ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
+        ds = _simple_xarray_concat(lx, dim=DIM_VARIANT)
+
+        # Filter the samples using this default sample query.
+        # For example, this might filter out non-surveillance samples.
+        prepared_sample_query = self._prep_sample_query_param(sample_query="")
+
+        # Get the relevant sample metadata.
+        df_samples = self.sample_metadata(sample_sets=prepared_sample_set)
+
+        # If there is no sample query, then default to an empty str.
+        prepared_sample_query = prepared_sample_query or ""
+
+        ds = self._filter_sample_dataset(
+            ds=ds,
+            df_samples=df_samples,
+            sample_query=prepared_sample_query,
+            sample_query_options={},
+        )
 
         return ds
 
-    @check_types
+    @_check_types
     @doc(
         summary="Open CNV discordant read calls zarr.",
         returns="Zarr hierarchy.",
@@ -468,7 +495,7 @@ class AnophelesCnvData(
                 calls_version = "discordant_read_calls"
             path = f"{self._base_path}/{release_path}/cnv/{sample_set}/{calls_version}/zarr"
             # print(analysis)
-            store = init_zarr_store(fs=self._fs, path=path)
+            store = _init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_cnv_discordant_read_calls[sample_set] = root
         return root
@@ -498,17 +525,17 @@ class AnophelesCnvData(
         pos = root[f"{contig}/variants/POS"]
         coords["variant_position"] = (
             [DIM_VARIANT],
-            da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
+            _da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
         )
         coords["variant_end"] = (
             [DIM_VARIANT],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/variants/END"], inline_array=inline_array, chunks=chunks
             ),
         )
         coords["variant_id"] = (
             [DIM_VARIANT],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/variants/ID"], inline_array=inline_array, chunks=chunks
             ),
         )
@@ -520,7 +547,7 @@ class AnophelesCnvData(
         for field in "Region", "StartBreakpointMethod", "EndBreakpointMethod":
             data_vars[f"variant_{field}"] = (
                 [DIM_VARIANT],
-                da_from_zarr(
+                _da_from_zarr(
                     root[f"{contig}/variants/{field}"],
                     inline_array=inline_array,
                     chunks=chunks,
@@ -530,7 +557,7 @@ class AnophelesCnvData(
         debug("call arrays")
         data_vars["call_genotype"] = (
             [DIM_VARIANT, DIM_SAMPLE],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/calldata/GT"], inline_array=inline_array, chunks=chunks
             ),
         )
@@ -538,12 +565,12 @@ class AnophelesCnvData(
         debug("sample arrays")
         coords["sample_id"] = (
             [DIM_SAMPLE],
-            da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
+            _da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
         )
         for field in "sample_coverage_variance", "sample_is_high_variance":
             data_vars[field] = (
                 [DIM_SAMPLE],
-                da_from_zarr(root[field], inline_array=inline_array, chunks=chunks),
+                _da_from_zarr(root[field], inline_array=inline_array, chunks=chunks),
             )
 
         debug("set up attributes")
@@ -554,7 +581,7 @@ class AnophelesCnvData(
 
         return ds
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access CNV discordant read calls data.",
         returns="""A dataset with 2 dimensions:
@@ -588,15 +615,20 @@ class AnophelesCnvData(
         # CNV alleles have unknown start or end coordinates.
 
         debug("normalise parameters")
-        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        prepared_sample_query = self._prep_sample_query_param(sample_query=sample_query)
         if isinstance(contig, str):
             contig = [contig]
+
+        # Delete original parameters to prevent accidental use.
+        del sample_sets
+        del sample_query
 
         debug("access data and concatenate as needed")
         lx = []
         for c in contig:
             ly = []
-            for s in sample_sets:
+            for s in prepared_sample_sets:
                 y = self._cnv_discordant_read_calls_dataset(
                     contig=c,
                     sample_set=s,
@@ -614,35 +646,32 @@ class AnophelesCnvData(
                     # Bail out, no data for given sample sets and analysis.
                     raise ValueError("No data found for requested sample sets.")
 
-            x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
+            x = _simple_xarray_concat(ly, dim=DIM_SAMPLE)
             lx.append(x)
 
-        ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
+        ds = _simple_xarray_concat(lx, dim=DIM_VARIANT)
 
         debug("handle sample query")
-        if sample_query is not None:
+
+        # If there's a sample query...
+        if prepared_sample_query is not None:
             debug("load sample metadata")
-            df_samples = self.sample_metadata(sample_sets=sample_sets)
+            # Get the relevant sample metadata.
+            df_samples = self.sample_metadata(sample_sets=prepared_sample_sets)
 
-            debug("align sample metadata with CNV data")
-            cnv_samples = ds["sample_id"].values.tolist()
-            df_samples_cnv = (
-                df_samples.set_index("sample_id").loc[cnv_samples].reset_index()
-            )
-
-            debug("apply the query")
+            # If there are no sample query options, then default to an empty dict.
             sample_query_options = sample_query_options or {}
-            loc_query_samples = df_samples_cnv.eval(
-                sample_query, **sample_query_options
-            ).values
-            if np.count_nonzero(loc_query_samples) == 0:
-                raise ValueError(f"No samples found for query {sample_query!r}")
 
-            ds = ds.isel(samples=loc_query_samples)
+            ds = self._filter_sample_dataset(
+                ds=ds,
+                df_samples=df_samples,
+                sample_query=prepared_sample_query,
+                sample_query_options=sample_query_options,
+            )
 
         return ds
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot CNV HMM data for a single sample, using bokeh.",
         returns="Bokeh figure.",
@@ -671,7 +700,7 @@ class AnophelesCnvData(
         import bokeh.plotting as bkplt
 
         debug("resolve region")
-        region_prepped: Region = parse_single_region(self, region)
+        region_prepped: Region = _parse_single_region(self, region)
         del region
 
         debug("access sample metadata, look up sample")
@@ -767,7 +796,7 @@ class AnophelesCnvData(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot CNV HMM data for a single sample, together with a genes track, using bokeh.",
         returns="Bokeh figure.",
@@ -841,7 +870,7 @@ class AnophelesCnvData(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot CNV HMM data for multiple samples as a heatmap, using bokeh.",
         returns="Bokeh figure.",
@@ -857,16 +886,18 @@ class AnophelesCnvData(
         width: gplt_params.width = gplt_params.width_default,
         row_height: gplt_params.row_height = 7,
         height: Optional[gplt_params.height] = None,
-        palette: Optional[gplt_params.colors] = cnv_params.colorscale_default,
+        palette: Optional[gplt_params.colors] = None,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.optional_figure:
         debug = self._log.debug
+        if palette is None:
+            palette = cnv_params.colorscale_default
 
         import bokeh.models as bkmod
         import bokeh.plotting as bkplt
 
-        region_prepped: Region = parse_single_region(self, region)
+        region_prepped: Region = _parse_single_region(self, region)
         del region
 
         debug("access HMM data")
@@ -983,7 +1014,7 @@ class AnophelesCnvData(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot CNV HMM data for multiple samples as a heatmap, with a genes track, using bokeh.",
         returns="Bokeh figure.",
@@ -999,13 +1030,15 @@ class AnophelesCnvData(
         width: gplt_params.width = gplt_params.width_default,
         row_height: gplt_params.row_height = 7,
         track_height: Optional[gplt_params.track_height] = None,
-        palette: Optional[gplt_params.colors] = cnv_params.colorscale_default,
+        palette: Optional[gplt_params.colors] = None,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         gene_labels: Optional[gplt_params.gene_labels] = None,
         gene_labelset: Optional[gplt_params.gene_labelset] = None,
     ) -> gplt_params.optional_figure:
         debug = self._log.debug
+        if palette is None:
+            palette = cnv_params.colorscale_default
 
         import bokeh.layouts as bklay
         import bokeh.plotting as bkplt

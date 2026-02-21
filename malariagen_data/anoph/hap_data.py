@@ -12,13 +12,13 @@ from ..util import (
     DIM_SAMPLE,
     DIM_VARIANT,
     Region,
-    check_types,
-    da_concat,
-    da_from_zarr,
-    init_zarr_store,
-    locate_region,
-    parse_multi_region,
-    simple_xarray_concat,
+    _check_types,
+    _da_concat,
+    _da_from_zarr,
+    _init_zarr_store,
+    _locate_region,
+    _parse_multi_region,
+    _simple_xarray_concat,
 )
 from . import base_params, hap_params
 from .genome_features import AnophelesGenomeFeaturesData
@@ -67,7 +67,7 @@ class AnophelesHapData(
                 f"Invalid phasing analysis, must be one of f{self.phasing_analysis_ids}."
             )
 
-    @check_types
+    @_check_types
     @doc(
         summary="Open haplotype sites zarr.",
         returns="Zarr hierarchy.",
@@ -80,7 +80,7 @@ class AnophelesHapData(
             return self._cache_haplotype_sites[analysis]
         except KeyError:
             path = f"{self._base_path}/{self._major_version_path}/snp_haplotypes/sites/{analysis}/zarr"
-            store = init_zarr_store(fs=self._fs, path=path)
+            store = _init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_haplotype_sites[analysis] = root
         return root
@@ -121,7 +121,7 @@ class AnophelesHapData(
             assert contig in self.contigs
             root = self.open_haplotype_sites(analysis=analysis)
             z = root[f"{contig}/variants/{field}"]
-            ret = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            ret = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             return ret
 
     def _haplotype_sites_for_region(
@@ -154,12 +154,12 @@ class AnophelesHapData(
                     inline_array=inline_array,
                     chunks=chunks,
                 )
-            loc_region = locate_region(region, np.asarray(pos))
+            loc_region = _locate_region(region, np.asarray(pos))
             ret = ret[loc_region]
 
         return ret
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access haplotype site data (positions or alleles).",
         returns="""
@@ -176,11 +176,11 @@ class AnophelesHapData(
         chunks: base_params.chunks = base_params.native_chunks,
     ) -> da.Array:
         # Resolve the region parameter to a standard type.
-        regions: List[Region] = parse_multi_region(self, region)
+        regions: List[Region] = _parse_multi_region(self, region)
         del region
 
         # Access SNP sites and concatenate over regions.
-        ret = da_concat(
+        ret = _da_concat(
             [
                 self._haplotype_sites_for_region(
                     region=r,
@@ -196,7 +196,7 @@ class AnophelesHapData(
 
         return ret
 
-    @check_types
+    @_check_types
     @doc(
         summary="Open haplotypes zarr.",
         returns="Zarr hierarchy.",
@@ -213,7 +213,7 @@ class AnophelesHapData(
             release = self.lookup_release(sample_set=sample_set)
             release_path = self._release_to_path(release)
             path = f"{self._base_path}/{release_path}/snp_haplotypes/{sample_set}/{analysis}/zarr"
-            store = init_zarr_store(fs=self._fs, path=path)
+            store = _init_zarr_store(fs=self._fs, path=path)
             # Some sample sets have no data for a given analysis, handle this.
             try:
                 root = zarr.open_consolidated(store=store)
@@ -246,7 +246,7 @@ class AnophelesHapData(
                     dsc["variant_position"] = dsc["variant_position"] + offset
                 datasets.append(dsc)
                 offset += self.genome_sequence(region=c).shape[0]
-            ret = simple_xarray_concat(datasets, dim=DIM_VARIANT)
+            ret = _simple_xarray_concat(datasets, dim=DIM_VARIANT)
             return ret
 
         # Handle contig in the reference genome.
@@ -270,7 +270,7 @@ class AnophelesHapData(
             pos = sites[f"{contig}/variants/POS"]
             coords["variant_position"] = (
                 [DIM_VARIANT],
-                da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
+                _da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
             )
 
             # Set up variant_contig.
@@ -281,12 +281,12 @@ class AnophelesHapData(
             )
 
             # Set up variant_allele.
-            ref = da_from_zarr(
+            ref = _da_from_zarr(
                 sites[f"{contig}/variants/REF"],
                 inline_array=inline_array,
                 chunks=chunks,
             )
-            alt = da_from_zarr(
+            alt = _da_from_zarr(
                 sites[f"{contig}/variants/ALT"],
                 inline_array=inline_array,
                 chunks=chunks,
@@ -297,7 +297,7 @@ class AnophelesHapData(
             # Set up call_genotype.
             data_vars["call_genotype"] = (
                 [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
-                da_from_zarr(
+                _da_from_zarr(
                     root[f"{contig}/calldata/GT"],
                     inline_array=inline_array,
                     chunks=chunks,
@@ -307,7 +307,9 @@ class AnophelesHapData(
             # Set up sample array.
             coords["sample_id"] = (
                 [DIM_SAMPLE],
-                da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
+                _da_from_zarr(
+                    root["samples"], inline_array=inline_array, chunks=chunks
+                ),
             )
 
             # Set up attributes.
@@ -318,7 +320,7 @@ class AnophelesHapData(
 
             return ds
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access haplotype data.",
         returns="""A dataset with 4 dimensions:
@@ -350,7 +352,9 @@ class AnophelesHapData(
         # Normalise parameters.
         sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
         del sample_sets
-        regions: List[Region] = parse_multi_region(self, region)
+        sample_query_prepped = self._prep_sample_query_param(sample_query=sample_query)
+        del sample_query
+        regions: List[Region] = _parse_multi_region(self, region)
         del region
         analysis = self._prep_phasing_analysis_param(analysis=analysis)
 
@@ -378,21 +382,21 @@ class AnophelesHapData(
                     )
 
                 # Concatenate data from multiple sample sets.
-                x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
+                x = _simple_xarray_concat(ly, dim=DIM_SAMPLE)
 
                 # Handle region.
                 if r.start or r.end:
                     pos = x["variant_position"].values
-                    loc_region = locate_region(r, pos)
+                    loc_region = _locate_region(r, pos)
                     x = x.isel(variants=loc_region)
 
                 lx.append(x)
 
             # Concatenate data from multiple regions.
-            ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
+            ds = _simple_xarray_concat(lx, dim=DIM_VARIANT)
 
         # Handle sample query.
-        if sample_query is not None:
+        if sample_query_prepped is not None:
             # Load sample metadata.
             df_samples = self.sample_metadata(sample_sets=sample_sets_prepped)
 
@@ -405,14 +409,16 @@ class AnophelesHapData(
             # Apply the query.
             sample_query_options = sample_query_options or {}
             loc_samples = df_samples_phased.eval(
-                sample_query, **sample_query_options
+                sample_query_prepped, **sample_query_options
             ).values
             if np.count_nonzero(loc_samples) == 0:
                 # Bail out, no samples matching the query.
                 raise ValueError(
-                    f"No samples found for phasing analysis {analysis!r} and query {sample_query!r}"
+                    f"No samples found for phasing analysis {analysis!r} and query {sample_query_prepped!r}"
                 )
-            ds = ds.isel(samples=loc_samples)
+            # Convert boolean mask to integer indices for NumPy 2.x compatibility
+            sample_indices = np.where(loc_samples)[0]
+            ds = ds.isel(samples=sample_indices)
 
         if cohort_size is not None:
             # Handle cohort size - overrides min and max.
