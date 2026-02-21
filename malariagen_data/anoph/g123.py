@@ -153,7 +153,7 @@ class AnophelesG123Analysis(
         self,
         contig: base_params.contig,
         window_size: g123_params.window_size,
-        sites: g123_params.sites = base_params.DEFAULT,
+        sites: g123_params.sites = g123_params.DEFAULT_SITE_PARAMETER,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
@@ -172,9 +172,6 @@ class AnophelesG123Analysis(
         # invalidate any previously cached data.
         name = "g123_gwss_v1"
 
-        if sites == base_params.DEFAULT:
-            assert self._default_phasing_analysis is not None
-            sites = self._default_phasing_analysis
         valid_sites = self.phasing_analysis_ids + ("all", "segregating")
         if sites not in valid_sites:
             raise ValueError(
@@ -259,7 +256,7 @@ class AnophelesG123Analysis(
     def g123_calibration(
         self,
         contig: base_params.contig,
-        sites: g123_params.sites = base_params.DEFAULT,
+        sites: g123_params.sites = g123_params.DEFAULT_SITE_PARAMETER,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_query: Optional[base_params.sample_query] = None,
         sample_query_options: Optional[base_params.sample_query_options] = None,
@@ -314,7 +311,7 @@ class AnophelesG123Analysis(
         self,
         contig: base_params.contig,
         window_size: g123_params.window_size,
-        sites: g123_params.sites = base_params.DEFAULT,
+        sites: g123_params.sites = g123_params.DEFAULT_SITE_PARAMETER,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
@@ -417,7 +414,7 @@ class AnophelesG123Analysis(
         self,
         contig: base_params.contig,
         window_size: g123_params.window_size,
-        sites: g123_params.sites = base_params.DEFAULT,
+        sites: g123_params.sites = g123_params.DEFAULT_SITE_PARAMETER,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
