@@ -552,5 +552,5 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             return self._gene_name_overrides[parent_id]
         except KeyError:
             rec_parent = df_genome_features.loc[parent_id]
-            # Try to access "Name" attribute, fall back to "ID" if not present.
-            return rec_parent.get("Name", parent_id)
+            # Try to access gene name attribute, fall back to "ID" if not present.
+            return rec_parent.get(self._gff_gene_name_attribute, parent_id)
