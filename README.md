@@ -142,7 +142,7 @@ modifying the `docs/source/_static/switcher.json` file accordingly.
 
 If you use the `malariagen_data` package in a publication
 or include any of its functions or code in other materials (_e.g._ training resources),
-please cite: [doi.org/10.5281/zenodo.11173411](doi.org/10.5281/zenodo.11173411)
+please cite: [doi.org/10.5281/zenodo.11173411](https://doi.org/10.5281/zenodo.11173411)
 
 Some functions may require additional citations to acknowledge specific contributions. These are indicated in the description for each relevant function.
 
