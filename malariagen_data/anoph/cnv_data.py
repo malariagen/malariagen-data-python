@@ -886,11 +886,13 @@ class AnophelesCnvData(
         width: gplt_params.width = gplt_params.width_default,
         row_height: gplt_params.row_height = 7,
         height: Optional[gplt_params.height] = None,
-        palette: Optional[gplt_params.colors] = cnv_params.colorscale_default,
+        palette: Optional[gplt_params.colors] = None,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.optional_figure:
         debug = self._log.debug
+        if palette is None:
+            palette = cnv_params.colorscale_default
 
         import bokeh.models as bkmod
         import bokeh.plotting as bkplt
@@ -1028,13 +1030,15 @@ class AnophelesCnvData(
         width: gplt_params.width = gplt_params.width_default,
         row_height: gplt_params.row_height = 7,
         track_height: Optional[gplt_params.track_height] = None,
-        palette: Optional[gplt_params.colors] = cnv_params.colorscale_default,
+        palette: Optional[gplt_params.colors] = None,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         gene_labels: Optional[gplt_params.gene_labels] = None,
         gene_labelset: Optional[gplt_params.gene_labelset] = None,
     ) -> gplt_params.optional_figure:
         debug = self._log.debug
+        if palette is None:
+            palette = cnv_params.colorscale_default
 
         import bokeh.layouts as bklay
         import bokeh.plotting as bkplt

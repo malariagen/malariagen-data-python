@@ -622,7 +622,7 @@ class AnophelesDipClustAnalysis(
         snp_filter_min_maf: float = 0.05,
         snp_query: Optional[base_params.snp_query] = AA_CHANGE_QUERY,
         cnv_region: Optional[base_params.regions] = None,
-        cnv_colorscale: plotly_params.color_continuous_scale = cnv_params.colorscale_default,
+        cnv_colorscale: plotly_params.color_continuous_scale = None,
         cnv_max_coverage_variance: cnv_params.max_coverage_variance = 0.2,
         site_mask: Optional[base_params.site_mask] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
@@ -657,6 +657,8 @@ class AnophelesDipClustAnalysis(
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ):
+        if cnv_colorscale is None:
+            cnv_colorscale = cnv_params.colorscale_default
         if cohort_size and snp_transcript:
             cohort_size = None
             print(
