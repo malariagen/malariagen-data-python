@@ -84,7 +84,7 @@ class Annotator(object):
         ref_seq = self.get_ref_seq(chrom, ref_start, ref_stop).lower()
         assert ref_seq == ref.lower(), (
             "reference allele does not match reference sequence, "
-            "expected %r, found %r" % (ref_seq, ref.lower())
+            f"expected {ref_seq!r}, found {ref.lower()!r}"
         )
 
         return ref_start, ref_stop
@@ -262,11 +262,11 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
     base_effect = base_effect._replace(
         ref_codon=ref_codon,
         alt_codon=alt_codon,
-        codon_change="%s/%s" % (ref_codon, alt_codon),
+        codon_change=f"{ref_codon}/{alt_codon}",
         aa_pos=aa_pos,
         ref_aa=ref_aa,
         alt_aa=alt_aa,
-        aa_change="%s%s%s" % (ref_aa, aa_pos, alt_aa),
+        aa_change=f"{ref_aa}{aa_pos}{alt_aa}",
     )
 
     if len(ref) == 1 and len(alt) == 1:
