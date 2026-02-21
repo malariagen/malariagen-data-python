@@ -169,7 +169,9 @@ def test_plot_genes_with_gene_labels(fixture, api: AnophelesGenomeFeaturesData):
     # For each contig in the fixture...
     for contig in fixture.contigs:
         # Get the genes for this contig.
-        genes_df = api.genome_features(region=contig).query("type == 'gene'")
+        genes_df = api.genome_features(region=contig).query(
+            f"type == '{api._gff_gene_type}'"
+        )
 
         # If there are no genes, we cannot label them.
         if not genes_df.empty:
@@ -181,7 +183,10 @@ def test_plot_genes_with_gene_labels(fixture, api: AnophelesGenomeFeaturesData):
 
             # Put the random gene "ID" and its "Name" in a dictionary.
             random_gene_labels = dict(
-                zip(random_sample_genes_df["ID"], random_sample_genes_df["Name"])
+                zip(
+                    random_sample_genes_df["ID"],
+                    random_sample_genes_df[api._gff_gene_name_attribute],
+                )
             )
 
             # Check that we get a Bokeh figure from plot_genes() with these gene_labels.
