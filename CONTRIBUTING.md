@@ -45,10 +45,30 @@ You'll need:
    poetry install
    ```
 
-   Use `poetry run <command>` to run commands inside the environment. Alternatively, activate the environment with:
+   **Recommended**: Use `poetry run` to run commands inside the virtual environment:
 
    ```bash
-   poetry env activate
+   poetry run pytest
+   poetry run python script.py
+   ```
+
+   **Optional**: If you prefer an interactive shell session, install the shell plugin first:
+
+   ```bash
+   poetry self add poetry-plugin-shell
+   ```
+
+   Then activate the environment with:
+
+   ```bash
+   poetry shell
+   ```
+
+   After activation, commands run directly inside the virtual environment:
+
+   ```bash
+   pytest
+   python script.py
    ```
 
 5. **Install pre-commit hooks**
