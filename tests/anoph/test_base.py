@@ -62,6 +62,69 @@ def amin1_sim_api(amin1_sim_fixture):
 
 
 @pytest.fixture
+def ag3_sim_api_snp(ag3_sim_fixture):
+    """Fixture for ag3 with SNP data capabilities, used for tests requiring snp_sites."""
+    return AnophelesSnpData(
+        url=ag3_sim_fixture.url,
+        public_url=ag3_sim_fixture.url,
+        config_path=_ag3.CONFIG_PATH,
+        major_version_number=_ag3.MAJOR_VERSION_NUMBER,
+        major_version_path=_ag3.MAJOR_VERSION_PATH,
+        pre=True,
+        aim_metadata_dtype={
+            "aim_species_fraction_arab": "float64",
+            "aim_species_fraction_colu": "float64",
+            "aim_species_fraction_colu_no2l": "float64",
+            "aim_species_gambcolu_arabiensis": object,
+            "aim_species_gambiae_coluzzii": object,
+            "aim_species": object,
+        },
+        gff_gene_type="gene",
+        gff_gene_name_attribute="Name",
+        gff_default_attributes=("ID", "Parent", "Name", "description"),
+        default_site_mask="gamb_colu_arab",
+        results_cache=ag3_sim_fixture.results_cache_path.as_posix(),
+        virtual_contigs=_ag3.VIRTUAL_CONTIGS,
+    )
+
+
+@pytest.fixture
+def af1_sim_api_snp(af1_sim_fixture):
+    """Fixture for af1 with SNP data capabilities, used for tests requiring snp_sites."""
+    return AnophelesSnpData(
+        url=af1_sim_fixture.url,
+        public_url=af1_sim_fixture.url,
+        config_path=_af1.CONFIG_PATH,
+        major_version_number=_af1.MAJOR_VERSION_NUMBER,
+        major_version_path=_af1.MAJOR_VERSION_PATH,
+        pre=False,
+        gff_gene_type="protein_coding_gene",
+        gff_gene_name_attribute="Note",
+        gff_default_attributes=("ID", "Parent", "Note", "description"),
+        default_site_mask="funestus",
+        results_cache=af1_sim_fixture.results_cache_path.as_posix(),
+    )
+
+
+@pytest.fixture
+def adir1_sim_api_snp(adir1_sim_fixture):
+    """Fixture for adir1 with SNP data capabilities, used for tests requiring snp_sites."""
+    return AnophelesSnpData(
+        url=adir1_sim_fixture.url,
+        public_url=adir1_sim_fixture.url,
+        config_path=_adir1.CONFIG_PATH,
+        major_version_number=_adir1.MAJOR_VERSION_NUMBER,
+        major_version_path=_adir1.MAJOR_VERSION_PATH,
+        pre=False,
+        gff_gene_type="protein_coding_gene",
+        gff_gene_name_attribute="Note",
+        gff_default_attributes=("ID", "Parent", "Note", "description"),
+        default_site_mask="dirus",
+        results_cache=adir1_sim_fixture.results_cache_path.as_posix(),
+    )
+
+
+@pytest.fixture
 def amin1_sim_api_snp(amin1_sim_fixture):
     """Fixture for amin1 with SNP data capabilities, used for tests requiring snp_sites."""
     return AnophelesSnpData(
@@ -288,6 +351,228 @@ def test_locate_region(amin1_sim_fixture, amin1_sim_api_snp):
 
     # Get a contig and gene from the simulated data
     contig = amin1_sim_fixture.random_contig()
+    df_gff = api.genome_features(attributes=["ID"])
+    gene_ids = df_gff["ID"].dropna().to_list()
+
+    if not gene_ids:
+        pytest.skip("No gene IDs available in simulated data")
+
+    gene_id = gene_ids[0]
+    gene = df_gff.query(f"ID == '{gene_id}'").squeeze()
+    gene_start = gene["start"]
+    gene_end = gene["end"]
+    gene_contig = gene["contig"]
+
+    # Create test regions - using simulated data values
+    region_tests = [
+        contig,  # Just contig name
+        f"{gene_contig}:{gene_start}-{gene_end}",  # Region string
+        f"{gene_contig}:{gene_start:,}-{gene_end:,}",  # Region string with commas
+        gene_id,  # Gene ID
+        Region(gene_contig, gene_start, gene_end),  # Region object
+    ]
+
+    for region_raw in region_tests:
+        region = _resolve_region(api, region_raw)
+        pos = api.snp_sites(region=region.contig, field="POS")
+        loc_region = _locate_region(region, pos.compute())
+
+        # Check types
+        assert isinstance(loc_region, slice)
+        assert isinstance(region, Region)
+
+        # Check Region with contig only
+        if region_raw == contig:
+            assert region.contig == contig
+            assert region.start is None
+            assert region.end is None
+
+        # Check that Region object goes through unchanged
+        if isinstance(region_raw, Region):
+            assert region == region_raw
+
+        # Check that gene name matches coordinates from genome_features
+        if region_raw == gene_id:
+            assert region == Region(gene_contig, gene_start, gene_end)
+            pos_computed = pos.compute()
+            if len(pos_computed) > 0:
+                # Check if slice is non-empty (start != stop)
+                sliced_pos = pos_computed[loc_region]
+                if len(sliced_pos) > 0:
+                    # Only check if there are SNPs in the region
+                    assert sliced_pos[0] >= gene_start
+                    assert sliced_pos[-1] <= gene_end
+
+        # Check string parsing with coordinates
+        if isinstance(region_raw, str) and ":" in region_raw and "-" in region_raw:
+            # Parse the region string to extract coordinates
+            parts = region_raw.split(":")
+            if len(parts) == 2:
+                coord_part = parts[1]
+                if "-" in coord_part:
+                    start_str, end_str = coord_part.split("-")
+                    start = int(start_str.replace(",", ""))
+                    end = int(end_str.replace(",", ""))
+                    assert region == Region(gene_contig, start, end)
+
+
+def test_locate_region_ag3(ag3_sim_fixture, ag3_sim_api_snp):
+    """Test _locate_region and _resolve_region utility functions with ag3 data.
+
+    This test was migrated from tests/integration/test_ag3.py::test_locate_region.
+    """
+    api = ag3_sim_api_snp
+
+    # Get a contig and gene from the simulated data
+    contig = ag3_sim_fixture.random_contig()
+    df_gff = api.genome_features(attributes=["ID"])
+    gene_ids = df_gff["ID"].dropna().to_list()
+
+    if not gene_ids:
+        pytest.skip("No gene IDs available in simulated data")
+
+    gene_id = gene_ids[0]
+    gene = df_gff.query(f"ID == '{gene_id}'").squeeze()
+    gene_start = gene["start"]
+    gene_end = gene["end"]
+    gene_contig = gene["contig"]
+
+    # Create test regions - using simulated data values
+    region_tests = [
+        contig,  # Just contig name
+        f"{gene_contig}:{gene_start}-{gene_end}",  # Region string
+        f"{gene_contig}:{gene_start:,}-{gene_end:,}",  # Region string with commas
+        gene_id,  # Gene ID
+        Region(gene_contig, gene_start, gene_end),  # Region object
+    ]
+
+    for region_raw in region_tests:
+        region = _resolve_region(api, region_raw)
+        pos = api.snp_sites(region=region.contig, field="POS")
+        loc_region = _locate_region(region, pos.compute())
+
+        # Check types
+        assert isinstance(loc_region, slice)
+        assert isinstance(region, Region)
+
+        # Check Region with contig only
+        if region_raw == contig:
+            assert region.contig == contig
+            assert region.start is None
+            assert region.end is None
+
+        # Check that Region object goes through unchanged
+        if isinstance(region_raw, Region):
+            assert region == region_raw
+
+        # Check that gene name matches coordinates from genome_features
+        if region_raw == gene_id:
+            assert region == Region(gene_contig, gene_start, gene_end)
+            pos_computed = pos.compute()
+            if len(pos_computed) > 0:
+                # Check if slice is non-empty (start != stop)
+                sliced_pos = pos_computed[loc_region]
+                if len(sliced_pos) > 0:
+                    # Only check if there are SNPs in the region
+                    assert sliced_pos[0] >= gene_start
+                    assert sliced_pos[-1] <= gene_end
+
+        # Check string parsing with coordinates
+        if isinstance(region_raw, str) and ":" in region_raw and "-" in region_raw:
+            # Parse the region string to extract coordinates
+            parts = region_raw.split(":")
+            if len(parts) == 2:
+                coord_part = parts[1]
+                if "-" in coord_part:
+                    start_str, end_str = coord_part.split("-")
+                    start = int(start_str.replace(",", ""))
+                    end = int(end_str.replace(",", ""))
+                    assert region == Region(gene_contig, start, end)
+
+
+def test_locate_region_af1(af1_sim_fixture, af1_sim_api_snp):
+    """Test _locate_region and _resolve_region utility functions with af1 data.
+
+    This test was migrated from tests/integration/test_af1.py::test_locate_region.
+    """
+    api = af1_sim_api_snp
+
+    # Get a contig and gene from the simulated data
+    contig = af1_sim_fixture.random_contig()
+    df_gff = api.genome_features(attributes=["ID"])
+    gene_ids = df_gff["ID"].dropna().to_list()
+
+    if not gene_ids:
+        pytest.skip("No gene IDs available in simulated data")
+
+    gene_id = gene_ids[0]
+    gene = df_gff.query(f"ID == '{gene_id}'").squeeze()
+    gene_start = gene["start"]
+    gene_end = gene["end"]
+    gene_contig = gene["contig"]
+
+    # Create test regions - using simulated data values
+    region_tests = [
+        contig,  # Just contig name
+        f"{gene_contig}:{gene_start}-{gene_end}",  # Region string
+        f"{gene_contig}:{gene_start:,}-{gene_end:,}",  # Region string with commas
+        gene_id,  # Gene ID
+        Region(gene_contig, gene_start, gene_end),  # Region object
+    ]
+
+    for region_raw in region_tests:
+        region = _resolve_region(api, region_raw)
+        pos = api.snp_sites(region=region.contig, field="POS")
+        loc_region = _locate_region(region, pos.compute())
+
+        # Check types
+        assert isinstance(loc_region, slice)
+        assert isinstance(region, Region)
+
+        # Check Region with contig only
+        if region_raw == contig:
+            assert region.contig == contig
+            assert region.start is None
+            assert region.end is None
+
+        # Check that Region object goes through unchanged
+        if isinstance(region_raw, Region):
+            assert region == region_raw
+
+        # Check that gene name matches coordinates from genome_features
+        if region_raw == gene_id:
+            assert region == Region(gene_contig, gene_start, gene_end)
+            pos_computed = pos.compute()
+            if len(pos_computed) > 0:
+                # Check if slice is non-empty (start != stop)
+                sliced_pos = pos_computed[loc_region]
+                if len(sliced_pos) > 0:
+                    # Only check if there are SNPs in the region
+                    assert sliced_pos[0] >= gene_start
+                    assert sliced_pos[-1] <= gene_end
+
+        # Check string parsing with coordinates
+        if isinstance(region_raw, str) and ":" in region_raw and "-" in region_raw:
+            # Parse the region string to extract coordinates
+            parts = region_raw.split(":")
+            if len(parts) == 2:
+                coord_part = parts[1]
+                if "-" in coord_part:
+                    start_str, end_str = coord_part.split("-")
+                    start = int(start_str.replace(",", ""))
+                    end = int(end_str.replace(",", ""))
+                    assert region == Region(gene_contig, start, end)
+
+
+def test_locate_region_adir1(adir1_sim_fixture, adir1_sim_api_snp):
+    """Test _locate_region and _resolve_region utility functions with adir1 data.
+
+    This test was migrated from tests/integration/test_adir1.py::test_locate_region.
+    """
+    api = adir1_sim_api_snp
+
+    # Get a contig and gene from the simulated data
+    contig = adir1_sim_fixture.random_contig()
     df_gff = api.genome_features(attributes=["ID"])
     gene_ids = df_gff["ID"].dropna().to_list()
 
