@@ -276,7 +276,7 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         heatmap_df.set_index(index_col, inplace=True)
 
         # Clean column names.
-        heatmap_df.columns = heatmap_df.columns.str.lstrip("frq_")
+        heatmap_df.columns = heatmap_df.columns.str.removeprefix("frq_")
 
         # Deal with width and height.
         if width is None:
@@ -385,8 +385,8 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
 
         # Build a long-form dataframe from the dataset.
         dfs = []
-        for cohort_index, cohort in enumerate(df_cohorts.itertuples()):
-            ds_cohort = ds.isel(cohorts=cohort_index)
+        for cohort in df_cohorts.itertuples():
+            ds_cohort = ds.isel(cohorts=cohort.Index)
             df = pd.DataFrame(
                 {
                     "taxon": cohort.taxon,
