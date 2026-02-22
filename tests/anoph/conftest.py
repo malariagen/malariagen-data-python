@@ -2464,7 +2464,7 @@ class Adir1Simulator(AnophelesSimulator):
             "DEFAULT_COHORTS_ANALYSIS": "20250710",
             "DEFAULT_DISCORDANT_READ_CALLS_ANALYSIS": "",
             "SITE_MASK_IDS": ["dirus"],
-            "PHASING_ANALYSIS_IDS": ["dirus_noneyet"],
+            "PHASING_ANALYSIS_IDS": [],
         }
         config_path = self.bucket_path / "v1.0-config.json"
         with config_path.open(mode="w") as f:
@@ -2786,7 +2786,7 @@ class Amin1Simulator(AnophelesSimulator):
             "DEFAULT_COHORTS_ANALYSIS": "20251019",
             "DEFAULT_DISCORDANT_READ_CALLS_ANALYSIS": "",
             "SITE_MASK_IDS": ["minimus"],
-            "PHASING_ANALYSIS_IDS": ["minimus_noneyet"],
+            "PHASING_ANALYSIS_IDS": [],
         }
         config_path = self.bucket_path / "v1.0-config.json"
         with config_path.open(mode="w") as f:
