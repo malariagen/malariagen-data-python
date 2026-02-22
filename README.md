@@ -49,6 +49,11 @@ To get setup for development, see [this video if you prefer VS Code](https://you
 For detailed setup instructions, see:
 - [Linux setup guide](LINUX_SETUP.md)
 - [macOS setup guide](MACOS_SETUP.md)
+Detailed instructions can be found in the [Contributors guide](https://github.com/malariagen/malariagen-data-python/blob/master/CONTRIBUTING.md).
+
+## AI use policy and guidelines
+
+See [AI use policy and guidelines](https://github.com/malariagen/malariagen-data-python/blob/master/AI-POLICY.md) for more details.
 
 ## Release process
 
