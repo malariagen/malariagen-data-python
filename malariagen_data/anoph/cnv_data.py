@@ -642,9 +642,13 @@ class AnophelesCnvData(
 
                 ly.append(y)
 
-                if len(ly) == 0:
-                    # Bail out, no data for given sample sets and analysis.
-                    raise ValueError("No data found for requested sample sets.")
+            if len(ly) == 0:
+                # Bail out, no data for given sample sets and contig.
+                raise ValueError(
+                    f"No CNV discordant read calls data found for contig {c!r} "
+                    f"in the requested sample sets. This could be because the "
+                    f"sample sets do not have discordant read calls data available."
+                )
 
             x = _simple_xarray_concat(ly, dim=DIM_SAMPLE)
             lx.append(x)
