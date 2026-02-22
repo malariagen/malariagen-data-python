@@ -276,7 +276,7 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         heatmap_df.set_index(index_col, inplace=True)
 
         # Clean column names.
-        heatmap_df.columns = heatmap_df.columns.str.lstrip("frq_")
+        heatmap_df.columns = heatmap_df.columns.str.removeprefix("frq_")
 
         # Deal with width and height.
         if width is None:
