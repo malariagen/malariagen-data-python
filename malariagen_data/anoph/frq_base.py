@@ -486,11 +486,13 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         self,
         m,
         ds: frq_params.ds_frequencies_advanced,
-        variant: Union[int, str],
+        variant: Optional[Union[int, str]],
         taxon: str,
         period: pd.Period,
         clear: bool = True,
     ):
+        if variant is None:
+            return
         # Only import here because of some problems importing globally.
         import ipyleaflet  # type: ignore
         import ipywidgets  # type: ignore
