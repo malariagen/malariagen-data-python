@@ -235,7 +235,7 @@ class AnophelesFstAnalysis(
             height=height,
             toolbar_location="above",
             x_range=x_range,
-            y_range=(0, 1),
+            y_range=(clip_min, 1),
             output_backend=output_backend,
         )
 
@@ -252,7 +252,7 @@ class AnophelesFstAnalysis(
 
         # tidy up the plot
         fig.yaxis.axis_label = "Fst"
-        fig.yaxis.ticker = [0, 1]
+        fig.yaxis.ticker = [clip_min, 1]
         self._bokeh_style_genome_xaxis(fig, contig)
 
         if show:  # pragma: no cover
