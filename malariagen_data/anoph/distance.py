@@ -482,6 +482,20 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
             count_sort = True
             distance_sort = False
 
+        # Ensure we have enough samples for a tree.
+        # If we have 0 samples, `biallelic_snp_calls` or `snp_calls` should have already raised "No samples found".
+        # However, if we have 1 sample, it might pass through until here, where it would cause a failure in njt.
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            sample_indices=sample_indices,
+        )
+        if 0 < len(df_samples) < 2:
+            raise ValueError(
+                f"Not enough samples for neighbour-joining tree. Found {len(df_samples)}, needed at least 2."
+            )
+
         # Compute neighbour-joining tree.
         Z, samples, n_snps_used = self.njt(
             region=region,
