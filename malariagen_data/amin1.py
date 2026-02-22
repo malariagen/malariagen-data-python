@@ -71,8 +71,9 @@ class Amin1(AnophelesDataResource):
 
     """
 
-    #    _xpehh_gwss_cache_name = XPEHH_GWSS_CACHE_NAME
-    #    _ihs_gwss_cache_name = IHS_GWSS_CACHE_NAME
+    _xpehh_gwss_cache_name = "amin1_xpehh_gwss_v1"
+    _ihs_gwss_cache_name = "amin1_ihs_gwss_v1"
+    _roh_hmm_cache_name = "amin1_roh_hmm_v1"
 
     def __init__(
         self,
