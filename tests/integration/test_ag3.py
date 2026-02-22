@@ -61,7 +61,7 @@ def test_cross_metadata():
     ],
 )
 def test_locate_region(region_raw):
-    # TODO Migrate this test.
+    # Migrated to tests/anoph/test_base.py::test_locate_region_ag3
     ag3 = setup_ag3()
     gene_annotation = ag3.genome_features(attributes=["ID"])
     region = _resolve_region(ag3, region_raw)

@@ -37,7 +37,7 @@ def test_repr():
     ],
 )
 def test_locate_region(region_raw):
-    # TODO Migrate this test.
+    # Migrated to tests/anoph/test_base.py::test_locate_region_adir1
     adir1 = setup_adir1()
     gene_annotation = adir1.geneset(attributes=["ID"])
     region = _resolve_region(adir1, region_raw)
