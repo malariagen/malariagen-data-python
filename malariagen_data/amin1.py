@@ -105,7 +105,7 @@ class Amin1(AnophelesDataResource):
             site_filters_analysis=site_filters_analysis,
             discordant_read_calls_analysis=discordant_read_calls_analysis,
             default_site_mask="minimus",
-            default_phasing_analysis="minimus_noneyet",
+            default_phasing_analysis=None,
             default_coverage_calls_analysis="minimus_noneyet",
             bokeh_output_notebook=bokeh_output_notebook,
             results_cache=results_cache,
