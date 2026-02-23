@@ -6,7 +6,6 @@ from numpy.testing import assert_allclose
 
 from malariagen_data import Ag3, Region
 from malariagen_data.util import _locate_region, _resolve_region
-import xarray as xr
 
 
 contigs = "2R", "2L", "3R", "3L", "X"
@@ -730,6 +729,8 @@ def check_inversion_frequencies_advanced(
 
         # Check variants are consistent.
         assert ds.sizes["variants"] == len(df_if)
+
+
 def test_plot_haplotype_network_string_direct(mocker):
     ag3 = setup_ag3()
     mocker.patch("dash.Dash.run")
