@@ -13,6 +13,9 @@ GCS_DEFAULT_PUBLIC_URL = "gs://vo_amin_release_master_us_central1/"
 GCS_REGION_URLS = {
     "us-central1": "gs://vo_amin_release_master_us_central1",
 }
+XPEHH_GWSS_CACHE_NAME = "amin1_xpehh_gwss_v1"
+IHS_GWSS_CACHE_NAME = "amin1_ihs_gwss_v1"
+ROH_HMM_CACHE_NAME = "amin1_roh_hmm_v1"
 
 TAXON_PALETTE = px.colors.qualitative.Plotly
 TAXON_COLORS = {
@@ -71,8 +74,9 @@ class Amin1(AnophelesDataResource):
 
     """
 
-    #    _xpehh_gwss_cache_name = XPEHH_GWSS_CACHE_NAME
-    #    _ihs_gwss_cache_name = IHS_GWSS_CACHE_NAME
+    _xpehh_gwss_cache_name = XPEHH_GWSS_CACHE_NAME
+    _ihs_gwss_cache_name = IHS_GWSS_CACHE_NAME
+    _roh_hmm_cache_name = ROH_HMM_CACHE_NAME
 
     def __init__(
         self,
