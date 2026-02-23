@@ -198,6 +198,8 @@ def test_snp_effects(fixture, api: AnophelesSnpFrequencyAnalysis):
             "ref_aa",
             "alt_aa",
             "aa_change",
+            "grantham_score",
+            "sneath_score",
         ]
     )
     assert df.columns.tolist() == expected_fields
@@ -249,6 +251,8 @@ def check_snp_allele_frequencies(
         "aa_pos",
         "ref_aa",
         "alt_aa",
+        "grantham_score",
+        "sneath_score",
     ]
     frq_fields = ["frq_" + s for s in cohort_labels] + ["max_af"]
     expected_fields = universal_fields + frq_fields + effects_fields
@@ -304,9 +308,10 @@ def check_aa_allele_frequencies(
         "alt_allele",
         "ref_aa",
         "alt_aa",
+        "grantham_score",
+        "sneath_score",
     ]
     frq_fields = ["frq_" + s for s in cohort_labels] + ["max_af"]
-    expected_fields = universal_fields + frq_fields + effects_fields
     expected_fields = universal_fields + frq_fields + effects_fields
     assert sorted(df.columns.tolist()) == sorted(expected_fields)
     assert df.index.names == [
