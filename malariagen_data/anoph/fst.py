@@ -235,7 +235,7 @@ class AnophelesFstAnalysis(
             height=height,
             toolbar_location="above",
             x_range=x_range,
-            y_range=(0, 1),
+            y_range=(clip_min, 1),
             output_backend=output_backend,
         )
 
