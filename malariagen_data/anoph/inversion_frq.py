@@ -5,15 +5,15 @@ import pandas as pd
 from numpydoc_decorator import doc  # type: ignore
 import xarray as xr
 
-from ..util import (
-    check_types,
-    prep_samples_for_cohort_grouping,
-    build_cohorts_from_sample_grouping,
-    add_frequency_ci,
-)
+from ..util import _check_types
 from .karyotype import AnophelesKaryotypeAnalysis
-from .frq_base import AnophelesFrequencyAnalysis
-from .sample_metadata import locate_cohorts
+from .frq_base import (
+    AnophelesFrequencyAnalysis,
+    _prep_samples_for_cohort_grouping,
+    _build_cohorts_from_sample_grouping,
+    _add_frequency_ci,
+)
+from .sample_metadata import _locate_cohorts
 from .karyotype_params import inversions_param
 from . import base_params, frq_params
 
@@ -35,7 +35,7 @@ class AnophelesInversionFrequencyAnalysis(
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Compute inversion frequencies for a sequence of inversions.
@@ -71,7 +71,7 @@ class AnophelesInversionFrequencyAnalysis(
                 )
 
                 # Build cohort dictionary, maps cohort labels to boolean indexers.
-                coh_dict = locate_cohorts(
+                coh_dict = _locate_cohorts(
                     cohorts=cohorts, data=df_samples, min_cohort_size=min_cohort_size
                 )
 
@@ -144,7 +144,7 @@ class AnophelesInversionFrequencyAnalysis(
             )
 
             # Build cohort dictionary, maps cohort labels to boolean indexers.
-            coh_dict = locate_cohorts(
+            coh_dict = _locate_cohorts(
                 cohorts=cohorts, data=df_samples, min_cohort_size=min_cohort_size
             )
 
@@ -205,7 +205,7 @@ class AnophelesInversionFrequencyAnalysis(
 
             return df_kar_frqs_inv
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Group samples by taxon, area (space) and period (time), then compute
@@ -246,7 +246,7 @@ class AnophelesInversionFrequencyAnalysis(
             )
 
             # Prepare sample metadata for cohort grouping.
-            df_samples = prep_samples_for_cohort_grouping(
+            df_samples = _prep_samples_for_cohort_grouping(
                 df_samples=df_samples,
                 area_by=area_by,
                 period_by=period_by,
@@ -256,7 +256,7 @@ class AnophelesInversionFrequencyAnalysis(
             group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
 
             # Build cohorts dataframe.
-            df_cohorts = build_cohorts_from_sample_grouping(
+            df_cohorts = _build_cohorts_from_sample_grouping(
                 group_samples_by_cohort=group_samples_by_cohort,
                 min_cohort_size=min_cohort_size,
             )
@@ -338,7 +338,7 @@ class AnophelesInversionFrequencyAnalysis(
                 )
 
                 # Add confidence intervals.
-                add_frequency_ci(ds=ds_tmp, ci_method=ci_method)
+                _add_frequency_ci(ds=ds_tmp, ci_method=ci_method)
 
                 ds_list.append(ds_tmp)
 
@@ -355,7 +355,7 @@ class AnophelesInversionFrequencyAnalysis(
             )
 
             # Prepare sample metadata for cohort grouping.
-            df_samples = prep_samples_for_cohort_grouping(
+            df_samples = _prep_samples_for_cohort_grouping(
                 df_samples=df_samples,
                 area_by=area_by,
                 period_by=period_by,
@@ -365,7 +365,7 @@ class AnophelesInversionFrequencyAnalysis(
             group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
 
             # Build cohorts dataframe.
-            df_cohorts = build_cohorts_from_sample_grouping(
+            df_cohorts = _build_cohorts_from_sample_grouping(
                 group_samples_by_cohort=group_samples_by_cohort,
                 min_cohort_size=min_cohort_size,
             )
@@ -441,6 +441,6 @@ class AnophelesInversionFrequencyAnalysis(
             )
 
             # Add confidence intervals.
-            add_frequency_ci(ds=ds_out, ci_method=ci_method)
+            _add_frequency_ci(ds=ds_out, ci_method=ci_method)
 
             return ds_out
