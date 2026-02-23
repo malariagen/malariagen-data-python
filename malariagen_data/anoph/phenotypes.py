@@ -140,8 +140,14 @@ class AnophelesPhenotypeData:
             if min_cohort_size is not None and group_size < min_cohort_size:
                 continue
             if max_cohort_size is not None and group_size > max_cohort_size:
+                warnings.warn(
+                    f"Cohort downsampled from {group_size} to {max_cohort_size} samples."
+                )
                 group = group.sample(n=max_cohort_size, random_state=42)
             elif cohort_size is not None and group_size > cohort_size:
+                warnings.warn(
+                    f"Cohort downsampled from {group_size} to {cohort_size} samples."
+                )
                 group = group.sample(n=cohort_size, random_state=42)
             elif cohort_size is not None and group_size < cohort_size:
                 continue

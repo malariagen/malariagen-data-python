@@ -1,5 +1,6 @@
 from typing import Dict, List, Optional, Tuple
 
+import warnings
 import dask.array as da
 import numpy as np
 import xarray as xr
@@ -437,6 +438,10 @@ class AnophelesHapData(
             # Handle max cohort size.
             n_samples = ds.sizes["samples"]
             if n_samples > max_cohort_size:
+                warnings.warn(
+                    f"Cohort downsampled from {n_samples} to {max_cohort_size} samples "
+                    f"(random_seed={random_seed})."
+                )
                 rng = np.random.default_rng(seed=random_seed)
                 loc_downsample = rng.choice(
                     n_samples, size=max_cohort_size, replace=False

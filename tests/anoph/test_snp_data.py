@@ -906,6 +906,22 @@ def test_snp_calls_with_max_cohort_size_param(fixture, api: AnophelesSnpData):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
+def test_snp_calls_downsample_warning(fixture, api: AnophelesSnpData):
+    # Use a very small max_cohort_size to guarantee downsampling.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    region = fixture.random_region_str()
+
+    max_cohort_size = 1
+    with pytest.warns(UserWarning, match="Cohort downsampled from"):
+        api.snp_calls(
+            sample_sets=sample_sets,
+            region=region,
+            max_cohort_size=max_cohort_size,
+        )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
 def test_snp_calls_with_cohort_size_param(fixture, api: AnophelesSnpData):
     # Randomly fix some input parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()

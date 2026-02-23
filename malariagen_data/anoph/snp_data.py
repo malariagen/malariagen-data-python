@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+import warnings
 import allel  # type: ignore
 import bokeh
 import dask.array as da
@@ -1253,6 +1254,10 @@ class AnophelesSnpData(
         if max_cohort_size is not None:
             n_samples = ds.sizes["samples"]
             if n_samples > max_cohort_size:
+                warnings.warn(
+                    f"Cohort downsampled from {n_samples} to {max_cohort_size} samples "
+                    f"(random_seed={random_seed})."
+                )
                 rng = np.random.default_rng(seed=random_seed)
                 loc_downsample = rng.choice(
                     n_samples, size=max_cohort_size, replace=False

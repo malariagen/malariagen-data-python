@@ -539,6 +539,29 @@ def test_haplotypes_with_max_cohort_size_param(
         )
 
 
+def test_haplotypes_downsample_warning(
+    ag3_sim_fixture, ag3_sim_api: AnophelesHapData
+):
+    api = ag3_sim_api
+    fixture = ag3_sim_fixture
+
+    # Fixed parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    region = fixture.random_region_str()
+    analysis = api.phasing_analysis_ids[0]
+
+    # Use a very small max_cohort_size to guarantee downsampling.
+    max_cohort_size = 1
+    with pytest.warns(UserWarning, match="Cohort downsampled from"):
+        api.haplotypes(
+            region=region,
+            sample_sets=sample_sets,
+            analysis=analysis,
+            max_cohort_size=max_cohort_size,
+        )
+
+
 # check behaviour when no haplotype data is present within a sample set
 def test_haplotypes_with_empty_calls(ag3_sim_fixture, ag3_sim_api: AnophelesHapData):
     api = ag3_sim_api
