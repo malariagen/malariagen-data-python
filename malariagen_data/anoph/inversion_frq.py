@@ -227,6 +227,7 @@ class AnophelesInversionFrequencyAnalysis(
         inversions: inversions_param,
         area_by: frq_params.area_by,
         period_by: frq_params.period_by,
+        taxon_by: frq_params.taxon_by = frq_params.taxon_by_default,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         sample_query_options: Optional[base_params.sample_query_options] = None,
@@ -250,6 +251,7 @@ class AnophelesInversionFrequencyAnalysis(
                 df_samples=df_samples,
                 area_by=area_by,
                 period_by=period_by,
+                taxon_by=taxon_by,
             )
 
             # Group samples to make cohorts.
@@ -259,6 +261,7 @@ class AnophelesInversionFrequencyAnalysis(
             df_cohorts = _build_cohorts_from_sample_grouping(
                 group_samples_by_cohort=group_samples_by_cohort,
                 min_cohort_size=min_cohort_size,
+                taxon_by=taxon_by,
             )
 
             # Early check for no cohorts.
@@ -359,6 +362,7 @@ class AnophelesInversionFrequencyAnalysis(
                 df_samples=df_samples,
                 area_by=area_by,
                 period_by=period_by,
+                taxon_by=taxon_by,
             )
 
             # Group samples to make cohorts.
@@ -368,6 +372,7 @@ class AnophelesInversionFrequencyAnalysis(
             df_cohorts = _build_cohorts_from_sample_grouping(
                 group_samples_by_cohort=group_samples_by_cohort,
                 min_cohort_size=min_cohort_size,
+                taxon_by=taxon_by,
             )
 
             # Early check for no cohorts.
