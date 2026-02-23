@@ -56,6 +56,13 @@ via pip::
 
    pip install malariagen_data
 
+.. note::
+
+   If you are using Google Colab with a **TPU runtime**, installation may fail due to
+   a dependency conflict with a preinstalled system package (``blinker==1.4``).
+
+   See :doc:`colab_tpu` for detailed instructions and troubleshooting.
+
 For accessing data in Google Cloud Storage (GCS) you will also need to authenticate with Google Cloud.
 
 If you are using ``malariagen_data`` from within Google Colab, authentication will be automatically
