@@ -252,7 +252,7 @@ class AnophelesFstAnalysis(
 
         # tidy up the plot
         fig.yaxis.axis_label = "Fst"
-        fig.yaxis.ticker = [0, 1]
+        fig.yaxis.ticker = sorted(set([clip_min, 0, 1]))
         self._bokeh_style_genome_xaxis(fig, contig)
 
         if show:  # pragma: no cover
