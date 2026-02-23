@@ -364,10 +364,8 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
             effect = base_effect._replace(effect="CODON_CHANGE", impact="MODERATE")
 
         else:
-            # TODO in-frame complex variation (MNP + INDEL)
-            effect = base_effect._replace(
-                effect="TODO in-frame complex variation (MNP + INDEL)", impact="UNKNOWN"
-            )
+            # in-frame complex variation (MNP + INDEL)
+            effect = base_effect._replace(effect="COMPLEX_CHANGE", impact="MODERATE")
 
     return effect
 
@@ -523,23 +521,16 @@ def _get_within_intron_effect(base_effect, intron):
 
     intron_min_dist = min(intron_5prime_dist, -intron_3prime_dist)
 
-    if len(ref) == 1 and len(alt) == 1:
-        # SNPs
+    if intron_min_dist <= 2:
+        # splice site variation
+        effect = base_effect._replace(effect="SPLICE_CORE", impact="HIGH")
 
-        if intron_min_dist <= 2:
-            # splice site variation
-            effect = base_effect._replace(effect="SPLICE_CORE", impact="HIGH")
-
-        elif intron_min_dist <= 7:
-            # splice site variation
-            effect = base_effect._replace(effect="SPLICE_REGION", impact="MODERATE")
-
-        else:
-            # intron modifier
-            effect = base_effect._replace(effect="INTRONIC", impact="MODIFIER")
+    elif intron_min_dist <= 7:
+        # splice site variation
+        effect = base_effect._replace(effect="SPLICE_REGION", impact="MODERATE")
 
     else:
-        # TODO intronic INDELs and MNPs
-        effect = base_effect._replace(effect="TODO intronic indels and MNPs")
+        # intron modifier
+        effect = base_effect._replace(effect="INTRONIC", impact="MODIFIER")
 
     return effect
