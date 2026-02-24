@@ -143,7 +143,7 @@ class AnophelesHapData(
         )
 
         # Deal with a region.
-        if region.start or region.end:
+        if region.start is not None or region.end is not None:
             if field == "POS":
                 pos = ret
             else:
@@ -385,7 +385,7 @@ class AnophelesHapData(
                 x = _simple_xarray_concat(ly, dim=DIM_SAMPLE)
 
                 # Handle region.
-                if r.start or r.end:
+                if r.start is not None or r.end is not None:
                     pos = x["variant_position"].values
                     loc_region = _locate_region(r, pos)
                     x = x.isel(variants=loc_region)
