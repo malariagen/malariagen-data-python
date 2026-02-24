@@ -542,10 +542,10 @@ class AnophelesDipClustAnalysis(
             if isinstance(figure, go.Figure):
                 # This is a figure, access the traces within it.
                 for trace in range(len(figure["data"])):
-                    fig.append_trace(figure["data"][trace], row=i + 1, col=1)
+                    fig.add_trace(figure["data"][trace], row=i + 1, col=1)
             else:
                 # Assume this is a trace, add directly.
-                fig.append_trace(figure, row=i + 1, col=1)
+                fig.add_trace(figure, row=i + 1, col=1)
 
         fig.update_xaxes(visible=False)
         fig.update_layout(
