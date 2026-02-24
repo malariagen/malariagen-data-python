@@ -504,7 +504,6 @@ class AnophelesDipClustAnalysis(
 
         return snp_trace, n_snps
 
-
     def _insert_dipclust_snp_trace(
         self,
         *,
