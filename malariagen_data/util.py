@@ -487,6 +487,9 @@ def _init_filesystem(url, **kwargs):
         # Some other kind of URL, pass through kwargs as-is.
         storage_options = kwargs
 
+    # Process the URL using fsspec.
+    fs, path = url_to_fs(url, **storage_options)
+    
     # Path compatibility, fsspec/gcsfs behaviour varies between versions.
     while path.endswith("/"):
         path = path[:-1]
