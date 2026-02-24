@@ -133,6 +133,13 @@ class AnophelesG123Analysis(
             chunks=chunks,
         )
 
+        if gt.shape[0] < window_size:
+            raise ValueError(
+                f"Not enough sites ({gt.shape[0]}) for window size "
+                f"({window_size}). Please reduce the window size or "
+                f"use different site selection criteria."
+            )
+
         with self._spinner("Compute G123"):
             g123 = allel.moving_statistic(gt, statistic=_garud_g123, size=window_size)
             x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
@@ -240,6 +247,12 @@ class AnophelesG123Analysis(
 
         calibration_runs: Dict[str, np.ndarray] = dict()
         for window_size in self._progress(window_sizes, desc="Compute G123"):
+            if gt.shape[0] < window_size:
+                raise ValueError(
+                    f"Not enough sites ({gt.shape[0]}) for window size "
+                    f"({window_size}). Please reduce the window size or "
+                    f"use different site selection criteria."
+                )
             g123 = allel.moving_statistic(gt, statistic=_garud_g123, size=window_size)
             calibration_runs[str(window_size)] = g123
 
