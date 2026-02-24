@@ -53,10 +53,10 @@ def _prep_samples_for_cohort_grouping(*, df_samples, area_by, period_by, taxon_b
             )
 
         # Raise a ValueError if the specified period_by column does not contain instances pd.Period.
-        if not all(
-            df_samples[period_by].apply(
-                lambda value: pd.isnull(value) or isinstance(value, pd.Period)
-            )
+        if (
+            not df_samples[period_by]
+            .apply(lambda value: pd.isnull(value) or isinstance(value, pd.Period))
+            .all()
         ):
             raise TypeError(
                 f"Invalid values in {period_by!r} column. Must be either pandas.Period or null."
@@ -276,7 +276,7 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         heatmap_df.set_index(index_col, inplace=True)
 
         # Clean column names.
-        heatmap_df.columns = heatmap_df.columns.str.lstrip("frq_")
+        heatmap_df.columns = heatmap_df.columns.str.removeprefix("frq_")
 
         # Deal with width and height.
         if width is None:
@@ -339,7 +339,11 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
             A plotly figure containing line graphs. The resulting figure will
             have one panel per cohort, grouped into columns by taxon, and
             grouped into rows by area. Markers and lines show frequencies of
-            variants.
+            variants. Error bars represent 95% confidence intervals for the
+            frequency estimates, calculated using the Wilson score method via
+            `statsmodels.stats.proportion.proportion_confint()`. The error bars
+            are asymmetric, with upper and lower bounds that may differ from
+            the point estimate by different amounts.
         """,
     )
     def plot_frequencies_time_series(
@@ -381,8 +385,8 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
 
         # Build a long-form dataframe from the dataset.
         dfs = []
-        for cohort_index, cohort in enumerate(df_cohorts.itertuples()):
-            ds_cohort = ds.isel(cohorts=cohort_index)
+        for cohort in df_cohorts.itertuples():
+            ds_cohort = ds.isel(cohorts=cohort.Index)
             df = pd.DataFrame(
                 {
                     "taxon": cohort.taxon,

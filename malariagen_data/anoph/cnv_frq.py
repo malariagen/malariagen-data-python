@@ -573,8 +573,8 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
             cohort_is_called = np.take(is_called, sample_indices, axis=1)
 
             # compute cohort allele counts
-            np.sum(cohort_is_amp, axis=1, out=count[::2, cohort_index])
-            np.sum(cohort_is_del, axis=1, out=count[1::2, cohort_index])
+            count[::2, cohort_index] = np.sum(cohort_is_amp, axis=1)
+            count[1::2, cohort_index] = np.sum(cohort_is_del, axis=1)
 
             # compute cohort allele numbers
             cohort_n_called = np.sum(cohort_is_called, axis=1)
@@ -635,13 +635,17 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         debug("deal with invariants")
         if drop_invariant:
             loc_variant = df_variants["max_af"].values > 0
-            ds_out = ds_out.isel(variants=loc_variant)
+            # Convert boolean mask to integer indices for NumPy 2.x compatibility
+            variant_indices = np.where(loc_variant)[0]
+            ds_out = ds_out.isel(variants=variant_indices)
             df_variants = df_variants.loc[loc_variant].reset_index(drop=True)
 
         debug("apply variant query")
         if variant_query is not None:
             loc_variants = df_variants.eval(variant_query).values
-            ds_out = ds_out.isel(variants=loc_variants)
+            # Convert boolean mask to integer indices for NumPy 2.x compatibility
+            variant_indices = np.where(loc_variants)[0]
+            ds_out = ds_out.isel(variants=variant_indices)
 
         debug("add confidence intervals")
         _add_frequency_ci(ds=ds_out, ci_method=ci_method)

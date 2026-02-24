@@ -630,7 +630,9 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
                     f"No SNPs remaining after applying variant query {variant_query!r}."
                 )
 
-            ds_out = ds_out.isel(variants=loc_variants)
+            # Convert boolean mask to integer indices for NumPy 2.x compatibility
+            variant_indices = np.where(loc_variants)[0]
+            ds_out = ds_out.isel(variants=variant_indices)
 
         # Add confidence intervals.
         _add_frequency_ci(ds=ds_out, ci_method=ci_method)
@@ -768,7 +770,9 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
                     f"No SNPs remaining after applying variant query {variant_query!r}."
                 )
 
-            ds_aa_frq = ds_aa_frq.isel(variants=loc_variants)
+            # Convert boolean mask to integer indices for NumPy 2.x compatibility
+            variant_indices = np.where(loc_variants)[0]
+            ds_aa_frq = ds_aa_frq.isel(variants=variant_indices)
 
         # Compute new confidence intervals.
         _add_frequency_ci(ds=ds_aa_frq, ci_method=ci_method)

@@ -1155,7 +1155,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         self,
         sample: base_params.sample,
         sample_set: Optional[base_params.sample_set] = None,
-    ) -> pd.core.series.Series:
+    ) -> pd.Series:
         df_samples = self.sample_metadata(sample_sets=sample_set).set_index("sample_id")
         sample_rec = None
         if isinstance(sample, str):
@@ -1569,11 +1569,11 @@ class AnophelesSampleMetadata(AnophelesBase):
         # Sort by `color` column by default, which can be overridden via category_orders.
         df_locations = df_samples[location_columns].drop_duplicates().sort_values(color)
 
-        fig = px.scatter_mapbox(
+        fig = px.scatter_map(
             df_locations,
             lat="latitude",
             lon="longitude",
-            mapbox_style="open-street-map",
+            map_style="open-street-map",
             zoom=zoom,
             color=color,
             category_orders=category_orders,

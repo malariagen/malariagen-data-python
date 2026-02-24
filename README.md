@@ -19,8 +19,17 @@ from the following locations:
 -   [Ag3 API
     docs](https://malariagen.github.io/malariagen-data-python/latest/Ag3.html)
 
+-   [Af1 API
+    docs](https://malariagen.github.io/malariagen-data-python/latest/Af1.html)
+
 -   [Amin1 API
     docs](https://malariagen.github.io/malariagen-data-python/latest/Amin1.html)
+
+-  [Adir1 API
+    docs](https://malariagen.github.io/malariagen-data-python/latest/Adir1.html)
+
+-   [Pf8 API
+    docs](https://malariagen.github.io/parasite-data/pf8/api.html)
 
 -   [Pf7 API
     docs](https://malariagen.github.io/parasite-data/pf7/api.html)
@@ -37,88 +46,11 @@ for release notes.
 
 To get setup for development, see [this video if you prefer VS Code](https://youtu.be/zddl3n1DCFM), or [this older video if you prefer PyCharm](https://youtu.be/QniQi-Hoo9A), and the instructions below.
 
-Fork and clone this repo:
+Detailed instructions can be found in the [Contributors guide](https://github.com/malariagen/malariagen-data-python/blob/master/CONTRIBUTING.md).
 
-```bash
-git clone git@github.com:[username]/malariagen-data-python.git
-```
+## AI use policy and guidelines
 
-Install Python, e.g.:
-
-```bash
-sudo add-apt-repository ppa:deadsnakes/ppa
-sudo apt install python3.10 python3.10-venv
-```
-
-Install pipx, e.g.:
-
-```bash
-python3.10 -m pip install --user pipx
-python3.10 -m pipx ensurepath
-```
-
-Install [poetry](https://python-poetry.org/docs/#installation), e.g.:
-
-```bash
-pipx install poetry
-```
-
-Create development environment:
-
-```bash
-cd malariagen-data-python
-poetry use 3.10
-poetry install
-```
-
-Activate development environment:
-
-```bash
-poetry shell
-```
-
-Install pre-commit and pre-commit hooks:
-
-```bash
-pipx install pre-commit
-pre-commit install
-```
-
-Run pre-commit checks (isort, black, blackdoc, flake8, ...) manually:
-
-```bash
-pre-commit run --all-files
-```
-
-Run fast unit tests using simulated data:
-
-```bash
-poetry run pytest -v tests/anoph
-```
-
-To run legacy tests which read data from GCS, you'll need to [request access to MalariaGEN data on GCS](https://malariagen.github.io/vector-data/vobs/vobs-data-access.html).
-
-Once access has been granted, [install the Google Cloud CLI](https://cloud.google.com/sdk/docs/install). E.g., if on Linux:
-
-```bash
-./install_gcloud.sh
-```
-
-You'll then need to obtain application-default credentials, e.g.:
-
-```bash
-./google-cloud-sdk/bin/gcloud auth application-default login
-```
-
-Once this is done, you can run legacy tests:
-
-```bash
-poetry run pytest --ignore=tests/anoph -v tests
-```
-
-Tests will run slowly the first time, as data required for testing
-will be read from GCS. Subsequent runs will be faster as data will be
-cached locally in the "gcs_cache" folder.
+See [AI use policy and guidelines](https://github.com/malariagen/malariagen-data-python/blob/master/AI-POLICY.md) for more details.
 
 ## Release process
 
@@ -133,7 +65,7 @@ modifying the `docs/source/_static/switcher.json` file accordingly.
 
 If you use the `malariagen_data` package in a publication
 or include any of its functions or code in other materials (_e.g._ training resources),
-please cite: [doi.org/10.5281/zenodo.11173411](doi.org/10.5281/zenodo.11173411)
+please cite: [doi.org/10.5281/zenodo.11173411](https://doi.org/10.5281/zenodo.11173411)
 
 Some functions may require additional citations to acknowledge specific contributions. These are indicated in the description for each relevant function.
 
