@@ -103,11 +103,13 @@ def test_haplotype_frequencies():
     assert np.all(vals <= 1)
     assert_allclose(vals, np.array([0.2, 0.2, 0.2, 0.4]))
 
+
 def test_hampel_filter_removes_isolated_outlier():
     x = np.array([1, 1, 1, 100, 1, 1, 1], dtype=float)
     y = hampel_filter(x, size=2, t=3)
     assert y[3] != 100
     assert y.shape == x.shape
+
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_h12_calibration(fixture, api: AnophelesH12Analysis):
@@ -144,7 +146,7 @@ def check_h12_gwss(*, api, h12_params):
     # Run main gwss function under test.
 
     x, h12, contigs = api.h12_gwss(**h12_params)
-    
+
     # Also test with Hampel enabled
     x2, h12_2, contigs2 = api.h12_gwss(
         **h12_params,
