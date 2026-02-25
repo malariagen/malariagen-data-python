@@ -19,7 +19,6 @@ from .anoph import (
     dash_params,
     gplt_params,
     hapnet_params,
-    het_params,
     ihs_params,
     plotly_params,
     xpehh_params,
@@ -49,10 +48,9 @@ from .anoph.dipclust import AnophelesDipClustAnalysis
 from .anoph.heterozygosity import AnophelesHetAnalysis
 from .util import (
     CacheMiss,
-    Region,
+    Region,  # noqa: F401 (re-exported via __init__.py)
     _check_types,
     _jackknife_ci,
-    _parse_single_region,
     _plotly_discrete_legend,
 )
 
