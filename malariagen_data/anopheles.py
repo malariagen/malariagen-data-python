@@ -44,6 +44,7 @@ from .anoph.h1x import AnophelesH1XAnalysis
 from .anoph.phenotypes import AnophelesPhenotypeData
 from .mjn import _median_joining_network, _mjn_graph
 from .anoph.hapclust import AnophelesHapClustAnalysis
+from .anoph.describe import AnophelesDescribe
 from .anoph.dipclust import AnophelesDipClustAnalysis
 from .anoph.heterozygosity import AnophelesHetAnalysis
 from .util import (
@@ -97,6 +98,7 @@ class AnophelesDataResource(
     AnophelesSampleMetadata,
     AnophelesGenomeFeaturesData,
     AnophelesGenomeSequenceData,
+    AnophelesDescribe,
     AnophelesBase,
     AnophelesPhenotypeData,
 ):
