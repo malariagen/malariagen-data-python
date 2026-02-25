@@ -31,7 +31,7 @@ _basemap_abbrev_candidates = {
     "worldtopomap": lambda: ipyleaflet.basemaps.Esri.WorldTopoMap,
 }
 
-_basemap_abbrevs = None
+_basemap_abbrevs: dict | None = None
 
 
 def get_basemap_abbrevs() -> dict:
