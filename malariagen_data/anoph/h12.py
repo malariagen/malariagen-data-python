@@ -882,14 +882,14 @@ class AnophelesH12Analysis(
                     apply_hampel=apply_hampel,
                     hampel_window=hampel_window,
                     hampel_t=hampel_t,
-                    **params
+                    **params,
                 )
             else:
                 track = self.plot_h12_gwss_track(
                     apply_hampel=apply_hampel,
                     hampel_window=hampel_window,
                     hampel_t=hampel_t,
-                    **params
+                    **params,
                 )
             track.xaxis.visible = False
             figs.append(track)
@@ -925,6 +925,7 @@ class AnophelesH12Analysis(
         else:
             return fig
 
+
 def hampel_filter(x: np.ndarray, size: int, t: float = 3.0) -> np.ndarray:
     """Apply Hampel filter to remove isolated outliers."""
     y = x.copy()
@@ -942,6 +943,7 @@ def hampel_filter(x: np.ndarray, size: int, t: float = 3.0) -> np.ndarray:
             y[i] = m
 
     return y
+
 
 def _garud_h12(ht):
     """Compute Garud's H12."""
