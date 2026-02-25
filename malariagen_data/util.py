@@ -895,6 +895,12 @@ class LoggingHelper:
             handler = logging.FileHandler(out)
         self._handler = handler
 
+        # Remove any pre-existing handlers from the singleton logger to prevent
+        # accumulation (and FileHandler FD leaks) on repeated instantiation.
+        for existing_handler in logger.handlers[:]:
+            logger.removeHandler(existing_handler)
+            existing_handler.close()
+
         # configure handler
         if handler is not None:
             if debug:
