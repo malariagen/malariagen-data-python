@@ -20,7 +20,7 @@ numpy = "==1.26.4"
 numba = ">=0.60.0"
 llvmlite = "*"
 scipy = "*"
-pandas = "*"
+pandas = "2.3.2"
 zarr = ">=2.18.3, <3.0.0"
 numcodecs = ">=0.13, <0.16"
 dask = {version="*", extras=["array"]}
