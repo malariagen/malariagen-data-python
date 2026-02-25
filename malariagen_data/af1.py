@@ -21,6 +21,10 @@ TAXON_COLORS = {
     "funestus": TAXON_PALETTE[0],
 }
 
+XPEHH_GWSS_CACHE_NAME = "af1_xpehh_gwss_v1"
+IHS_GWSS_CACHE_NAME = "af1_ihs_gwss_v1"
+ROH_HMM_CACHE_NAME = "af1_roh_hmm_v1"
+
 
 class Af1(AnophelesDataResource):
     """Provides access to data from Af1.x releases.
@@ -73,9 +77,9 @@ class Af1(AnophelesDataResource):
 
     """
 
-    _xpehh_gwss_cache_name = "af1_xpehh_gwss_v1"
-    _ihs_gwss_cache_name = "af1_ihs_gwss_v1"
-    _roh_hmm_cache_name = "af1_roh_hmm_v1"
+    _xpehh_gwss_cache_name = XPEHH_GWSS_CACHE_NAME
+    _ihs_gwss_cache_name = IHS_GWSS_CACHE_NAME
+    _roh_hmm_cache_name = ROH_HMM_CACHE_NAME
 
     def __init__(
         self,

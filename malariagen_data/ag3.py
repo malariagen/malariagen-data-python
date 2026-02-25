@@ -87,6 +87,10 @@ AIM_METADATA_DTYPE = {
     "aim_species": "object",
 }
 
+XPEHH_GWSS_CACHE_NAME = "ag3_xpehh_gwss_v1"
+IHS_GWSS_CACHE_NAME = "ag3_ihs_gwss_v1"
+ROH_HMM_CACHE_NAME = "ag3_roh_hmm_v1"
+
 
 class Ag3(AnophelesDataResource):
     """Provides access to data from Ag3.x releases.
@@ -143,9 +147,9 @@ class Ag3(AnophelesDataResource):
 
     """
 
-    _xpehh_gwss_cache_name = "ag3_xpehh_gwss_v1"
-    _ihs_gwss_cache_name = "ag3_ihs_gwss_v1"
-    _roh_hmm_cache_name = "ag3_roh_hmm_v1"
+    _xpehh_gwss_cache_name = XPEHH_GWSS_CACHE_NAME
+    _ihs_gwss_cache_name = IHS_GWSS_CACHE_NAME
+    _roh_hmm_cache_name = ROH_HMM_CACHE_NAME
 
     def __init__(
         self,
