@@ -80,10 +80,11 @@ def case_af1_sim(af1_sim_fixture, af1_sim_api):
     return af1_sim_fixture, af1_sim_api
 
 
+@pytest.mark.parametrize("sample_query", [None, "sex_call == 'F'"])
 @pytest.mark.parametrize("distance_metric", ["cityblock", "euclidean"])
 @parametrize_with_cases("fixture,api", cases=".")
 def test_plot_diplotype_clustering(
-    fixture, api: AnophelesDipClustAnalysis, distance_metric
+    fixture, api: AnophelesDipClustAnalysis, distance_metric, sample_query
 ):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
@@ -96,24 +97,32 @@ def test_plot_diplotype_clustering(
         "median",
         "ward",
     )
-    sample_queries = (None, "sex_call == 'F'")
     dipclust_params = dict(
         region=fixture.random_region_str(region_size=5000),
         sample_sets=[random.choice(all_sample_sets)],
         linkage_method=random.choice(linkage_methods),
         distance_metric=distance_metric,
-        sample_query=random.choice(sample_queries),
+        sample_query=sample_query,
         show=False,
     )
+
+    # Check if any samples match the query.
+    if sample_query is not None:
+        df_samples = api.sample_metadata().query(sample_query)
+        if len(df_samples) == 0:
+            with pytest.raises(ValueError):
+                api.plot_diplotype_clustering(**dipclust_params)
+            return
 
     # Run checks.
     api.plot_diplotype_clustering(**dipclust_params)
 
 
+@pytest.mark.parametrize("sample_query", [None, "sex_call == 'F'"])
 @pytest.mark.parametrize("distance_metric", ["cityblock", "euclidean"])
 @parametrize_with_cases("fixture,api", cases=".")
 def test_plot_diplotype_clustering_advanced(
-    fixture, api: AnophelesDipClustAnalysis, distance_metric
+    fixture, api: AnophelesDipClustAnalysis, distance_metric, sample_query
 ):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
@@ -126,24 +135,32 @@ def test_plot_diplotype_clustering_advanced(
         "median",
         "ward",
     )
-    sample_queries = (None, "sex_call == 'F'")
     dipclust_params = dict(
         region=fixture.random_region_str(region_size=5000),
         sample_sets=[random.choice(all_sample_sets)],
         linkage_method=random.choice(linkage_methods),
         distance_metric=distance_metric,
-        sample_query=random.choice(sample_queries),
+        sample_query=sample_query,
         show=False,
     )
+
+    # Check if any samples match the query.
+    if sample_query is not None:
+        df_samples = api.sample_metadata().query(sample_query)
+        if len(df_samples) == 0:
+            with pytest.raises(ValueError):
+                api.plot_diplotype_clustering_advanced(**dipclust_params)
+            return
 
     # Run checks.
     api.plot_diplotype_clustering_advanced(**dipclust_params)
 
 
+@pytest.mark.parametrize("sample_query", [None, "sex_call == 'F'"])
 @pytest.mark.parametrize("n", [1, 2])
 @parametrize_with_cases("fixture,api", cases=".")
 def test_plot_diplotype_clustering_advanced_with_transcript(
-    fixture, api: AnophelesDipClustAnalysis, n
+    fixture, api: AnophelesDipClustAnalysis, n, sample_query
 ):
     # Set up test parameters.
     contig = fixture.random_contig()
@@ -158,24 +175,32 @@ def test_plot_diplotype_clustering_advanced_with_transcript(
         "median",
         "ward",
     )
-    sample_queries = (None, "sex_call == 'F'")
     dipclust_params = dict(
         region=contig,
         snp_transcript=transcripts,
         sample_sets=[random.choice(all_sample_sets)],
         linkage_method=random.choice(linkage_methods),
         distance_metric="cityblock",
-        sample_query=random.choice(sample_queries),
+        sample_query=sample_query,
         show=False,
     )
+
+    # Check if any samples match the query.
+    if sample_query is not None:
+        df_samples = api.sample_metadata().query(sample_query)
+        if len(df_samples) == 0:
+            with pytest.raises(ValueError):
+                api.plot_diplotype_clustering_advanced(**dipclust_params)
+            return
 
     # Run checks.
     api.plot_diplotype_clustering_advanced(**dipclust_params)
 
 
+@pytest.mark.parametrize("sample_query", [None, "sex_call == 'F'"])
 @parametrize_with_cases("fixture,api", cases=".")
 def test_plot_diplotype_clustering_advanced_with_cnv_region(
-    fixture, api: AnophelesDipClustAnalysis
+    fixture, api: AnophelesDipClustAnalysis, sample_query
 ):
     # Set up test parameters.
     region = fixture.random_region_str(region_size=5000)
@@ -189,16 +214,23 @@ def test_plot_diplotype_clustering_advanced_with_cnv_region(
         "median",
         "ward",
     )
-    sample_queries = (None, "sex_call == 'F'")
     dipclust_params = dict(
         region=region,
         cnv_region=region,
         sample_sets=[random.choice(all_sample_sets)],
         linkage_method=random.choice(linkage_methods),
         distance_metric="cityblock",
-        sample_query=random.choice(sample_queries),
+        sample_query=sample_query,
         show=False,
     )
+
+    # Check if any samples match the query.
+    if sample_query is not None:
+        df_samples = api.sample_metadata().query(sample_query)
+        if len(df_samples) == 0:
+            with pytest.raises(ValueError):
+                api.plot_diplotype_clustering_advanced(**dipclust_params)
+            return
 
     # Run checks.
     api.plot_diplotype_clustering_advanced(**dipclust_params)
