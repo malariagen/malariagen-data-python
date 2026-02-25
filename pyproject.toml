@@ -36,7 +36,7 @@ plotly = "*"
 # Bokeh 3.7.x causes type checking issues.
 # https://github.com/bokeh/bokeh/issues/14412
 # https://github.com/malariagen/malariagen-data-python/issues/734
-bokeh = "<3.7.0"
+bokeh = ">=3.6.3,<3.9.0"
 statsmodels = ">=0.14.2"
 ipyleaflet = ">=0.17.0"
 ipywidgets = "*"
