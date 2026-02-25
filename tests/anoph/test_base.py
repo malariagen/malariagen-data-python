@@ -269,9 +269,9 @@ def test_logging_helper_no_handler_accumulation():
     for _ in range(10):
         LoggingHelper(name=logger_name, out=io.StringIO())
     logger = logging.getLogger(logger_name)
-    assert len(logger.handlers) <= 1, (
-        f"Handler leak: {len(logger.handlers)} handlers after 10 instantiations"
-    )
+    assert (
+        len(logger.handlers) <= 1
+    ), f"Handler leak: {len(logger.handlers)} handlers after 10 instantiations"
 
 
 def test_logging_helper_no_duplicate_output():
@@ -283,6 +283,6 @@ def test_logging_helper_no_duplicate_output():
         helper = LoggingHelper(name=logger_name, out=out)
     helper.info("sentinel")
     output = out.getvalue()
-    assert output.count("sentinel") == 1, (
-        f"Duplicate log output: 'sentinel' appeared {output.count('sentinel')} times"
-    )
+    assert (
+        output.count("sentinel") == 1
+    ), f"Duplicate log output: 'sentinel' appeared {output.count('sentinel')} times"
