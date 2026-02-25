@@ -20,9 +20,9 @@ authors = [
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.13"
-numpy = "==1.26.4"
-numba = ">=0.60.0"
+python = ">=3.11,<3.14"
+numpy = ">=1.26.4"
+numba = ">=0.61"
 llvmlite = "*"
 scipy = "*"
 pandas = "*"
