@@ -1,3 +1,4 @@
+import warnings
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -1253,6 +1254,12 @@ class AnophelesSnpData(
         if max_cohort_size is not None:
             n_samples = ds.sizes["samples"]
             if n_samples > max_cohort_size:
+                warnings.warn(
+                    f"Cohort downsampled from {n_samples} to {max_cohort_size} "
+                    "samples. Set max_cohort_size=None to disable downsampling.",
+                    UserWarning,
+                    stacklevel=2,
+                )
                 rng = np.random.default_rng(seed=random_seed)
                 loc_downsample = rng.choice(
                     n_samples, size=max_cohort_size, replace=False

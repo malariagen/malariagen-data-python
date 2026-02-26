@@ -200,15 +200,6 @@ poetry run pytest -v tests --typeguard-packages=malariagen_data,malariagen_data.
 - Address review feedback by pushing new commits to your branch
 - Once approved, a maintainer will merge your PR
 
-## AI-assisted contributions
-
-We welcome contributions that involve AI tools (like GitHub Copilot, ChatGPT, or similar). If you use AI assistance:
-
-- Review and understand any AI-generated code before submitting
-- Ensure the code follows project conventions and passes all tests
-- You remain responsible for the quality and correctness of the contribution
-- Disclosure of AI usage is optional. Regardless of tools used, contributors remain responsible for the quality and correctness of their submissions.
-
 ## Communication
 
 - **Issues**: Use [GitHub Issues](https://github.com/malariagen/malariagen-data-python/issues) for bug reports and feature requests
