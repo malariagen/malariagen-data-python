@@ -539,11 +539,10 @@ class AnophelesFstAnalysis(
             if annotation == "standard error":
                 fig_df.loc[cohort1, cohort2] = se
             elif annotation == "Z score":
-                try:
-                    zs = fst / se
-                    fig_df.loc[cohort1, cohort2] = zs
-                except ZeroDivisionError:
+                if se == 0:
                     fig_df.loc[cohort1, cohort2] = np.nan
+                else:
+                    fig_df.loc[cohort1, cohort2] = fst / se
             else:
                 fig_df.loc[cohort1, cohort2] = fst
 
