@@ -208,6 +208,7 @@ class AnophelesAimData(
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
     ) -> plotly_params.figure:
+        aims = self._prep_aims_param(aims=aims)
         # Load AIM calls.
         ds = self.aim_calls(
             aims=aims,
