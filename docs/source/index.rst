@@ -92,7 +92,7 @@ Some data from MalariaGEN are subject to **terms of use** which may include an e
 public communication of any analysis results without permission from data owners. If you
 have any questions about terms of use please email support@malariagen.net.
 
-By default, this sofware package accesses data directly from the **MalariaGEN cloud data repository**
+By default, this software package accesses data directly from the **MalariaGEN cloud data repository**
 hosted in Google Cloud Storage in the US. Note that data access will be more efficient if your
 computations are also run within the same region. Google Colab provides a convenient and free
 service which you can use to explore data and run computations. If you have any questions about
