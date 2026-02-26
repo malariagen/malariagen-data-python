@@ -33,6 +33,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         aim_analysis: Optional[str] = None,
         aim_metadata_dtype: Optional[Mapping[str, Any]] = None,
         taxon_colors: Optional[Mapping[str, str]] = None,
+        aim_species_colors: Optional[Mapping[str, str]] = None,
         **kwargs,
     ):
         # N.B., this class is designed to work cooperatively, and
@@ -72,6 +73,8 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         # Set up taxon colors.
         self._taxon_colors = taxon_colors
+
+        self._aim_species_colors = aim_species_colors
 
         # Set up extra metadata.
         self._extra_metadata: List = []
@@ -1303,6 +1306,11 @@ class AnophelesSampleMetadata(AnophelesBase):
         if color == "taxon" and color_discrete_map is None:
             # Special case, default taxon colors and order.
             color_discrete_map = self._taxon_colors
+
+        # Special handling for aim_species colors.
+        if color == "aim_species" and color_discrete_map is None:
+            # Special case, default aim_species colors and order.
+            color_discrete_map = self._aim_species_colors
 
         if isinstance(color, str):
             if "cohort_" + color in data.columns:
