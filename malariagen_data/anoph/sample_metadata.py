@@ -1306,7 +1306,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         if color == "taxon" and color_discrete_map is None:
             # Special case, default taxon colors and order.
             color_discrete_map = self._taxon_colors
-        
+
         # Special handling for aim_species colors.
         if color == "aim_species" and color_discrete_map is None:
             # Special case, default aim_species colors and order.
