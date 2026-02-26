@@ -104,7 +104,9 @@ def _build_cohorts_from_sample_grouping(
     else:
         # Replace non-alphanumeric characters in the taxon with underscores.
         df_cohorts["label"] = df_cohorts.apply(
-            lambda v: f"{v.area}_{re.sub(r'[^A-Za-z0-9]+', '_', str(v[taxon_by]))}_{v.period}",
+            lambda v: (
+                f"{v.area}_{re.sub(r'[^A-Za-z0-9]+', '_', str(v[taxon_by]))}_{v.period}"
+            ),
             axis="columns",
         )
 

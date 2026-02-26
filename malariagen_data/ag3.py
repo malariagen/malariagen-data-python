@@ -273,7 +273,7 @@ class Ag3(AnophelesDataResource):
                         <th style="text-align: left">
                             Data releases available
                         </th>
-                        <td>{', '.join(self._available_releases)}</td>
+                        <td>{", ".join(self._available_releases)}</td>
                     </tr>
                     <tr>
                         <th style="text-align: left">
@@ -327,7 +327,7 @@ class Ag3(AnophelesDataResource):
                         <th style="text-align: left">
                             Relevant data releases
                         </th>
-                        <td>{', '.join(self.releases)}</td>
+                        <td>{", ".join(self.releases)}</td>
                     </tr>
                 </tbody>
             </table>

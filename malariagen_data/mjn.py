@@ -263,7 +263,7 @@ def _mjn_graph_edges(
 
                 # add further intermediate nodes as necessary
                 for k in range(1, sep - 1):
-                    source = f"anon_{i}_{j}_{k-1}"
+                    source = f"anon_{i}_{j}_{k - 1}"
                     target = f"anon_{i}_{j}_{k}"
                     graph_node = {
                         "id": target,
@@ -279,7 +279,7 @@ def _mjn_graph_edges(
                     graph_edges.append(graph_edge)
 
                 # add edge from final intermediate node to node j
-                source = f"anon_{i}_{j}_{sep-2}"
+                source = f"anon_{i}_{j}_{sep - 2}"
                 target = j
                 graph_node = {
                     "id": source,
@@ -288,7 +288,7 @@ def _mjn_graph_edges(
                 }
                 graph_nodes.append(graph_node)
                 graph_edge = {
-                    "id": f"edge_{i}_{j}_{sep-1}",
+                    "id": f"edge_{i}_{j}_{sep - 1}",
                     "source": source,
                     "target": target,
                 }
