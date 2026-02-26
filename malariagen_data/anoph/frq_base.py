@@ -91,15 +91,19 @@ def _build_cohorts_from_sample_grouping(
     df_cohorts = df_cohorts.reset_index()
 
     # Add cohort helper variables.
-    cohort_period_start = df_cohorts["period"].apply(lambda v: v.start_time)
-    cohort_period_end = df_cohorts["period"].apply(lambda v: v.end_time)
+    cohort_period_start = df_cohorts["period"].dt.start_time
+    cohort_period_end = df_cohorts["period"].dt.end_time
     df_cohorts["period_start"] = cohort_period_start
     df_cohorts["period_end"] = cohort_period_end
     # Create a label that is similar to the cohort metadata,
     # although this won't be perfect.
     if taxon_by == frq_params.taxon_by_default:
-        df_cohorts["label"] = df_cohorts.apply(
-            lambda v: f"{v.area}_{v[taxon_by][:4]}_{v.period}", axis="columns"
+        df_cohorts["label"] = (
+            df_cohorts["area"].astype(str)
+            + "_"
+            + df_cohorts[taxon_by].str[:4]
+            + "_"
+            + df_cohorts["period"].astype(str)
         )
     else:
         # Replace non-alphanumeric characters in the taxon with underscores.
