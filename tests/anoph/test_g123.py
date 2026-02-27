@@ -240,8 +240,7 @@ def test_g123_calibration(fixture, api: AnophelesG123Analysis):
 
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    window_sizes = np.random.randint(100, 500, size=random.randint(2, 5)).tolist()
-    window_sizes = sorted([int(x) for x in window_sizes])
+    window_sizes = sorted(random.sample(range(100, 500), k=random.randint(2, 5)))
     g123_params = dict(
         contig=random.choice(api.contigs),
         sites=random.choice(api.phasing_analysis_ids),
