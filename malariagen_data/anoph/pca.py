@@ -152,7 +152,7 @@ class AnophelesPca(
         # df_pca.index = df_pca.index.astype(str)
 
         # Name the DataFrame's columns as PC1, PC2, etc.
-        df_pca.columns = pd.Index([f"PC{i+1}" for i in range(coords.shape[1])])
+        df_pca.columns = pd.Index([f"PC{i + 1}" for i in range(coords.shape[1])])
 
         # Load the sample metadata.
         df_samples = self.sample_metadata(
@@ -230,6 +230,23 @@ class AnophelesPca(
             else:
                 loc_keep_fit = np.ones(len(samples), dtype=bool)
                 gn_fit = gn
+
+            # Impute missing calls (-127) with the mean value at each site.
+            if max_missing_an is not None and max_missing_an > 0:
+                gn_fit = gn_fit.astype(float)
+                gn = gn.astype(float)
+                for arr in [gn_fit, gn]:
+                    missing_mask = arr == -127
+                    site_means = np.where(
+                        np.all(missing_mask, axis=1, keepdims=True),
+                        0,
+                        np.nanmean(
+                            np.where(missing_mask, np.nan, arr), axis=1, keepdims=True
+                        ),
+                    )
+                    arr[missing_mask] = np.take(
+                        site_means.flatten(), np.where(missing_mask)[0]
+                    )
 
             # Remove any sites where all genotypes are identical.
             loc_var = np.any(gn_fit != gn_fit[:, 0, np.newaxis], axis=1)

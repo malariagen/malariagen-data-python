@@ -2037,8 +2037,12 @@ class AnophelesSnpData(
         samples = ds["sample_id"].values.astype("U")
 
         # Compute diplotypes as the number of alt alleles per genotype call.
+        # with missing calls coded as -127.
         gt = allel.GenotypeDaskArray(ds["call_genotype"].data)
         with self._dask_progress(desc="Compute biallelic diplotypes"):
             gn = gt.to_n_alt().compute()
+        # Code missing calls as -127.
+        missing = np.all(ds["call_genotype"].values == -1, axis=2)
+        gn[missing] = -127
 
         return dict(samples=samples, gn=gn)

@@ -217,6 +217,9 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         n_snps = gn.shape[0]
 
         # Prepare data for pairwise distance calculation.
+        # Mask missing calls (-127) before computing distances.
+        gn = gn.astype(float)
+        gn[gn == -127] = np.nan
         X = np.ascontiguousarray(gn.T)
 
         # Look up distance function.
