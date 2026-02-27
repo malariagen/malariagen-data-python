@@ -61,7 +61,7 @@ class AnophelesGenomeSequenceData(AnophelesBase):
 
     def open_genome(self) -> zarr.hierarchy.Group:
         """Open the reference genome zarr."""
-        if not hasattr(self, '_cache_genome') or self._cache_genome is None:
+        if not hasattr(self, "_cache_genome") or self._cache_genome is None:
             path = f"{self._base_path}/{self._genome_zarr_path}"
             store = _init_zarr_store(fs=self._fs, path=path)
             self._cache_genome = zarr.open_consolidated(store=store)
