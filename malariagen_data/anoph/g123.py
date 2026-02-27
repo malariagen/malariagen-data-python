@@ -181,7 +181,7 @@ class AnophelesG123Analysis(
         params = dict(
             contig=contig,
             sites=sites,
-            site_mask=site_mask,
+            site_mask=self._prep_optional_site_mask_param(site_mask=site_mask),
             window_size=window_size,
             sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             # N.B., do not be tempted to convert this sample query into integer
