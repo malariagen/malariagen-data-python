@@ -29,8 +29,6 @@ class AnophelesGenomeSequenceData(AnophelesBase):
             virtual_contigs = dict()
         self._virtual_contigs = virtual_contigs
 
-        # Initialize cache attributes.
-        self._cache_genome = None
 
     @property
     def contigs(self) -> Tuple[str, ...]:
@@ -62,13 +60,9 @@ class AnophelesGenomeSequenceData(AnophelesBase):
     def _genome_ref_name(self) -> str:
         return self.config["GENOME_REF_NAME"]
 
-    @_check_types
-    @doc(
-        summary="Open the reference genome zarr.",
-        returns="Zarr hierarchy containing the reference genome sequence.",
-    )
     def open_genome(self) -> zarr.hierarchy.Group:
-        if self._cache_genome is None:
+        """Open the reference genome zarr."""
+        if not hasattr(self, '_cache_genome') or self._cache_genome is None:
             path = f"{self._base_path}/{self._genome_zarr_path}"
             store = _init_zarr_store(fs=self._fs, path=path)
             self._cache_genome = zarr.open_consolidated(store=store)
