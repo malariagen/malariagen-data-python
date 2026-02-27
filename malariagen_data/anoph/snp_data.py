@@ -1,3 +1,4 @@
+import warnings
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -38,6 +39,11 @@ from .genome_features import AnophelesGenomeFeaturesData, gplt_params
 from .genome_sequence import AnophelesGenomeSequenceData
 from .sample_metadata import AnophelesSampleMetadata
 
+# Maximum number of entries kept in the per-instance _cache_locate_site_class
+# dict. The natural ceiling is n_contigs × n_site_classes (≈ 45 for Ag3), so
+# 64 gives comfortable headroom without allowing unbounded growth.
+_LOCATE_SITE_CLASS_CACHE_MAXSIZE = 64
+
 
 class AnophelesSnpData(
     AnophelesSampleMetadata, AnophelesGenomeFeaturesData, AnophelesGenomeSequenceData
@@ -67,6 +73,14 @@ class AnophelesSnpData(
         self._cache_site_filters: Dict = dict()
         self._cache_site_annotations = None
         self._cache_locate_site_class: Dict = dict()
+
+        # Create the SNP-calls cache as a per-instance lru_cache wrapping the
+        # bound method.  Storing it on the instance (rather than using a
+        # class-level @lru_cache decorator) means:
+        #   1. `self` is not part of the cache key, so old instances are freed
+        #      normally when the caller drops their reference.
+        #   2. Different instances have independent, non-interfering caches.
+        self._cached_snp_calls = lru_cache(maxsize=2)(self._raw_snp_calls)
 
     @property
     def _site_filters_analysis(self) -> Optional[str]:
@@ -928,6 +942,13 @@ class AnophelesSnpData(
 
             self._cache_locate_site_class[cache_key] = loc_ann
 
+            # Evict the oldest entry when the cache exceeds its size limit.
+            # Plain dicts preserve insertion order (Python 3.7+), so the first
+            # key is always the oldest.
+            while len(self._cache_locate_site_class) > _LOCATE_SITE_CLASS_CACHE_MAXSIZE:
+                oldest = next(iter(self._cache_locate_site_class))
+                del self._cache_locate_site_class[oldest]
+
         return loc_ann
 
     def _snp_calls_for_contig(
@@ -1088,16 +1109,7 @@ class AnophelesSnpData(
             chunks=chunks,
         )
 
-    # Here we cache to improve performance for functions which
-    # access SNP calls more than once. For example, this currently
-    # happens during access of biallelic SNP calls, because a
-    # first computation of allele counts is required, before
-    # then using that to filter SNP calls.
-    #
-    # We only cache up to 2 items because otherwise we can see
-    # high memory usage.
-    @lru_cache(maxsize=2)
-    def _cached_snp_calls(
+    def _raw_snp_calls(
         self,
         *,
         regions: Tuple[Region, ...],
@@ -1253,6 +1265,12 @@ class AnophelesSnpData(
         if max_cohort_size is not None:
             n_samples = ds.sizes["samples"]
             if n_samples > max_cohort_size:
+                warnings.warn(
+                    f"Cohort downsampled from {n_samples} to {max_cohort_size} "
+                    "samples. Set max_cohort_size=None to disable downsampling.",
+                    UserWarning,
+                    stacklevel=2,
+                )
                 rng = np.random.default_rng(seed=random_seed)
                 loc_downsample = rng.choice(
                     n_samples, size=max_cohort_size, replace=False
