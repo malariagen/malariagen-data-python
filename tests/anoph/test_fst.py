@@ -343,3 +343,50 @@ def test_pairwise_average_fst_with_bad_cohorts(fixture, api: AnophelesFstAnalysi
     # Run function under test.
     with pytest.raises(ValueError):
         api.pairwise_average_fst(**fst_params)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_average_fst_with_list_of_regions(fixture, api: AnophelesFstAnalysis):
+    # Set up test parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    all_countries = api.sample_metadata()["country"].dropna().unique().tolist()
+    countries = random.sample(all_countries, 2)
+    cohort1_query = f"country == {countries[0]!r}"
+    cohort2_query = f"country == {countries[1]!r}"
+    fst_params = dict(
+        region=random.sample(api.contigs, 2),
+        sample_sets=all_sample_sets,
+        cohort1_query=cohort1_query,
+        cohort2_query=cohort2_query,
+        site_mask=random.choice(api.site_mask_ids),
+        min_cohort_size=1,
+        n_jack=random.randint(10, 200),
+    )
+
+    # Run function under test.
+    fst, se = api.average_fst(**fst_params)
+
+    # Checks.
+    assert isinstance(fst, float)
+    assert isinstance(se, float)
+    assert 0 <= fst <= 1
+    assert 0 <= se <= 1
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_pairwise_average_fst_with_list_of_regions(fixture, api: AnophelesFstAnalysis):
+    # Set up test parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    region = random.sample(api.contigs, 2)
+    site_mask = random.choice(api.site_mask_ids)
+    fst_params = dict(
+        region=region,
+        cohorts="country",
+        sample_sets=all_sample_sets,
+        site_mask=site_mask,
+        min_cohort_size=1,
+        n_jack=random.randint(10, 200),
+    )
+
+    # Run checks.
+    check_pairwise_average_fst(api=api, fst_params=fst_params)
