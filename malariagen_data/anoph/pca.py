@@ -80,7 +80,7 @@ class AnophelesPca(
     ) -> Tuple[pca_params.df_pca, pca_params.evr]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "pca_v5"
+        name = "pca_v6"
 
         # Check that either sample_query xor sample_indices are provided.
         base_params._validate_sample_selection_params(

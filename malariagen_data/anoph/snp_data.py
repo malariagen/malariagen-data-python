@@ -1930,7 +1930,7 @@ class AnophelesSnpData(
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "biallelic_diplotypes"
+        name = "biallelic_diplotypes_v2"
 
         # Check that either sample_query xor sample_indices are provided.
         base_params._validate_sample_selection_params(
