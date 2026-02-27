@@ -1109,20 +1109,6 @@ class AnophelesSnpData(
             chunks=chunks,
         )
 
-    # Here we cache to improve performance for functions which
-    # access SNP calls more than once. For example, this currently
-    # happens during access of biallelic SNP calls, because a
-    # first computation of allele counts is required, before
-    # then using that to filter SNP calls.
-    #
-    # We only cache up to 2 items because otherwise we can see
-    # high memory usage.
-    #
-    # N.B., the cache is created as a per-instance lru_cache in __init__
-    # (self._cached_snp_calls = lru_cache(maxsize=2)(self._raw_snp_calls)).
-    # Do NOT apply @lru_cache here: a class-level decorator stores `self` as a
-    # cache key in a class-global dict, preventing garbage collection of stale
-    # API instances and causing all their subcaches to leak.
     def _raw_snp_calls(
         self,
         *,
