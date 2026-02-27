@@ -104,7 +104,9 @@ def _build_cohorts_from_sample_grouping(
     else:
         # Replace non-alphanumeric characters in the taxon with underscores.
         df_cohorts["label"] = df_cohorts.apply(
-            lambda v: f"{v.area}_{re.sub(r'[^A-Za-z0-9]+', '_', str(v[taxon_by]))}_{v.period}",
+            lambda v: (
+                f"{v.area}_{re.sub(r'[^A-Za-z0-9]+', '_', str(v[taxon_by]))}_{v.period}"
+            ),
             axis="columns",
         )
 
@@ -405,6 +407,12 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
                 }
             )
             dfs.append(df)
+
+        if not dfs:
+            raise ValueError(
+                "No data available for the selected taxon. "
+                "Please check that the taxon exists in the dataset."
+            )
         df_events = pd.concat(dfs, axis=0).reset_index(drop=True)
 
         # Remove events with no observations.
