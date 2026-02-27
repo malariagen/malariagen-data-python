@@ -281,12 +281,6 @@ def _mjn_graph_edges(
                 # add edge from final intermediate node to node j
                 source = f"anon_{i}_{j}_{sep-2}"
                 target = j
-                graph_node = {
-                    "id": source,
-                    "count": 0,
-                    "width": anon_width,
-                }
-                graph_nodes.append(graph_node)
                 graph_edge = {
                     "id": f"edge_{i}_{j}_{sep-1}",
                     "source": source,
