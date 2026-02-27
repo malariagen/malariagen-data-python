@@ -12,9 +12,10 @@ This package provides Python tools for accessing and analyzing genomic data from
 
 You'll need:
 
-- Python 3.10.x (CI-tested version)
-- [Poetry](https://python-poetry.org/) for dependency management
-- [Git](https://git-scm.com/) for version control
+- [pipx](https://python-poetry.org/) for installing Python tools
+- [git](https://git-scm.com/) for version control
+
+Both of these can be installed using your distribution's package manager or [Homebrew](https://brew.sh/) on Mac.
 
 ### Initial setup
 
@@ -33,16 +34,25 @@ You'll need:
    git remote add upstream https://github.com/malariagen/malariagen-data-python.git
    ```
 
-3. **Install Poetry** (if not already installed)
+3. **Install Poetry**
 
    ```bash
    pipx install poetry
    ```
 
-4. **Install the project and its dependencies**
+4. **Install Python 3.12**
+
+   Python 3.12 is tested in the CI-system and is the recommended version to use.
 
    ```bash
-   poetry install
+   poetry python install 3.12
+   ```
+
+5. **Install the project and its dependencies**
+
+   ```bash
+   poetry env use 3.12
+   poetry install --extras dev
    ```
 
    **Recommended**: Use `poetry run` to run commands inside the virtual environment:
@@ -71,7 +81,7 @@ You'll need:
    python script.py
    ```
 
-5. **Install pre-commit hooks**
+6. **Install pre-commit hooks**
 
    ```bash
    pipx install pre-commit
@@ -107,16 +117,40 @@ You'll need:
 
 4. **Run tests locally**
 
-   Fast unit tests (no external data access):
-
-   ```bash
-   poetry run pytest -v tests/anoph
-   ```
-
-   All unit tests (requires setting up credentials for legacy tests):
+   Fast unit tests using simulated data (no external data access):
 
    ```bash
    poetry run pytest -v tests --ignore tests/integration
+   ```
+
+   To run integration tests which read data from GCS, you'll need to [request access to MalariaGEN data on GCS](https://malariagen.github.io/vector-data/vobs/vobs-data-access.html).
+
+   Once access has been granted, [install the Google Cloud CLI](https://cloud.google.com/sdk/docs/install). E.g., if on Linux:
+
+   ```bash
+   ./install_gcloud.sh
+   ```
+
+   You'll then need to obtain application-default credentials, e.g.:
+
+   ```bash
+   ./google-cloud-sdk/bin/gcloud auth application-default login
+   ```
+
+   Once this is done, you can run integration tests:
+
+   ```bash
+   poetry run pytest -v tests/integration
+   ```
+
+   Tests will run slowly the first time, as data required for testing will be read from GCS. Subsequent runs will be faster as data will be cached locally in the "gcs_cache" folder.
+
+6. **Run typechecking**
+
+   Run static typechecking with mypy:
+
+   ```bash
+   poetry run mypy malariagen_data tests --ignore-missing-imports
    ```
 
 5. **Check code quality**
@@ -150,7 +184,7 @@ ruff format .
 - **Fast tests**: Unit tests should use simulated data when possible (see `tests/anoph/`)
 - **Integration tests**: Tests requiring GCS data access are slower and run separately
 
-Run type checking with:
+Run dynamic type checking with:
 
 ```bash
 poetry run pytest -v tests --typeguard-packages=malariagen_data,malariagen_data.anoph
