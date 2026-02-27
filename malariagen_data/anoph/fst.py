@@ -530,7 +530,7 @@ class AnophelesFstAnalysis(
 
         # Set up plot title.
         title = "<i>F</i><sub>ST</sub>"
-        if annotation is not None:
+        if annotation is not None and annotation != "lower triangle":
             title += " ⧅ " + annotation
 
         # Fill the figure dataframe from the Fst dataframe.
@@ -543,12 +543,15 @@ class AnophelesFstAnalysis(
                     fig_df.loc[cohort1, cohort2] = np.nan
                 else:
                     fig_df.loc[cohort1, cohort2] = fst / se
+            elif annotation == "lower triangle":
+                # Leave the upper triangle as NaN (empty).
+                pass
             else:
                 fig_df.loc[cohort1, cohort2] = fst
 
         # Don't colour the plot if the upper triangle is SE or Z score,
         # as the colouring doesn't really make sense.
-        if annotation is not None and zmax is None:
+        if annotation is not None and annotation != "lower triangle" and zmax is None:
             zmax = 1e9
 
         # Dynamically size the figure based on number of cohorts.
