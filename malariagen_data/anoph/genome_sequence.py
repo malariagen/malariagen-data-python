@@ -16,6 +16,8 @@ from .base import AnophelesBase
 
 
 class AnophelesGenomeSequenceData(AnophelesBase):
+    _cache_genome: Optional[zarr.hierarchy.Group]
+
     def __init__(
         self, virtual_contigs: Optional[Mapping[str, Sequence[str]]] = None, **kwargs
     ):
