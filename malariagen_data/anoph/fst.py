@@ -1,4 +1,4 @@
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 
 import numpy as np
 import pandas as pd
@@ -7,7 +7,8 @@ from numpydoc_decorator import doc  # type: ignore
 import bokeh.models
 import bokeh.plotting
 import bokeh.layouts
-import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 from .snp_data import AnophelesSnpData
 from . import base_params, fst_params, gplt_params, plotly_params
@@ -404,8 +405,8 @@ class AnophelesFstAnalysis(
         )
 
         # Calculate block length for jackknife.
-        n_sites = ac1.shape[0]
-        block_length = n_sites // n_jack
+        n_sites = ac1.shape[0]  # number of sites
+        block_length = n_sites // n_jack  # number of sites in each block
 
         if block_length < 1:
             raise ValueError(
@@ -504,89 +505,152 @@ class AnophelesFstAnalysis(
     @_check_types
     @doc(
         summary="""
-            Plot a heatmap of pairwise average Fst values.
+            Plot one or more heatmaps of pairwise average Fst values.
         """,
         parameters=dict(
-            annotate_se="If True, show standard error values in the upper triangle of the plot.",
-            kwargs="Passed through to `px.imshow()`",
+            show_se="If True, show a separate heatmap for standard errors.",
+            show_zscore="If True, show a separate heatmap for Z scores (Fst / SE).",
+            kwargs="Passed through to `go.Heatmap()`",
         ),
     )
     def plot_pairwise_average_fst(
         self,
         fst_df: fst_params.df_pairwise_fst,
-        annotation: fst_params.annotation = None,
+        show_se: fst_params.show_se = False,
+        show_zscore: fst_params.show_zscore = False,
         zmin: Optional[plotly_params.zmin] = 0.0,
         zmax: Optional[plotly_params.zmax] = None,
         text_auto: plotly_params.text_auto = ".3f",
-        color_continuous_scale: plotly_params.color_continuous_scale = "gray_r",
+        color_continuous_scale: plotly_params.color_continuous_scale = "Viridis",
         width: plotly_params.fig_width = None,
         height: plotly_params.fig_height = None,
-        row_height: plotly_params.height = 40,
-        col_width: plotly_params.width = 50,
+        row_height: plotly_params.height = 50,
+        col_width: plotly_params.width = 150,
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
         **kwargs,
     ):
         # Obtain a list of all cohorts analysed. N.B., preserve the order in
         # which the cohorts are provided in the input dataframe.
-        cohorts = pd.unique(fst_df[["cohort1", "cohort2"]].values.flatten())
+        cohorts = list(pd.unique(fst_df[["cohort1", "cohort2"]].values.flatten()))
+        n = len(cohorts)
 
-        # Create a dataframe to visualise as a heatmap.
-        fig_df = pd.DataFrame(columns=cohorts, index=cohorts)
+        # Helper: build a symmetric square matrix for the given statistic.
+        # Diagonal is NaN (self-comparisons not applicable).
+        def _build_matrix(stat: str) -> np.ndarray:
+            mat = np.full((n, n), np.nan)
+            cohort_idx = {c: i for i, c in enumerate(cohorts)}
+            for cohort1, cohort2, fst, se in fst_df.itertuples(index=False):
+                i, j = cohort_idx[cohort1], cohort_idx[cohort2]
+                if stat == "fst":
+                    val = fst
+                elif stat == "se":
+                    val = se
+                else:  # Z score
+                    val = np.nan if se == 0 else fst / se
+                mat[i, j] = val
+                mat[j, i] = val
+            return mat
 
-        # Set up plot title.
-        title = "<i>F</i><sub>ST</sub>"
-        if annotation is not None and annotation != "lower triangle":
-            title += " ⧅ " + annotation
+        # Helper: format a matrix of floats into text labels.
+        def _format_text(mat: np.ndarray, fmt: str) -> List[List[str]]:
+            result = []
+            for row in mat:
+                result.append([f"{v:{fmt}}" if np.isfinite(v) else "" for v in row])
+            return result
 
-        # Fill the figure dataframe from the Fst dataframe.
-        for cohort1, cohort2, fst, se in fst_df.itertuples(index=False):
-            fig_df.loc[cohort2, cohort1] = fst
-            if annotation == "standard error":
-                fig_df.loc[cohort1, cohort2] = se
-            elif annotation == "Z score":
-                if se == 0:
-                    fig_df.loc[cohort1, cohort2] = np.nan
-                else:
-                    fig_df.loc[cohort1, cohort2] = fst / se
-            elif annotation == "lower triangle":
-                # Leave the upper triangle as NaN (empty).
-                pass
-            else:
-                fig_df.loc[cohort1, cohort2] = fst
+        # Determine which panels to produce.
+        plot_specs: List[tuple] = [
+            ("fst", "fst", zmin, zmax, color_continuous_scale),
+        ]
+        if show_se:
+            plot_specs.append(("se", "se", 0.0, None, color_continuous_scale))
+        if show_zscore:
+            plot_specs.append(("zscore", "Z score", None, None, color_continuous_scale))
 
-        # Don't colour the plot if the upper triangle is SE or Z score,
-        # as the colouring doesn't really make sense.
-        if annotation is not None and annotation != "lower triangle" and zmax is None:
-            zmax = 1e9
+        n_plots = len(plot_specs)
 
-        # Dynamically size the figure based on number of cohorts.
+        # Dynamically size the figure based on number of cohorts and panels.
+        panel_px = 100 + n * row_height
         if height is None:
-            height = 100 + len(cohorts) * row_height
+            height = n_plots * panel_px
         if width is None:
-            width = 200 + len(cohorts) * col_width
+            width = 330 + n * col_width
 
-        # Create plot.
-        with np.errstate(invalid="ignore"):
-            fig = px.imshow(
-                img=fig_df,
-                zmin=zmin,
-                zmax=zmax,
-                width=width,
-                height=height,
-                text_auto=text_auto,
-                color_continuous_scale=color_continuous_scale,
-                aspect="auto",
+        # Vertical spacing as a fraction of total height; only the bottom panel
+        # shows tick labels so inner gaps only need room for the next title.
+        v_space = (50 / height) if n_plots > 1 else 0.0
+
+        fig = make_subplots(
+            rows=n_plots,
+            cols=1,
+            subplot_titles=[spec[1] for spec in plot_specs],
+            vertical_spacing=v_space,
+        )
+
+        for row_idx, (stat, title, z_min, z_max, cscale) in enumerate(
+            plot_specs, start=1
+        ):
+            mat = _build_matrix(stat)
+
+            # Position each colorbar alongside its own subplot row.
+            cb_fraction = 1.0 / n_plots
+            cb_y = 1.0 - (row_idx - 0.5) * cb_fraction
+
+            text_vals = _format_text(mat, text_auto) if text_auto else None
+
+            heatmap = go.Heatmap(
+                z=mat.tolist(),
+                x=cohorts,
+                y=cohorts,
+                zmin=z_min,
+                zmax=z_max,
+                colorscale=cscale,
+                text=text_vals,
+                texttemplate="%{text}" if text_vals is not None else None,
+                xgap=1,
+                ygap=1,
+                colorbar=dict(
+                    y=cb_y,
+                    len=cb_fraction * 0.80,
+                    yanchor="middle",
+                    thickness=15,
+                    x=1.02,
+                ),
+                showscale=True,
                 **kwargs,
             )
-        fig.update_layout(
-            plot_bgcolor="rgba(0,0,0,0)",
-            coloraxis_showscale=False,
-            title=title,
-        )
-        fig.update_yaxes(showgrid=False, linecolor="black")
-        fig.update_xaxes(showgrid=False, linecolor="black")
+            fig.add_trace(heatmap, row=row_idx, col=1)
 
+            # Show axis labels; x tick labels only on the bottom panel so
+            # column names appear once.
+            axis_suffix = "" if row_idx == 1 else str(row_idx)
+            is_bottom = row_idx == n_plots
+            x_title = "Cohort2" if is_bottom else ""
+            fig.update_layout(
+                **{
+                    f"yaxis{axis_suffix}": dict(
+                        title="Cohort1",
+                        autorange="reversed",
+                        showgrid=False,
+                        linecolor="black",
+                    ),
+                    f"xaxis{axis_suffix}": dict(
+                        title=dict(text=x_title, standoff=15),
+                        showgrid=False,
+                        linecolor="black",
+                        tickangle=0,
+                        showticklabels=is_bottom,
+                    ),
+                }
+            )
+
+        fig.update_layout(
+            paper_bgcolor="white",
+            plot_bgcolor="white",
+            width=width,
+            height=height,
+        )
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
             return None
