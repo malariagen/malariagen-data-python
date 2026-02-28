@@ -16,17 +16,12 @@ jobs:
               uses: actions/checkout@v4
 
             - name: Setup python
-              uses: actions/setup-python@v5
+              uses: ./.github/actions/setup-python
               with:
                   python-version: '3.12'
-                  cache: 'pip'
 
             - name: Run pre-commit checks
               uses: pre-commit/action@v3.0.0
 
-            - name: Install package
-              run: pip install .[dev]
-
             - name: Run mypy
-              run: |
-                  mypy malariagen_data tests --ignore-missing-imports
+              run: poetry run mypy malariagen_data tests --ignore-missing-imports
