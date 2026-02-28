@@ -74,6 +74,14 @@ TAXON_COLORS = {
     "gcx4": TAXON_PALETTE[10],
     "unassigned": "black",
 }
+# Colors for aim_species column, matching the AIM palettes.
+AIM_SPECIES_COLORS = {
+    "gambiae": AIM_PALETTES["gamb_vs_colu"][1],
+    "coluzzii": AIM_PALETTES["gamb_vs_colu"][3],
+    "arabiensis": AIM_PALETTES["gambcolu_vs_arab"][3],
+    "gambcolu": AIM_PALETTES["gambcolu_vs_arab"][1],
+    "unassigned": "black",
+}
 
 # Note: These column names will be treated as case-insensitive,
 # because these column names and the column names from the CSV
@@ -202,6 +210,7 @@ class Ag3(AnophelesDataResource):
             storage_options=storage_options,
             tqdm_class=tqdm_class,
             taxon_colors=TAXON_COLORS,
+            aim_species_colors=AIM_SPECIES_COLORS,
             virtual_contigs=VIRTUAL_CONTIGS,
             gene_names=GENE_NAMES,
             inversion_tag_path=INVERSION_TAG_PATH,

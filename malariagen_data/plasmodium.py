@@ -1,5 +1,6 @@
 import json
 
+import os
 import dask.array as da
 import pandas as pd
 import xarray
@@ -59,7 +60,7 @@ class PlasmodiumDataResource:
             One row per sample.
         """
         if self._cache_sample_metadata is None:
-            path = f"{self._path}/{self.CONF['metadata_path']}"
+            path = os.path.join(self._path, self.CONF["metadata_path"])
             with self._fs.open(path) as f:
                 self._cache_sample_metadata = pd.read_csv(f, sep="\t", na_values="")
         return self._cache_sample_metadata
@@ -74,7 +75,7 @@ class PlasmodiumDataResource:
 
         """
         if self._cache_variant_calls_zarr is None:
-            path = f"{self._path}/{self.CONF['variant_calls_zarr_path']}"
+            path = os.path.join(self._path, self.CONF["variant_calls_zarr_path"])
             store = _init_zarr_store(fs=self._fs, path=path)
             self._cache_variant_calls_zarr = zarr.open_consolidated(store=store)
         return self._cache_variant_calls_zarr
@@ -204,7 +205,7 @@ class PlasmodiumDataResource:
 
         """
         if self._cache_genome is None:
-            path = f"{self._path}/{self.CONF['reference_path']}"
+            path = os.path.join(self._path, self.CONF["reference_path"])
             store = _init_zarr_store(fs=self._fs, path=path)
             self._cache_genome = zarr.open_consolidated(store=store)
         return self._cache_genome
@@ -316,7 +317,7 @@ class PlasmodiumDataResource:
         try:
             df = self._cache_genome_features[attributes]
         except KeyError:
-            path = f"{self._path}/{self.CONF['annotations_path']}"
+            path = os.path.join(self._path, self.CONF["annotations_path"])
             with self._fs.open(path, mode="rb") as f:
                 df = _read_gff3(f, compression="gzip")
             if attributes is not None:
