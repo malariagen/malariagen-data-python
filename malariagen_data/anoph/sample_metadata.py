@@ -700,8 +700,57 @@ class AnophelesSampleMetadata(AnophelesBase):
 
     @_check_types
     @doc(
-        summary="Access sample metadata for one or more sample sets.",
-        returns="A dataframe of sample metadata, one row per sample.",
+        summary="""
+            Access sample-level metadata for one or more sample sets.
+            This method returns a pandas DataFrame where each row corresponds
+            to a single sample. The metadata is assembled by merging multiple
+            sources including general metadata, sequence quality control (QC)
+            metadata, surveillance flags, and—when available—AIM and cohort
+            metadata.
+        """,
+        parameters=dict(
+            sample_sets="""
+                Sample set identifier(s), e.g. ``'AG1000G-AO'``. If None, all
+                available sample sets are used.
+            """,
+            sample_query="""
+                A pandas query string to filter samples, e.g.
+                ``"country == 'Uganda' and sex_call == 'F'"``.
+            """,
+            sample_query_options="""
+                Additional keyword arguments passed to :meth:`pandas.DataFrame.query`.
+            """,
+            sample_indices="""
+                Integer indices of samples to select. Cannot be used together
+                with ``sample_query``.
+            """,
+        ),
+        returns="""
+            A DataFrame with one row per sample. Columns include:
+
+            - **sample_id** (*str*) - Unique sample identifier.
+            - **partner_sample_id** (*str*) - Sample ID assigned by the contributing partner.
+            - **contributor** (*str*) - Name of the contributing institution or individual.
+            - **country** (*str*) - Country where the sample was collected.
+            - **location** (*str*) - Specific collection location (e.g. village or site name).
+            - **year** (*int*) - Year of collection.
+            - **month** (*int*) - Month of collection, if available.
+            - **latitude** (*float*) - GPS latitude of the collection site.
+            - **longitude** (*float*) - GPS longitude of the collection site.
+            - **sex_call** (*str*) - Sex determination call; ``'F'`` for female, ``'M'`` for male.
+            - **taxon** (*str*) - Species or taxon assignment.
+            - **mean_cov** (*float*) - Mean sequencing coverage across the genome.
+            - **median_cov** (*float*) - Median sequencing coverage.
+            - **frac_reads_mapped** (*float*) - Fraction of reads mapped to the reference genome.
+            - **contam_pct** (*float*) - Estimated contamination percentage.
+            - **pass_qc** (*bool*) - Whether the sample passed quality control filters.
+            - **cohort_admin1_year** (*str*) - Cohort label combining admin level 1 region and year (if available).
+            - **cohort_admin2_year** (*str*) - Cohort label combining admin level 2 region and year (if available).
+            - **aim_species** (*str*) - Species assignment from ancestry-informative markers (if available).
+
+            The returned DataFrame is a copy and can be safely modified
+            without affecting internal caches.
+        """,
     )
     def sample_metadata(
         self,
