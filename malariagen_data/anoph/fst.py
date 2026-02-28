@@ -404,8 +404,14 @@ class AnophelesFstAnalysis(
         )
 
         # Calculate block length for jackknife.
-        n_sites = ac1.shape[0]  # number of sites
-        block_length = n_sites // n_jack  # number of sites in each block
+        n_sites = ac1.shape[0]
+        block_length = n_sites // n_jack
+
+        if block_length < 1:
+            raise ValueError(
+                f"Not enough sites ({n_sites}) for {n_jack} jackknife blocks. "
+                "Choose a larger region or reduce n_jack."
+            )
 
         # Calculate average Fst.
         fst, se, _, _ = allel.blockwise_hudson_fst(ac1, ac2, blen=block_length)
