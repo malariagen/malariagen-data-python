@@ -263,20 +263,20 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
         # Label the haplotypes
         ds_out["variant_label"] = "variants", df_haps_sorted["label"].values
         # Event variables.
-        freq_cols = [c for c in df_haps_sorted.columns if c.startswith("frq_")]
-        count_cols = [c for c in df_haps_sorted.columns if c.startswith("count_")]
-        nobs_cols = [c for c in df_haps_sorted.columns if c.startswith("nobs_")]
+        freq_cols_name = [c for c in df_haps_sorted.columns if c.startswith("frq_")]
+        count_cols_name = [c for c in df_haps_sorted.columns if c.startswith("count_")]
+        nobs_cols_name = [c for c in df_haps_sorted.columns if c.startswith("nobs_")]
         ds_out["event_frequency"] = (
             ("variants", "cohorts"),
-            df_haps_sorted[freq_cols].to_numpy(),
+            df_haps_sorted[freq_cols_name].to_numpy(),
         )
         ds_out["event_count"] = (
             ("variants", "cohorts"),
-            df_haps_sorted[count_cols].to_numpy(),
+            df_haps_sorted[count_cols_name].to_numpy(),
         )
         ds_out["event_nobs"] = (
             ("variants", "cohorts"),
-            df_haps_sorted[nobs_cols].to_numpy(),
+            df_haps_sorted[nobs_cols_name].to_numpy(),
         )
 
         # Add confidence intervals.
