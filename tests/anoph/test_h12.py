@@ -7,7 +7,11 @@ import bokeh.models
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
-from malariagen_data.anoph.h12 import AnophelesH12Analysis, _haplotype_frequencies
+from malariagen_data.anoph.h12 import (
+    AnophelesH12Analysis,
+    _haplotype_frequencies,
+    hampel_filter,
+)
 
 
 @pytest.fixture
@@ -100,6 +104,13 @@ def test_haplotype_frequencies():
     assert_allclose(vals, np.array([0.2, 0.2, 0.2, 0.4]))
 
 
+def test_hampel_filter_removes_isolated_outlier():
+    x = np.array([1, 1, 1, 100, 1, 1, 1], dtype=float)
+    y = hampel_filter(x, size=2, t=3)
+    assert y[3] != 100
+    assert y.shape == x.shape
+
+
 @parametrize_with_cases("fixture,api", cases=".")
 def test_h12_calibration(fixture, api: AnophelesH12Analysis):
     # Set up test parameters.
@@ -136,6 +147,28 @@ def check_h12_gwss(*, api, h12_params):
 
     x, h12, contigs = api.h12_gwss(**h12_params)
 
+    # Also test with Hampel enabled
+    x2, h12_2, contigs2 = api.h12_gwss(
+        **h12_params,
+        apply_hampel=True,
+        hampel_window=5,
+        hampel_t=3,
+    )
+
+    assert isinstance(x2, np.ndarray)
+    assert isinstance(h12_2, np.ndarray)
+    assert isinstance(contigs2, np.ndarray)
+
+    assert x2.ndim == 1
+    assert h12_2.ndim == 1
+    assert contigs2.ndim == 1
+
+    assert x2.shape == h12_2.shape
+    assert x2.shape == contigs2.shape
+
+    assert np.all(h12_2 >= 0)
+    assert np.all(h12_2 <= 1)
+
     # Check results.
     assert isinstance(x, np.ndarray)
     assert isinstance(h12, np.ndarray)
@@ -162,6 +195,19 @@ def check_h12_gwss_multi(*, api, h12_params):
     fig = api.plot_h12_gwss_multi_overlay(**h12_params, show=False)
     assert isinstance(fig, bokeh.models.GridPlot)
     fig = api.plot_h12_gwss_multi_panel(**h12_params, show=False)
+    assert isinstance(fig, bokeh.models.GridPlot)
+    fig = api.plot_h12_gwss_multi_overlay(
+        **h12_params,
+        apply_hampel=True,
+        show=False,
+    )
+    assert isinstance(fig, bokeh.models.GridPlot)
+
+    fig = api.plot_h12_gwss_multi_panel(
+        **h12_params,
+        apply_hampel=True,
+        show=False,
+    )
     assert isinstance(fig, bokeh.models.GridPlot)
 
 
