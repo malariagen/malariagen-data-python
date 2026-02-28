@@ -235,7 +235,7 @@ class AnophelesFstAnalysis(
             height=height,
             toolbar_location="above",
             x_range=x_range,
-            y_range=(0, 1),
+            y_range=(clip_min, 1),
             output_backend=output_backend,
         )
 
@@ -252,7 +252,7 @@ class AnophelesFstAnalysis(
 
         # tidy up the plot
         fig.yaxis.axis_label = "Fst"
-        fig.yaxis.ticker = [0, 1]
+        fig.yaxis.ticker = sorted(set([clip_min, 0, 1]))
         self._bokeh_style_genome_xaxis(fig, contig)
 
         if show:  # pragma: no cover
@@ -404,8 +404,14 @@ class AnophelesFstAnalysis(
         )
 
         # Calculate block length for jackknife.
-        n_sites = ac1.shape[0]  # number of sites
-        block_length = n_sites // n_jack  # number of sites in each block
+        n_sites = ac1.shape[0]
+        block_length = n_sites // n_jack
+
+        if block_length < 1:
+            raise ValueError(
+                f"Not enough sites ({n_sites}) for {n_jack} jackknife blocks. "
+                "Choose a larger region or reduce n_jack."
+            )
 
         # Calculate average Fst.
         fst, se, _, _ = allel.blockwise_hudson_fst(ac1, ac2, blen=block_length)
@@ -530,7 +536,7 @@ class AnophelesFstAnalysis(
 
         # Set up plot title.
         title = "<i>F</i><sub>ST</sub>"
-        if annotation is not None:
+        if annotation is not None and annotation != "lower triangle":
             title += " ⧅ " + annotation
 
         # Fill the figure dataframe from the Fst dataframe.
@@ -539,17 +545,19 @@ class AnophelesFstAnalysis(
             if annotation == "standard error":
                 fig_df.loc[cohort1, cohort2] = se
             elif annotation == "Z score":
-                try:
-                    zs = fst / se
-                    fig_df.loc[cohort1, cohort2] = zs
-                except ZeroDivisionError:
+                if se == 0:
                     fig_df.loc[cohort1, cohort2] = np.nan
+                else:
+                    fig_df.loc[cohort1, cohort2] = fst / se
+            elif annotation == "lower triangle":
+                # Leave the upper triangle as NaN (empty).
+                pass
             else:
                 fig_df.loc[cohort1, cohort2] = fst
 
         # Don't colour the plot if the upper triangle is SE or Z score,
         # as the colouring doesn't really make sense.
-        if annotation is not None and zmax is None:
+        if annotation is not None and annotation != "lower triangle" and zmax is None:
             zmax = 1e9
 
         # Dynamically size the figure based on number of cohorts.
