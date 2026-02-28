@@ -166,7 +166,7 @@ class AnophelesPca(
         df_pca = df_pca.join(df_samples, how="left", on="sample_id")
 
         # Add a column to indicate which samples were included in fitting.
-        df_pca["pca_fit"] = loc_keep_fit
+        df_pca["pca_fit"] = loc_keep_fit.astype(bool)
 
         # Keep "sample_id" as a column, so that it can be specified as a `hover_name` in `plot_pca_coords`, etc.
         df_pca.reset_index(inplace=True)
