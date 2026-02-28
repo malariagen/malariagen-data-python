@@ -273,11 +273,20 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
         # SNPs
 
         if ref_aa == alt_aa:
-            # TODO SYNONYMOUS_START and SYNONYMOUS_STOP
+            if alt_aa == "*":
+                # variant causes a stop codon to be mutated into another stop codon
+                # e.g.: Tga/Taa, */*
+                effect = base_effect._replace(effect="SYNONYMOUS_STOP", impact="LOW")
 
-            # variant causes a codon that produces the same amino acid
-            # e.g.: Ttg/Ctg, L/L
-            effect = base_effect._replace(effect="SYNONYMOUS_CODING", impact="LOW")
+            elif ref_cds_start == 0:
+                # variant at the start codon that produces the same amino acid (M/M)
+                # e.g.: Atg/atG, M/M
+                effect = base_effect._replace(effect="SYNONYMOUS_START", impact="LOW")
+
+            else:
+                # variant causes a codon that produces the same amino acid
+                # e.g.: Ttg/Ctg, L/L
+                effect = base_effect._replace(effect="SYNONYMOUS_CODING", impact="LOW")
 
         elif ref_aa == "M" and ref_cds_start == 0:
             # variant causes start codon to be mutated into a non-start codon.

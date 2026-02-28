@@ -236,7 +236,7 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         **kwargs,
     ) -> plotly_params.figure:
         # Check len of input.
-        if max_len and len(df) > max_len:
+        if max_len is not None and len(df) > max_len:
             raise ValueError(
                 dedent(
                     f"""
