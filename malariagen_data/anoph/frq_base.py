@@ -596,13 +596,27 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         variants = ds["variant_label"].values
         taxa = ds["cohort_taxon"].to_pandas().dropna().unique()  # type: ignore
         periods = ds["cohort_period"].to_pandas().dropna().unique()  # type: ignore
+
+        if len(variants) == 0:
+            raise ValueError("No variants available in dataset.")
+        if len(taxa) == 0:
+            raise ValueError("No taxons available in dataset.")
+        if len(periods) == 0:
+            raise ValueError("No periods available in dataset.")
+
         controls = ipywidgets.interactive(
             self.plot_frequencies_map_markers,
             m=ipywidgets.fixed(freq_map),
             ds=ipywidgets.fixed(ds),
-            variant=ipywidgets.Dropdown(options=variants, description="Variant: "),
-            taxon=ipywidgets.Dropdown(options=taxa, description="Taxon: "),
-            period=ipywidgets.Dropdown(options=periods, description="Period: "),
+            variant=ipywidgets.Dropdown(
+                options=variants, value=variants[0], description="Variant: "
+            ),
+            taxon=ipywidgets.Dropdown(
+                options=taxa, value=taxa[0], description="Taxon: "
+            ),
+            period=ipywidgets.Dropdown(
+                options=periods, value=periods[0], description="Period: "
+            ),
             clear=ipywidgets.fixed(True),
         )
 
