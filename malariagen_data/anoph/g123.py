@@ -68,7 +68,7 @@ class AnophelesG123Analysis(
         with self._dask_progress(desc="Load SNP positions"):
             pos = ds_snps["variant_position"].data.compute()
 
-        if sites in self.phasing_analysis_ids:
+        if sites is not None and sites in self.phasing_analysis_ids:
             # Here we use sites from a phasing analysis. This is effectively
             # using a set of sites ascertained as polymorphic in whatever panel
             # of samples was used to set up the phasing analysis.
@@ -172,11 +172,15 @@ class AnophelesG123Analysis(
         # invalidate any previously cached data.
         name = "g123_gwss_v2"
 
-        valid_sites = self.phasing_analysis_ids + ("all", "segregating")
+       # Allow None as a valid site (meaning unphased/all sites)
+        if sites == g123_params.DEFAULT_SITE_PARAMETER:
+             sites = self._default_phasing_analysis
+
+        valid_sites = self.phasing_analysis_ids + ("all", "segregating", None)
         if sites not in valid_sites:
-            raise ValueError(
-                f"Invalid value for `sites` parameter, must be one of {valid_sites}."
-            )
+             raise ValueError(
+                 f"Invalid value for `sites` parameter, must be one of {valid_sites}."
+             )
 
         params = dict(
             contig=contig,
@@ -276,8 +280,12 @@ class AnophelesG123Analysis(
         # invalidate any previously cached data.
         name = "g123_calibration_v1"
 
-        valid_sites = self.phasing_analysis_ids + ("all", "segregating")
+       if sites == g123_params.DEFAULT_SITE_PARAMETER:
+            sites = self._default_phasing_analysis
+
+        valid_sites = self.phasing_analysis_ids + ("all", "segregating", None)
         if sites not in valid_sites:
+             # ... error message ...
             raise ValueError(
                 f"Invalid value for `sites` parameter, must be one of {valid_sites}."
             )
