@@ -172,6 +172,11 @@ class AnophelesG123Analysis(
         # invalidate any previously cached data.
         name = "g123_gwss_v2"
 
+        if sites == base_params.DEFAULT:
+            if self._default_phasing_analysis is not None:
+                sites = self._default_phasing_analysis
+            else:
+                sites = "segregating"
         valid_sites = self.phasing_analysis_ids + ("all", "segregating")
         if sites not in valid_sites:
             raise ValueError(
@@ -276,6 +281,11 @@ class AnophelesG123Analysis(
         # invalidate any previously cached data.
         name = "g123_calibration_v1"
 
+        if sites == base_params.DEFAULT:
+            if self._default_phasing_analysis is not None:
+                sites = self._default_phasing_analysis
+            else:
+                sites = "segregating"
         valid_sites = self.phasing_analysis_ids + ("all", "segregating")
         if sites not in valid_sites:
             raise ValueError(
