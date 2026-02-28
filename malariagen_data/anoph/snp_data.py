@@ -117,7 +117,7 @@ class AnophelesSnpData(
             return site_mask
         else:
             raise ValueError(
-                f"Invalid site mask, must be one of f{self.site_mask_ids}."
+                f"Invalid site mask, must be one of {self.site_mask_ids}."
             )
 
     def _prep_optional_site_mask_param(
