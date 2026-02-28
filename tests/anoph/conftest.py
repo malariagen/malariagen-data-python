@@ -1003,6 +1003,7 @@ class AnophelesSimulator:
         self.init_haplotypes()
         self.init_aim_variants()
         self.init_aim_calls()
+        self.init_inversion_tags()
         self.init_cnv_hmm()
         self.init_cnv_coverage_calls()
         self.init_cnv_discordant_read_calls()
@@ -1079,6 +1080,9 @@ class AnophelesSimulator:
         pass
 
     def init_aim_calls(self):
+        pass
+
+    def init_inversion_tags(self):
         pass
 
     def init_cnv_hmm(self):
@@ -1733,6 +1737,52 @@ class Ag3Simulator(AnophelesSimulator):
                         / f"{release_path}/aim_calls_20220528/{sample_set}/{aims}.zarr"
                     )
                     ds.to_zarr(path, mode="w", consolidated=True)
+
+    def init_inversion_tags(self):
+        # Define the inversions matching the real Ag3 tag SNP data, grouped by contig.
+        inversions_by_contig = {
+            "2L": ["2La"],
+            "2R": ["2Rb", "2Rc_col", "2Rc_gam", "2Rd", "2Rj", "2Ru"],
+        }
+
+        n_tags_per_inversion = 5  # small number of tag SNPs is enough for testing
+
+        rows = []
+        for contig, inversions in inversions_by_contig.items():
+            # Get positions and ALT alleles from the simulated SNP data.
+            pos = self.snp_sites[f"{contig}/variants/POS"][:]
+            alt = self.snp_sites[f"{contig}/variants/ALT"][:]
+
+            for inversion in inversions:
+                # Pick a random subset of positions as "tag SNPs" for this inversion.
+                n = min(n_tags_per_inversion, len(pos))
+                idx = np.random.choice(len(pos), size=n, replace=False)
+                idx.sort()
+
+                for i in idx:
+                    # Use the first ALT allele as the tag (inversion) allele.
+                    alt_allele = alt[i, 0].decode("utf-8")
+                    rows.append(
+                        {
+                            "inversion": inversion,
+                            "contig": contig,
+                            "position": int(pos[i]),
+                            "alt_allele": alt_allele,
+                        }
+                    )
+
+        df_tags = pd.DataFrame(
+            rows, columns=["inversion", "contig", "position", "alt_allele"]
+        )
+
+        # Write to a file in the bucket path so it is accessible during tests.
+        tags_dir = self.bucket_path / "reference" / "inversion_tag_snps"
+        tags_dir.mkdir(parents=True, exist_ok=True)
+        tags_path = tags_dir / "karyotype_tag_snps.csv"
+        df_tags.to_csv(tags_path, index=False)
+
+        # Store the absolute path for use in test fixtures.
+        self.inversion_tag_path = str(tags_path.resolve())
 
     def init_cnv_hmm(self):
         # Iterate over releases.
