@@ -44,8 +44,11 @@ for release notes.
 
 ## Developer setup
 
-To get setup for development, see [this video if you prefer VS Code](https://youtu.be/zddl3n1DCFM), or [this older video if you prefer PyCharm](https://youtu.be/QniQi-Hoo9A), and the instructions below.
+To get setup for development, see [this video if you prefer VS Code](https://youtu.be/zddl3n1DCFM), or [this older video if you prefer PyCharm](https://youtu.be/QniQi-Hoo9A).
 
+For detailed setup instructions, see:
+- [Linux setup guide](LINUX_SETUP.md)
+- [macOS setup guide](MACOS_SETUP.md)
 Detailed instructions can be found in the [Contributors guide](https://github.com/malariagen/malariagen-data-python/blob/master/CONTRIBUTING.md).
 
 ## AI use policy and guidelines
