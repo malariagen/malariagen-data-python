@@ -257,6 +257,10 @@ def check_pairwise_average_fst(api: AnophelesFstAnalysis, fst_params):
         assert isinstance(fig, go.Figure)
         fig = api.plot_pairwise_average_fst(fst_df, annotation="Z score", show=False)
         assert isinstance(fig, go.Figure)
+        fig = api.plot_pairwise_average_fst(
+            fst_df, annotation="lower triangle", show=False
+        )
+        assert isinstance(fig, go.Figure)
 
 
 @pytest.mark.parametrize("cohorts", ["country", "admin1_year", "cohort_admin2_month"])
