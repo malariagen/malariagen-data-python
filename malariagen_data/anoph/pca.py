@@ -47,8 +47,9 @@ class AnophelesPca(
         parameters=dict(
             imputation_method="""
                 Method to use for imputing missing genotype calls. Options are
-                'mean' (replace missing calls with the mean value at each site,
-                the default) or 'zero' (replace missing calls with zero).
+                'most_common' (replace missing calls with the most common genotype at each site,
+                the default), 'mean' (replace missing calls with the
+                mean value at each site), or 'zero' (replace missing calls with zero).
             """,
         ),
         returns=("df_pca", "evr"),
@@ -76,7 +77,7 @@ class AnophelesPca(
         max_missing_an: Optional[
             base_params.max_missing_an
         ] = pca_params.max_missing_an_default,
-        imputation_method: str = "mean",
+        imputation_method: pca_params.imputation_method = pca_params.imputation_method_default,
         cohort_size: Optional[base_params.cohort_size] = None,
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
@@ -88,7 +89,7 @@ class AnophelesPca(
     ) -> Tuple[pca_params.df_pca, pca_params.evr]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "pca_v7"
+        name = "pca_v8"
 
         # Check that either sample_query xor sample_indices are provided.
         base_params._validate_sample_selection_params(
@@ -194,7 +195,7 @@ class AnophelesPca(
         site_class,
         min_minor_ac,
         max_missing_an,
-        imputation_method="mean",
+        imputation_method="most_common",
         n_components,
         cohort_size,
         min_cohort_size,
@@ -248,7 +249,19 @@ class AnophelesPca(
                 for arr in [gn_fit, gn]:
                     missing_mask = arr == -127
 
-                    if imputation_method == "mean":
+                    if imputation_method == "most_common":
+                        # For each site, find the most common non-missing value.
+                        site_modes = []
+                        for row in arr:
+                            non_missing = row[row != -127]
+                            if len(non_missing) == 0:
+                                site_modes.append(0)
+                            else:
+                                values, counts = np.unique(non_missing, return_counts=True)
+                                site_modes.append(values[np.argmax(counts)])
+                        site_modes = np.array(site_modes)
+                        fill_values = np.take(site_modes, np.where(missing_mask)[0])
+                    elif imputation_method == "mean":
                         site_means = np.where(
                             np.all(missing_mask, axis=1, keepdims=True),
                             0,
@@ -266,7 +279,7 @@ class AnophelesPca(
                     else:
                         raise ValueError(
                             f"Unknown imputation_method: {imputation_method!r}. "
-                            "Choose from 'mean' or 'zero'."
+                            "Choose from 'most_common', 'mean' or 'zero'."
                         )
 
                     arr[missing_mask] = fill_values
