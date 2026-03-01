@@ -177,7 +177,7 @@ class AnophelesG123Analysis(
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "g123_gwss_v1"
+        name = "g123_gwss_v2"
 
         valid_sites = self.phasing_analysis_ids + ("all", "segregating")
         if sites not in valid_sites:
@@ -188,7 +188,7 @@ class AnophelesG123Analysis(
         params = dict(
             contig=contig,
             sites=sites,
-            site_mask=site_mask,
+            site_mask=self._prep_optional_site_mask_param(site_mask=site_mask),
             window_size=window_size,
             sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             # N.B., do not be tempted to convert this sample query into integer
@@ -641,6 +641,9 @@ def _garud_g123(gt):
 
     # convert to array of sorted frequencies
     f = np.sort(np.fromiter(frq_counter.values(), dtype=float))[::-1]
+
+    if f.size == 0:
+        return np.nan
 
     # compute G123
     g123 = np.sum(f[:3]) ** 2 + np.sum(f[3:] ** 2)
