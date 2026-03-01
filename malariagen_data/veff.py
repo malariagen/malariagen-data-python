@@ -273,11 +273,20 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
         # SNPs
 
         if ref_aa == alt_aa:
-            # TODO SYNONYMOUS_START and SYNONYMOUS_STOP
+            if alt_aa == "*":
+                # variant causes a stop codon to be mutated into another stop codon
+                # e.g.: Tga/Taa, */*
+                effect = base_effect._replace(effect="SYNONYMOUS_STOP", impact="LOW")
 
-            # variant causes a codon that produces the same amino acid
-            # e.g.: Ttg/Ctg, L/L
-            effect = base_effect._replace(effect="SYNONYMOUS_CODING", impact="LOW")
+            elif ref_cds_start == 0:
+                # variant at the start codon that produces the same amino acid (M/M)
+                # e.g.: Atg/atG, M/M
+                effect = base_effect._replace(effect="SYNONYMOUS_START", impact="LOW")
+
+            else:
+                # variant causes a codon that produces the same amino acid
+                # e.g.: Ttg/Ctg, L/L
+                effect = base_effect._replace(effect="SYNONYMOUS_CODING", impact="LOW")
 
         elif ref_aa == "M" and ref_cds_start == 0:
             # variant causes start codon to be mutated into a non-start codon.
@@ -539,7 +548,21 @@ def _get_within_intron_effect(base_effect, intron):
             effect = base_effect._replace(effect="INTRONIC", impact="MODIFIER")
 
     else:
-        # TODO intronic INDELs and MNPs
-        effect = base_effect._replace(effect="TODO intronic indels and MNPs")
+        # INDELs and MNPs — use the closest edge of the variant to the splice site
+        if strand == "+":
+            dist_5prime = ref_start - (intron_start - 1)
+            dist_3prime = -(ref_stop - (intron_stop + 1))
+        else:
+            dist_5prime = (intron_stop + 1) - ref_stop
+            dist_3prime = -((intron_start - 1) - ref_start)
+
+        indel_min_dist = min(dist_5prime, dist_3prime)
+
+        if indel_min_dist <= 2:
+            effect = base_effect._replace(effect="SPLICE_CORE", impact="HIGH")
+        elif indel_min_dist <= 7:
+            effect = base_effect._replace(effect="SPLICE_REGION", impact="MODERATE")
+        else:
+            effect = base_effect._replace(effect="INTRONIC", impact="MODIFIER")
 
     return effect
