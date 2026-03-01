@@ -2260,7 +2260,7 @@ class Af1Simulator(AnophelesSimulator):
             path=path,
             contigs=self.contigs,
             snp_sites=self.snp_sites,
-            p_site=np.random.random(),
+            p_site=np.random.uniform(0.5, 1.0),
         )
 
     def init_haplotypes(self):
