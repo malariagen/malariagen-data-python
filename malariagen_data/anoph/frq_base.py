@@ -30,6 +30,8 @@ def _prep_samples_for_cohort_grouping(
     if filter_unassigned is None:
         filter_unassigned = taxon_by == "taxon"
 
+    # Filter out samples with "intermediate" or "unassigned" taxon values
+    # by setting them to None, so they are excluded from cohort grouping.
     if filter_unassigned:
         loc_intermediate_taxon = (
             df_samples[taxon_by].str.startswith("intermediate").fillna(False)
