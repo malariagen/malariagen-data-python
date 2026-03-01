@@ -1,4 +1,3 @@
-import re
 from textwrap import dedent
 from typing import Optional, Union, List
 
@@ -71,11 +70,17 @@ def _prep_samples_for_cohort_grouping(*, df_samples, area_by, period_by, taxon_b
     # Copy the specified area_by column to a new "area" column.
     df_samples["area"] = df_samples[area_by]
 
+    # Copy the specified taxon_by column to a new "taxon" column,
+    # normalizing it like area_by and period_by.
+    # See: https://github.com/malariagen/malariagen-data-python/issues/808
+    if taxon_by != "taxon":
+        df_samples["taxon"] = df_samples[taxon_by]
+
     return df_samples
 
 
 def _build_cohorts_from_sample_grouping(
-    *, group_samples_by_cohort, min_cohort_size, taxon_by
+    *, group_samples_by_cohort, min_cohort_size
 ):
     # Build cohorts dataframe.
     df_cohorts = group_samples_by_cohort.agg(
@@ -95,18 +100,10 @@ def _build_cohorts_from_sample_grouping(
     cohort_period_end = df_cohorts["period"].apply(lambda v: v.end_time)
     df_cohorts["period_start"] = cohort_period_start
     df_cohorts["period_end"] = cohort_period_end
-    # Create a label that is similar to the cohort metadata,
-    # although this won't be perfect.
-    if taxon_by == frq_params.taxon_by_default:
-        df_cohorts["label"] = df_cohorts.apply(
-            lambda v: f"{v.area}_{v[taxon_by][:4]}_{v.period}", axis="columns"
-        )
-    else:
-        # Replace non-alphanumeric characters in the taxon with underscores.
-        df_cohorts["label"] = df_cohorts.apply(
-            lambda v: f"{v.area}_{re.sub(r'[^A-Za-z0-9]+', '_', str(v[taxon_by]))}_{v.period}",
-            axis="columns",
-        )
+    # Create a label using the normalized "taxon" column.
+    df_cohorts["label"] = df_cohorts.apply(
+        lambda v: f"{v.area}_{v.taxon[:4]}_{v.period}", axis="columns"
+    )
 
     # Apply minimum cohort size.
     df_cohorts = df_cohorts.query(f"size >= {min_cohort_size}").reset_index(drop=True)

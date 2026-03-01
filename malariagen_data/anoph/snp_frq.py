@@ -467,13 +467,12 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         )
 
         # Group samples to make cohorts.
-        group_samples_by_cohort = df_samples.groupby([taxon_by, "area", "period"])
+        group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
 
         # Build cohorts dataframe.
         df_cohorts = _build_cohorts_from_sample_grouping(
             group_samples_by_cohort=group_samples_by_cohort,
             min_cohort_size=min_cohort_size,
-            taxon_by=taxon_by,
         )
 
         # Early check for no cohorts.
@@ -529,8 +528,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             desc="Compute SNP allele frequencies",
         )
         for cohort_index, cohort in cohorts_iterator:
-            cohort_taxon = getattr(cohort, taxon_by)
-            cohort_key = cohort_taxon, cohort.area, cohort.period
+            cohort_key = cohort.taxon, cohort.area, cohort.period
             sample_indices = group_samples_by_cohort.indices[cohort_key]
 
             cohort_ac, cohort_an = _cohort_alt_allele_counts_melt(
@@ -602,11 +600,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
         # Cohort variables.
         for coh_col in df_cohorts.columns:
-            if coh_col == taxon_by:
-                # Other functions expect cohort_taxon, e.g. plot_frequencies_interactive_map()
-                ds_out["cohort_taxon"] = "cohorts", df_cohorts[coh_col]
-            else:
-                ds_out[f"cohort_{coh_col}"] = "cohorts", df_cohorts[coh_col]
+            ds_out[f"cohort_{coh_col}"] = "cohorts", df_cohorts[coh_col]
 
         # Variant variables.
         for snp_col in df_variants.columns:

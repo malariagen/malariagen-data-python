@@ -171,13 +171,12 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
         )
 
         # Group samples to make cohorts.
-        group_samples_by_cohort = df_samples.groupby([taxon_by, "area", "period"])
+        group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
 
         # Build cohorts dataframe.
         df_cohorts = _build_cohorts_from_sample_grouping(
             group_samples_by_cohort=group_samples_by_cohort,
             min_cohort_size=min_cohort_size,
-            taxon_by=taxon_by,
         )
 
         # Access haplotypes.
@@ -214,9 +213,8 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
             df_cohorts.itertuples(), desc="Compute allele frequencies"
         )
         for cohort in cohorts_iterator:
-            cohort_taxon = getattr(cohort, taxon_by)
-            cohort_key = cohort_taxon, cohort.area, cohort.period
-            cohort_key_str = cohort_taxon + "_" + cohort.area + "_" + str(cohort.period)
+            cohort_key = cohort.taxon, cohort.area, cohort.period
+            cohort_key_str = cohort.taxon + "_" + cohort.area + "_" + str(cohort.period)
             # We reset all frequencies, counts to 0 for each cohort, nobs is set to the number of haplotypes
             n_samples = cohort.size
             hap_freq = {k: 0 for k in f_all.keys()}

@@ -530,13 +530,12 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         )
 
         debug("group samples to make cohorts")
-        group_samples_by_cohort = df_samples.groupby([taxon_by, "area", "period"])
+        group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
 
         debug("build cohorts dataframe")
         df_cohorts = _build_cohorts_from_sample_grouping(
             group_samples_by_cohort=group_samples_by_cohort,
             min_cohort_size=min_cohort_size,
-            taxon_by=taxon_by,
         )
 
         debug("figure out expected copy number")
@@ -561,8 +560,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         debug("build event count and nobs for each cohort")
         for cohort_index, cohort in enumerate(df_cohorts.itertuples()):
             # construct grouping key
-            cohort_taxon = getattr(cohort, taxon_by)
-            cohort_key = cohort_taxon, cohort.area, cohort.period
+            cohort_key = cohort.taxon, cohort.area, cohort.period
 
             # obtain sample indices for cohort
             sample_indices = group_samples_by_cohort.indices[cohort_key]
