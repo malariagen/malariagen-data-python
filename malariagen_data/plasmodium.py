@@ -51,6 +51,14 @@ class PlasmodiumDataResource:
         return config_content
 
     def sample_metadata(self):
+        """Access sample metadata and return as pandas dataframe.
+        Returns
+        -------
+        df : pandas.DataFrame
+            A dataframe of sample metadata on the samples that were sequenced as part of this resource.
+            Includes the time and place of collection, quality metrics, and accesion numbers.
+            One row per sample.
+        """
         if self._cache_sample_metadata is None:
             path = os.path.join(self._path, self.CONF["metadata_path"])
             with self._fs.open(path) as f:
@@ -58,6 +66,14 @@ class PlasmodiumDataResource:
         return self._cache_sample_metadata
 
     def _open_variant_calls_zarr(self):
+        """Open variant calls zarr.
+
+        Returns
+        -------
+        root : zarr.hierarchy.Group
+            Root of zarr containing information on variant calls.
+
+        """
         if self._cache_variant_calls_zarr is None:
             path = os.path.join(self._path, self.CONF["variant_calls_zarr_path"])
             store = _init_zarr_store(fs=self._fs, path=path)
@@ -180,6 +196,14 @@ class PlasmodiumDataResource:
         return ds
 
     def open_genome(self):
+        """Open the reference genome zarr.
+
+        Returns
+        -------
+        root : zarr.hierarchy.Group
+            Zarr hierarchy containing the reference genome sequence.
+
+        """
         if self._cache_genome is None:
             path = os.path.join(self._path, self.CONF["reference_path"])
             store = _init_zarr_store(fs=self._fs, path=path)
