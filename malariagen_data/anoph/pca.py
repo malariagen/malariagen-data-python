@@ -69,6 +69,7 @@ class AnophelesPca(
         max_missing_an: Optional[
             base_params.max_missing_an
         ] = pca_params.max_missing_an_default,
+        imputation_method: str = "mean",
         cohort_size: Optional[base_params.cohort_size] = None,
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
@@ -80,7 +81,7 @@ class AnophelesPca(
     ) -> Tuple[pca_params.df_pca, pca_params.evr]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "pca_v6"
+        name = "pca_v7"
 
         # Check that either sample_query xor sample_indices are provided.
         base_params._validate_sample_selection_params(
@@ -121,6 +122,7 @@ class AnophelesPca(
             site_class=site_class,
             min_minor_ac=min_minor_ac,
             max_missing_an=max_missing_an,
+            imputation_method=imputation_method,
             n_components=n_components,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
@@ -185,6 +187,7 @@ class AnophelesPca(
         site_class,
         min_minor_ac,
         max_missing_an,
+        imputation_method="mean",
         n_components,
         cohort_size,
         min_cohort_size,
@@ -231,22 +234,35 @@ class AnophelesPca(
                 loc_keep_fit = np.ones(len(samples), dtype=bool)
                 gn_fit = gn
 
-            # Impute missing calls (-127) with the mean value at each site.
+            # Impute missing calls (-127) using the chosen imputation method.
             if max_missing_an is not None and max_missing_an > 0:
                 gn_fit = gn_fit.astype(float)
                 gn = gn.astype(float)
                 for arr in [gn_fit, gn]:
                     missing_mask = arr == -127
-                    site_means = np.where(
-                        np.all(missing_mask, axis=1, keepdims=True),
-                        0,
-                        np.nanmean(
-                            np.where(missing_mask, np.nan, arr), axis=1, keepdims=True
-                        ),
-                    )
-                    arr[missing_mask] = np.take(
-                        site_means.flatten(), np.where(missing_mask)[0]
-                    )
+
+                    if imputation_method == "mean":
+                        site_means = np.where(
+                            np.all(missing_mask, axis=1, keepdims=True),
+                            0,
+                            np.nanmean(
+                                np.where(missing_mask, np.nan, arr),
+                                axis=1,
+                                keepdims=True,
+                            ),
+                        )
+                        fill_values = np.take(
+                            site_means.flatten(), np.where(missing_mask)[0]
+                        )
+                    elif imputation_method == "zero":
+                        fill_values = 0
+                    else:
+                        raise ValueError(
+                            f"Unknown imputation_method: {imputation_method!r}. "
+                            "Choose from 'mean' or 'zero'."
+                        )
+
+                    arr[missing_mask] = fill_values
 
             # Remove any sites where all genotypes are identical.
             loc_var = np.any(gn_fit != gn_fit[:, 0, np.newaxis], axis=1)
