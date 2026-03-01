@@ -548,7 +548,21 @@ def _get_within_intron_effect(base_effect, intron):
             effect = base_effect._replace(effect="INTRONIC", impact="MODIFIER")
 
     else:
-        # TODO intronic INDELs and MNPs
-        effect = base_effect._replace(effect="TODO intronic indels and MNPs")
+        # INDELs and MNPs — use the closest edge of the variant to the splice site
+        if strand == "+":
+            dist_5prime = ref_start - (intron_start - 1)
+            dist_3prime = -(ref_stop - (intron_stop + 1))
+        else:
+            dist_5prime = (intron_stop + 1) - ref_stop
+            dist_3prime = -((intron_start - 1) - ref_start)
+
+        indel_min_dist = min(dist_5prime, dist_3prime)
+
+        if indel_min_dist <= 2:
+            effect = base_effect._replace(effect="SPLICE_CORE", impact="HIGH")
+        elif indel_min_dist <= 7:
+            effect = base_effect._replace(effect="SPLICE_REGION", impact="MODERATE")
+        else:
+            effect = base_effect._replace(effect="INTRONIC", impact="MODIFIER")
 
     return effect
