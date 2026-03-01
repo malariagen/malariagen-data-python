@@ -384,6 +384,8 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             "alt_aa",
             "effect",
             "impact",
+            "grantham_score",
+            "sneath_score",
         )
         for c in keep_cols:
             agg[c] = "first"
