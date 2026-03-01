@@ -562,6 +562,10 @@ class AnophelesBase:
         release_manifest_df = self._read_sample_sets_manifest(
             single_release=sample_set_release
         )
+
+        if "unrestricted_use" not in release_manifest_df.columns:
+            return False
+
         sample_set_records_srs = release_manifest_df.loc[
             release_manifest_df["sample_set"] == sample_set, "unrestricted_use"
         ]
@@ -824,13 +828,27 @@ class AnophelesBase:
     def lookup_terms_of_use_info(self, sample_set: base_params.sample_set) -> dict:
         if self._cache_sample_set_to_terms_of_use_info is None:
             df_sample_sets = self._available_sample_sets().set_index("sample_set")
-            self._cache_sample_set_to_terms_of_use_info = df_sample_sets[
-                [
-                    "terms_of_use_expiry_date",
-                    "terms_of_use_url",
-                    "unrestricted_use",
-                ]
-            ].to_dict(orient="index")
+            expected_cols = [
+                "terms_of_use_expiry_date",
+                "terms_of_use_url",
+                "unrestricted_use",
+            ]
+            placeholder_values = {
+                "terms_of_use_expiry_date": "2099-12-31",
+                "terms_of_use_url": float("nan"),
+                "unrestricted_use": False,
+            }
+            available_cols = [c for c in expected_cols if c in df_sample_sets.columns]
+            if available_cols:
+                lookup = df_sample_sets[available_cols].to_dict(orient="index")
+                missing_cols = set(expected_cols) - set(available_cols)
+                if missing_cols:
+                    for ss in lookup:
+                        for mc in missing_cols:
+                            lookup[ss][mc] = placeholder_values[mc]
+            else:
+                lookup = {ss: dict(placeholder_values) for ss in df_sample_sets.index}
+            self._cache_sample_set_to_terms_of_use_info = lookup
         try:
             return self._cache_sample_set_to_terms_of_use_info[sample_set]
         except KeyError as e:

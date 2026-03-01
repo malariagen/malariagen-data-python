@@ -256,3 +256,119 @@ def test_lookup_study(fixture, api):
 
     with pytest.raises(ValueError):
         api.lookup_study("foobar")
+
+
+def _strip_terms_of_use_from_manifest(manifest_path):
+    """Rewrite a manifest TSV file without terms-of-use columns."""
+    df = pd.read_csv(manifest_path, sep="\t")
+    cols_to_drop = [c for c in df.columns if c.startswith("terms_of_use")]
+    df = df.drop(columns=cols_to_drop)
+    df.to_csv(manifest_path, index=False, sep="\t")
+
+
+def test_lookup_terms_of_use_info_missing_columns(ag3_sim_fixture):
+    import shutil
+
+    manifest_paths = [
+        ag3_sim_fixture.bucket_path / "v3" / "manifest.tsv",
+        ag3_sim_fixture.bucket_path / "v3.1" / "manifest.tsv",
+    ]
+    backups = []
+    for mp in manifest_paths:
+        bp = mp.parent / "manifest.tsv.bak"
+        shutil.copy2(mp, bp)
+        backups.append(bp)
+
+    try:
+        for mp in manifest_paths:
+            _strip_terms_of_use_from_manifest(mp)
+
+        api = AnophelesBase(
+            url=ag3_sim_fixture.url,
+            public_url=ag3_sim_fixture.url,
+            config_path=_ag3.CONFIG_PATH,
+            major_version_number=_ag3.MAJOR_VERSION_NUMBER,
+            major_version_path=_ag3.MAJOR_VERSION_PATH,
+            pre=True,
+        )
+
+        sample_set = "1177-VO-ML-LEHMANN-VMF00004"
+        info = api.lookup_terms_of_use_info(sample_set)
+        assert isinstance(info, dict)
+        assert "terms_of_use_expiry_date" in info
+        assert "terms_of_use_url" in info
+        assert "unrestricted_use" in info
+        assert info["terms_of_use_expiry_date"] == "2099-12-31"
+        assert pd.isna(info["terms_of_use_url"])
+        assert info["unrestricted_use"] is False
+    finally:
+        for mp, bp in zip(manifest_paths, backups):
+            shutil.move(bp, mp)
+
+
+def test_sample_set_has_unrestricted_use_missing_column(ag3_sim_fixture):
+    import shutil
+
+    manifest_paths = [
+        ag3_sim_fixture.bucket_path / "v3" / "manifest.tsv",
+        ag3_sim_fixture.bucket_path / "v3.1" / "manifest.tsv",
+    ]
+    backups = []
+    for mp in manifest_paths:
+        bp = mp.parent / "manifest.tsv.bak"
+        shutil.copy2(mp, bp)
+        backups.append(bp)
+
+    try:
+        for mp in manifest_paths:
+            _strip_terms_of_use_from_manifest(mp)
+
+        api = AnophelesBase(
+            url=ag3_sim_fixture.url,
+            public_url=ag3_sim_fixture.url,
+            config_path=_ag3.CONFIG_PATH,
+            major_version_number=_ag3.MAJOR_VERSION_NUMBER,
+            major_version_path=_ag3.MAJOR_VERSION_PATH,
+            pre=True,
+        )
+
+        sample_set = "1177-VO-ML-LEHMANN-VMF00004"
+        result = api._sample_set_has_unrestricted_use(sample_set=sample_set)
+        assert result is False
+    finally:
+        for mp, bp in zip(manifest_paths, backups):
+            shutil.move(bp, mp)
+
+
+def test_sample_sets_no_terms_of_use(ag3_sim_fixture):
+    import shutil
+
+    manifest_paths = [
+        ag3_sim_fixture.bucket_path / "v3" / "manifest.tsv",
+        ag3_sim_fixture.bucket_path / "v3.1" / "manifest.tsv",
+    ]
+    backups = []
+    for mp in manifest_paths:
+        bp = mp.parent / "manifest.tsv.bak"
+        shutil.copy2(mp, bp)
+        backups.append(bp)
+
+    try:
+        for mp in manifest_paths:
+            _strip_terms_of_use_from_manifest(mp)
+
+        api = AnophelesBase(
+            url=ag3_sim_fixture.url,
+            public_url=ag3_sim_fixture.url,
+            config_path=_ag3.CONFIG_PATH,
+            major_version_number=_ag3.MAJOR_VERSION_NUMBER,
+            major_version_path=_ag3.MAJOR_VERSION_PATH,
+            pre=True,
+        )
+
+        df = api.sample_sets(release="3.1")
+        assert isinstance(df, pd.DataFrame)
+        assert len(df) > 0
+    finally:
+        for mp, bp in zip(manifest_paths, backups):
+            shutil.move(bp, mp)
