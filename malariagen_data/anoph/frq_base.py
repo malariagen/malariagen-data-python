@@ -23,16 +23,15 @@ def _prep_samples_for_cohort_grouping(
     df_samples = df_samples.copy()
 
     # Determine whether to filter "intermediate"/"unassigned" taxon values.
-    # When filter_unassigned is None (default), auto-apply filtering only
-    # when using the default "taxon" column. Users can explicitly override
-    # with True/False.
     # See: https://github.com/malariagen/malariagen-data-python/issues/806
     if filter_unassigned is None:
+        # Auto-apply filtering only when using the default "taxon" column.
+        # Users can explicitly override with True/False.
         filter_unassigned = taxon_by == "taxon"
 
-    # Filter out samples with "intermediate" or "unassigned" taxon values
-    # by setting them to None, so they are excluded from cohort grouping.
     if filter_unassigned:
+        # Remove samples with "intermediate" or "unassigned" taxon values,
+        # as we only want cohorts with clean taxon calls.
         loc_intermediate_taxon = (
             df_samples[taxon_by].str.startswith("intermediate").fillna(False)
         )
