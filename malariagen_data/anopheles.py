@@ -11,6 +11,7 @@ import pandas as pd
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 from numpydoc_decorator import doc  # type: ignore
+from .util import parse_single_region
 
 
 from .anoph import (
@@ -563,6 +564,45 @@ class AnophelesDataResource(
         )
 
         return sample_id, sample_set, windows, counts
+    
+    @check_types
+    @doc(
+        summary="Return windowed heterozygosity for a single sample over a genome region.",
+    )
+    def heterozygosity(
+        self,
+        sample: base_params.sample,
+        region: base_params.region,
+        window_size: het_params.window_size = het_params.window_size_default,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
+        sample_set: Optional[base_params.sample_set] = None,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Returns
+        -------
+        windows : np.ndarray of shape (n_windows, 2)
+            Start and end positions of each window.
+        counts : np.ndarray of shape (n_windows,)
+            Number of heterozygous sites in each window.
+        """
+        # Ensure region object
+        resolved_region: Region = parse_single_region(self, region)
+        del region
+
+        # Delegate to the private helper
+        _, _, windows, counts = self._sample_count_het(
+            sample=sample,
+            region=resolved_region,
+            site_mask=site_mask,
+            window_size=window_size,
+            sample_set=sample_set,
+            chunks=chunks,
+            inline_array=inline_array,
+        )
+
+        return windows, counts
 
     @property
     @abstractmethod
