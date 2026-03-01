@@ -133,6 +133,13 @@ class AnophelesG123Analysis(
             chunks=chunks,
         )
 
+        if gt.shape[0] < window_size:
+            raise ValueError(
+                f"Not enough sites ({gt.shape[0]}) for window size "
+                f"({window_size}). Please reduce the window size or "
+                f"use different site selection criteria."
+            )
+
         with self._spinner("Compute G123"):
             g123 = allel.moving_statistic(gt, statistic=_garud_g123, size=window_size)
             x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
@@ -170,7 +177,7 @@ class AnophelesG123Analysis(
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "g123_gwss_v1"
+        name = "g123_gwss_v2"
 
         valid_sites = self.phasing_analysis_ids + ("all", "segregating")
         if sites not in valid_sites:
@@ -181,7 +188,7 @@ class AnophelesG123Analysis(
         params = dict(
             contig=contig,
             sites=sites,
-            site_mask=site_mask,
+            site_mask=self._prep_optional_site_mask_param(site_mask=site_mask),
             window_size=window_size,
             sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             # N.B., do not be tempted to convert this sample query into integer
@@ -240,6 +247,12 @@ class AnophelesG123Analysis(
 
         calibration_runs: Dict[str, np.ndarray] = dict()
         for window_size in self._progress(window_sizes, desc="Compute G123"):
+            if gt.shape[0] < window_size:
+                raise ValueError(
+                    f"Not enough sites ({gt.shape[0]}) for window size "
+                    f"({window_size}). Please reduce the window size or "
+                    f"use different site selection criteria."
+                )
             g123 = allel.moving_statistic(gt, statistic=_garud_g123, size=window_size)
             calibration_runs[str(window_size)] = g123
 
@@ -628,6 +641,9 @@ def _garud_g123(gt):
 
     # convert to array of sorted frequencies
     f = np.sort(np.fromiter(frq_counter.values(), dtype=float))[::-1]
+
+    if f.size == 0:
+        return np.nan
 
     # compute G123
     g123 = np.sum(f[:3]) ** 2 + np.sum(f[3:] ** 2)

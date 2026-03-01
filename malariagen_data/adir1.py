@@ -19,6 +19,10 @@ TAXON_COLORS = {
     "dirus": TAXON_PALETTE[0],
 }
 
+XPEHH_GWSS_CACHE_NAME = "adir1_xpehh_gwss_v1"
+IHS_GWSS_CACHE_NAME = "adir1_ihs_gwss_v1"
+ROH_HMM_CACHE_NAME = "adir1_roh_hmm_v1"
+
 
 class Adir1(AnophelesDataResource):
     """Provides access to data from Adir1.0 releases.
@@ -70,6 +74,10 @@ class Adir1(AnophelesDataResource):
         >>> adir1 = malariagen_data.Adir1(results_cache="results_cache")
 
     """
+
+    _xpehh_gwss_cache_name = XPEHH_GWSS_CACHE_NAME
+    _ihs_gwss_cache_name = IHS_GWSS_CACHE_NAME
+    _roh_hmm_cache_name = ROH_HMM_CACHE_NAME
 
     def __init__(
         self,
