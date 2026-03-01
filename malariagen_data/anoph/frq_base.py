@@ -101,21 +101,26 @@ def _build_cohorts_from_sample_grouping(
     df_cohorts = df_cohorts.reset_index()
 
     # Add cohort helper variables.
-    cohort_period_start = df_cohorts["period"].apply(lambda v: v.start_time)
-    cohort_period_end = df_cohorts["period"].apply(lambda v: v.end_time)
-    df_cohorts["period_start"] = cohort_period_start
-    df_cohorts["period_end"] = cohort_period_end
+    df_cohorts["period_start"] = df_cohorts["period"].dt.start_time
+    df_cohorts["period_end"] = df_cohorts["period"].dt.end_time
     # Create a label that is similar to the cohort metadata,
     # although this won't be perfect.
     if taxon_by == frq_params.taxon_by_default:
-        df_cohorts["label"] = df_cohorts.apply(
-            lambda v: f"{v.area}_{v[taxon_by][:4]}_{v.period}", axis="columns"
+        df_cohorts["label"] = (
+            df_cohorts["area"].astype(str)
+            + "_"
+            + df_cohorts[taxon_by].astype(str).str[:4]
+            + "_"
+            + df_cohorts["period"].astype(str)
         )
     else:
         # Replace non-alphanumeric characters in the taxon with underscores.
-        df_cohorts["label"] = df_cohorts.apply(
-            lambda v: f"{v.area}_{re.sub(r'[^A-Za-z0-9]+', '_', str(v[taxon_by]))}_{v.period}",
-            axis="columns",
+        df_cohorts["label"] = (
+            df_cohorts["area"].astype(str)
+            + "_"
+            + df_cohorts[taxon_by].astype(str).str.replace(r"[^A-Za-z0-9]+", "_", regex=True)
+            + "_"
+            + df_cohorts["period"].astype(str)
         )
 
     # Apply minimum cohort size.
@@ -260,14 +265,7 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
             index = list(index_names_as_list)
         df = df.reset_index().copy()
         if isinstance(index, list):
-            index_col = (
-                df[index]
-                .astype(str)
-                .apply(
-                    lambda row: ", ".join([o for o in row if o is not None]),
-                    axis="columns",
-                )
-            )
+            index_col = df[index].astype(str).agg(", ".join, axis=1)
         else:
             assert isinstance(index, str)
             index_col = df[index].astype(str)

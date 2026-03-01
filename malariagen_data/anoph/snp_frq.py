@@ -715,9 +715,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         df_grouper = ds_snp_frq[
             ["variant_position", "variant_aa_change"]
         ].to_dataframe()
-        grouper_var = df_grouper.apply(
-            lambda row: "_".join([str(v) for v in row]), axis="columns"
-        )
+        grouper_var = df_grouper.astype(str).agg("_".join, axis=1)
         ds_snp_frq["variant_position_aa_change"] = "variants", grouper_var
 
         # Group by position and amino acid change.

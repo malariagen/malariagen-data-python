@@ -296,7 +296,7 @@ class AnophelesCnvData(
             marker = path + "/.zmetadata"
             if not self._fs.exists(marker):
                 raise ValueError(
-                    f"CNV coverage calls analysis f{analysis!r} not implemented for sample set {sample_set!r}"
+                    f"CNV coverage calls analysis {analysis!r} not implemented for sample set {sample_set!r}"
                 )
             store = _init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)

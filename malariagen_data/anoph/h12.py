@@ -625,7 +625,7 @@ class AnophelesH12Analysis(
         )
 
         # Plot H12.
-        for i, (cohort_label, (x, h12, contig)) in enumerate(res.items()):
+        for i, (cohort_label, (x, h12, contig_arr)) in enumerate(res.items()):
             fig.scatter(
                 x=x,
                 y=h12,
