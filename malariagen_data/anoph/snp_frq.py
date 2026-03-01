@@ -450,6 +450,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         taxon_by: frq_params.taxon_by = frq_params.taxon_by_default,
+        filter_unassigned: Optional[frq_params.filter_unassigned] = None,
     ) -> xr.Dataset:
         # Load sample metadata.
         df_samples = self.sample_metadata(
@@ -464,6 +465,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             area_by=area_by,
             period_by=period_by,
             taxon_by=taxon_by,
+            filter_unassigned=filter_unassigned,
         )
 
         # Group samples to make cohorts.
@@ -681,6 +683,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         taxon_by: frq_params.taxon_by = frq_params.taxon_by_default,
+        filter_unassigned: Optional[frq_params.filter_unassigned] = None,
     ) -> xr.Dataset:
         # Begin by computing SNP allele frequencies.
         ds_snp_frq = self.snp_allele_frequencies_advanced(
@@ -699,6 +702,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             chunks=chunks,
             inline_array=inline_array,
             taxon_by=taxon_by,
+            filter_unassigned=filter_unassigned,
         )
 
         # N.B., we need to worry about the possibility of the
