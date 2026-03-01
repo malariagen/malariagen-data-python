@@ -1,3 +1,4 @@
+from functools import cached_property
 from typing import Optional, Dict, Union, Callable, List
 import warnings
 
@@ -40,9 +41,6 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-        # Set up cache variables.
-        self._cache_annotator = None
-
     def _snp_df_melt(self, *, ds_snp: xr.Dataset) -> pd.DataFrame:
         """Set up a dataframe with SNP site and filter data,
         melting each alternate allele into a separate row."""
@@ -81,13 +79,12 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
         return df_snps
 
+    @cached_property
     def _snp_effect_annotator(self):
         """Set up variant effect annotator."""
-        if self._cache_annotator is None:
-            self._cache_annotator = veff.Annotator(
-                genome=self.open_genome(), genome_features=self.genome_features()
-            )
-        return self._cache_annotator
+        return veff.Annotator(
+            genome=self.open_genome(), genome_features=self.genome_features()
+        )
 
     @_check_types
     @doc(
@@ -112,7 +109,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         df_snps = self._snp_df_melt(ds_snp=ds_snp)
 
         # Setup variant effect annotator.
-        ann = self._snp_effect_annotator()
+        ann = self._snp_effect_annotator
 
         # Add effects to the dataframe.
         ann.get_effects(transcript=transcript, variants=df_snps)
@@ -249,7 +246,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
         if effects:
             # Add effect annotations.
-            ann = self._snp_effect_annotator()
+            ann = self._snp_effect_annotator
             ann.get_effects(
                 transcript=transcript, variants=df_snps, progress=self._progress
             )
@@ -453,6 +450,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         taxon_by: frq_params.taxon_by = frq_params.taxon_by_default,
+        filter_unassigned: Optional[frq_params.filter_unassigned] = None,
     ) -> xr.Dataset:
         # Load sample metadata.
         df_samples = self.sample_metadata(
@@ -467,6 +465,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             area_by=area_by,
             period_by=period_by,
             taxon_by=taxon_by,
+            filter_unassigned=filter_unassigned,
         )
 
         # Group samples to make cohorts.
@@ -586,7 +585,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             frequency = np.compress(loc_variant, frequency, axis=0)
 
         # Set up variant effect annotator.
-        ann = self._snp_effect_annotator()
+        ann = self._snp_effect_annotator
 
         # Add effects to the dataframe.
         ann.get_effects(
@@ -684,6 +683,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         taxon_by: frq_params.taxon_by = frq_params.taxon_by_default,
+        filter_unassigned: Optional[frq_params.filter_unassigned] = None,
     ) -> xr.Dataset:
         # Begin by computing SNP allele frequencies.
         ds_snp_frq = self.snp_allele_frequencies_advanced(
@@ -702,6 +702,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             chunks=chunks,
             inline_array=inline_array,
             taxon_by=taxon_by,
+            filter_unassigned=filter_unassigned,
         )
 
         # N.B., we need to worry about the possibility of the
@@ -832,7 +833,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         df_snps = pd.concat([df_snps, df_counts], axis=1)
 
         # Add effect annotations.
-        ann = self._snp_effect_annotator()
+        ann = self._snp_effect_annotator
         ann.get_effects(
             transcript=transcript, variants=df_snps, progress=self._progress
         )
