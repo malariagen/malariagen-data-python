@@ -950,6 +950,63 @@ def test_snp_calls_with_site_class_param(ag3_sim_api: AnophelesSnpData, site_cla
     assert ds2.sizes["variants"] < ds1.sizes["variants"]
 
 
+def test_locate_site_class_cache_is_bounded(ag3_sim_api: AnophelesSnpData):
+    """_cache_locate_site_class must never grow beyond _LOCATE_SITE_CLASS_CACHE_MAXSIZE
+    even when all contigs and site classes are exercised in a single session."""
+    from malariagen_data.anoph.snp_data import _LOCATE_SITE_CLASS_CACHE_MAXSIZE
+
+    site_classes = [
+        "CDS_DEG_4",
+        "CDS_DEG_2_SIMPLE",
+        "CDS_DEG_0",
+        "INTRON_SHORT",
+        "INTRON_LONG",
+        "INTRON_SPLICE_5PRIME",
+        "INTRON_SPLICE_3PRIME",
+        "UTR_5PRIME",
+        "UTR_3PRIME",
+        "INTERGENIC",
+    ]
+    for contig in ag3_sim_api.contigs:
+        for site_class in site_classes:
+            ag3_sim_api.snp_calls(region=contig, site_class=site_class)
+
+    assert len(ag3_sim_api._cache_locate_site_class) <= _LOCATE_SITE_CLASS_CACHE_MAXSIZE
+
+
+def test_snp_calls_cache_is_per_instance(ag3_sim_api: AnophelesSnpData):
+    """_cached_snp_calls must be a per-instance lru_cache, not a class-level one.
+
+    A class-level @lru_cache stores `self` as a key in a class-global dict,
+    which prevents garbage collection of stale API instances and leaks all their
+    subcaches.  The fix stores the cache on the instance in __init__, so each
+    object has its own independent cache that is freed with the object.
+    """
+    # (1) The cache wrapper must live on the instance, not on the class.
+    assert "_cached_snp_calls" in ag3_sim_api.__dict__, (
+        "_cached_snp_calls should be an instance attribute (per-instance lru_cache), "
+        "not a class-level descriptor"
+    )
+
+    # (2) It must be a real lru_cache wrapper (exposes cache_info / cache_clear).
+    assert hasattr(ag3_sim_api._cached_snp_calls, "cache_info")
+    assert hasattr(ag3_sim_api._cached_snp_calls, "cache_clear")
+
+    # (3) Populate the cache and confirm it registers hits.
+    ag3_sim_api.snp_calls(region="3L")
+    ag3_sim_api.snp_calls(region="3L")  # second call — should be a cache hit
+    info = ag3_sim_api._cached_snp_calls.cache_info()
+    assert info.currsize > 0
+    assert info.hits >= 1
+
+    # (4) The class itself must NOT own _cached_snp_calls (it must not be a
+    #     class-level descriptor installed by @lru_cache).
+    assert "_cached_snp_calls" not in AnophelesSnpData.__dict__, (
+        "_cached_snp_calls must not be a class-level attribute; "
+        "a class-level @lru_cache would pin `self` in a global cache dict"
+    )
+
+
 @pytest.mark.parametrize("chrom", ["2RL", "3RL"])
 def test_snp_calls_with_virtual_contigs(ag3_sim_api, chrom):
     api = ag3_sim_api
