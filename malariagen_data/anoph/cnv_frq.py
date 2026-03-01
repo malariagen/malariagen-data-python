@@ -446,6 +446,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         taxon_by: frq_params.taxon_by = frq_params.taxon_by_default,
+        filter_unassigned: Optional[frq_params.filter_unassigned] = None,
     ) -> xr.Dataset:
         regions: List[Region] = _parse_multi_region(self, region)
         del region
@@ -468,6 +469,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
                     chunks=chunks,
                     inline_array=inline_array,
                     taxon_by=taxon_by,
+                    filter_unassigned=filter_unassigned,
                 )
                 for r in regions
             ],
@@ -497,6 +499,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         chunks,
         inline_array,
         taxon_by,
+        filter_unassigned,
     ):
         debug = self._log.debug
 
@@ -527,6 +530,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
             area_by=area_by,
             period_by=period_by,
             taxon_by=taxon_by,
+            filter_unassigned=filter_unassigned,
         )
 
         debug("group samples to make cohorts")
