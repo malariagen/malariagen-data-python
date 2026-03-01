@@ -490,6 +490,12 @@ def _init_filesystem(url, **kwargs):
     # Process the URL using fsspec.
     fs, path = url_to_fs(url, **storage_options)
 
+    # On some systems (especially Windows), fsspec may leave the path quoted
+    # if the URL was created using as_uri(), which leads to FileNotFoundError.
+    from urllib.parse import unquote
+
+    path = unquote(path)
+
     # Path compatibility, fsspec/gcsfs behaviour varies between versions.
     while path.endswith("/"):
         path = path[:-1]

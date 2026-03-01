@@ -32,11 +32,11 @@ def _prep_samples_for_cohort_grouping(
         # Remove samples with "intermediate" or "unassigned" taxon values,
         # as we only want cohorts with clean taxon calls.
         loc_intermediate_taxon = (
-            df_samples[taxon_by].str.startswith("intermediate").fillna(False)
+            df_samples[taxon_by].str.startswith("intermediate").fillna(False).infer_objects(copy=False)
         )
         df_samples.loc[loc_intermediate_taxon, taxon_by] = None
         loc_unassigned_taxon = (
-            df_samples[taxon_by].str.startswith("unassigned").fillna(False)
+            df_samples[taxon_by].str.startswith("unassigned").fillna(False).infer_objects(copy=False)
         )
         df_samples.loc[loc_unassigned_taxon, taxon_by] = None
 

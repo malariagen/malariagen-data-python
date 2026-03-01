@@ -1,4 +1,5 @@
 import os
+import sys
 
 import json
 from contextlib import nullcontext
@@ -218,6 +219,11 @@ class AnophelesBase:
             if desc:
                 # For consistent behaviour with tqdm.
                 desc += ":"
+
+            if sys.platform == "win32" and spinner is None:
+                # Standard yaspin dots use unicode characters that fail on Windows.
+                spinner = "line"
+
             return yaspin(text=desc, spinner=spinner, side=side, timer=timer, **kwargs)
         else:
             return nullcontext()
