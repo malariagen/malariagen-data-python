@@ -629,6 +629,9 @@ def _garud_g123(gt):
     # convert to array of sorted frequencies
     f = np.sort(np.fromiter(frq_counter.values(), dtype=float))[::-1]
 
+    if f.size == 0:
+        return np.nan
+
     # compute G123
     g123 = np.sum(f[:3]) ** 2 + np.sum(f[3:] ** 2)
 
