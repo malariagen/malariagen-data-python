@@ -1872,9 +1872,10 @@ class AnophelesSnpData(
 
                 # Apply missingness condition.
                 if max_missing_an is not None:
-                    an_missing = (ds_out.sizes["samples"] * ds_out.sizes["ploidy"]) - an
+                    an_total = ds_out.sizes["samples"] * ds_out.sizes["ploidy"]
+                    an_missing = an_total - an
                     if isinstance(max_missing_an, float):
-                        an_missing_frac = an_missing / an
+                        an_missing_frac = an_missing / an_total
                         loc_missing = an_missing_frac <= max_missing_an
                     else:
                         loc_missing = an_missing <= max_missing_an
