@@ -293,14 +293,8 @@ def test_lookup_terms_of_use_info_missing_columns(ag3_sim_fixture):
         )
 
         sample_set = "1177-VO-ML-LEHMANN-VMF00004"
-        info = api.lookup_terms_of_use_info(sample_set)
-        assert isinstance(info, dict)
-        assert "terms_of_use_expiry_date" in info
-        assert "terms_of_use_url" in info
-        assert "unrestricted_use" in info
-        assert info["terms_of_use_expiry_date"] == "2099-12-31"
-        assert pd.isna(info["terms_of_use_url"])
-        assert info["unrestricted_use"] is False
+        with pytest.raises(ValueError, match="Terms-of-use columns missing"):
+            api.lookup_terms_of_use_info(sample_set)
     finally:
         for mp, bp in zip(manifest_paths, backups):
             shutil.move(bp, mp)
@@ -333,8 +327,8 @@ def test_sample_set_has_unrestricted_use_missing_column(ag3_sim_fixture):
         )
 
         sample_set = "1177-VO-ML-LEHMANN-VMF00004"
-        result = api._sample_set_has_unrestricted_use(sample_set=sample_set)
-        assert result is False
+        with pytest.raises(ValueError, match="unrestricted_use.*missing"):
+            api._sample_set_has_unrestricted_use(sample_set=sample_set)
     finally:
         for mp, bp in zip(manifest_paths, backups):
             shutil.move(bp, mp)
