@@ -44,6 +44,13 @@ class AnophelesPca(
             `random_seed`.
 
         """,
+        parameters=dict(
+            imputation_method="""
+                Method to use for imputing missing genotype calls. Options are
+                'mean' (replace missing calls with the mean value at each site,
+                the default) or 'zero' (replace missing calls with zero).
+            """,
+        ),
         returns=("df_pca", "evr"),
         notes="""
             This computation may take some time to run, depending on your computing
