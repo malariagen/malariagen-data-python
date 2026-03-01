@@ -1,4 +1,3 @@
-import re
 from textwrap import dedent
 from typing import Optional, Union, List
 
@@ -118,7 +117,9 @@ def _build_cohorts_from_sample_grouping(
         df_cohorts["label"] = (
             df_cohorts["area"].astype(str)
             + "_"
-            + df_cohorts[taxon_by].astype(str).str.replace(r"[^A-Za-z0-9]+", "_", regex=True)
+            + df_cohorts[taxon_by]
+            .astype(str)
+            .str.replace(r"[^A-Za-z0-9]+", "_", regex=True)
             + "_"
             + df_cohorts["period"].astype(str)
         )
