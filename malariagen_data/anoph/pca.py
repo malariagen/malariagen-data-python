@@ -257,7 +257,9 @@ class AnophelesPca(
                             if len(non_missing) == 0:
                                 site_modes.append(0)
                             else:
-                                values, counts = np.unique(non_missing, return_counts=True)
+                                values, counts = np.unique(
+                                    non_missing, return_counts=True
+                                )
                                 site_modes.append(values[np.argmax(counts)])
                         site_modes = np.array(site_modes)
                         fill_values = np.take(site_modes, np.where(missing_mask)[0])
