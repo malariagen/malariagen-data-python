@@ -328,3 +328,10 @@ def test_h12_gwss_multi_with_analysis(fixture, api: AnophelesH12Analysis):
             params["min_cohort_size"] = n2 + 1
             with pytest.raises(ValueError):
                 api.plot_h12_gwss_multi_panel(**params)
+
+
+def test_garud_h12_empty_window():
+    import numpy as np
+    from malariagen_data.anoph.h12 import _garud_h12
+
+    assert np.isnan(_garud_h12(np.empty((0, 0), dtype=int)))

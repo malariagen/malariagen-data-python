@@ -15,8 +15,11 @@ authors = [
 license = "MIT"
 
 [tool.poetry.dependencies]
+# We should try to remain compatible with the latest
+# package versions in Google Colab:
+# https://github.com/googlecolab/backend-info
 python = ">=3.10,<3.13"
-numpy = "==1.26.4"
+numpy = ">=2.0.2,<2.1"
 numba = ">=0.60.0"
 llvmlite = "*"
 scipy = "*"

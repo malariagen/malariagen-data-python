@@ -11,8 +11,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        python-version: ["3.10"]
-        numpy-version: ["numpy==1.26.4"]
+        python-version: ["3.10", "3.11", "3.12"]
     runs-on: ubuntu-latest
 
     steps:
@@ -20,16 +19,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup python
-        uses: actions/setup-python@v5
+        uses: ./.github/actions/setup-python
         with:
           python-version: ${{ matrix.python-version }}
-          cache: "pip"
-
-      - name: Install package
-        run: pip install "${{ matrix.numpy-version }}" .[dev]
 
       - name: Verify NumPy version
-        run: python -c "import numpy; print('NumPy version:', numpy.__version__)"
+        run: poetry run python -c "import numpy; print('NumPy version:', numpy.__version__)"
 
       - name: Run unit tests
-        run: pytest -v tests --ignore tests/integration --typeguard-packages=malariagen_data,malariagen_data.anoph
+        run: poetry run pytest -v tests --ignore tests/integration --typeguard-packages=malariagen_data,malariagen_data.anoph

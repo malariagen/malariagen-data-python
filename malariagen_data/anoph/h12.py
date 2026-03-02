@@ -625,7 +625,7 @@ class AnophelesH12Analysis(
         )
 
         # Plot H12.
-        for i, (cohort_label, (x, h12, contig)) in enumerate(res.items()):
+        for i, (cohort_label, (x, h12, contig_idx)) in enumerate(res.items()):
             fig.scatter(
                 x=x,
                 y=h12,
@@ -847,6 +847,9 @@ def _garud_h12(ht):
 
     # Convert to array of sorted frequencies.
     f = np.sort(np.fromiter(frq_counter.values(), dtype=float))[::-1]
+
+    if f.size == 0:
+        return np.nan
 
     # Compute H12.
     h12 = np.sum(f[:2]) ** 2 + np.sum(f[2:] ** 2)
