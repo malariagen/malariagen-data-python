@@ -1,4 +1,3 @@
-# mypy: disable-error-code="call-arg,arg-type,attr-defined,list-item"
 import warnings
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple, Union

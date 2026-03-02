@@ -1,4 +1,3 @@
-# mypy: disable-error-code="call-arg,arg-type,attr-defined,list-item"
 from typing import Tuple, Optional
 
 import numpy as np

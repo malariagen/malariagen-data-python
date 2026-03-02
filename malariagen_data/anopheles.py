@@ -1,4 +1,3 @@
-# mypy: disable-error-code="call-arg,arg-type,attr-defined,list-item"
 from abc import abstractmethod
 from typing import Any, Dict, Mapping, Optional, Tuple, Sequence
 

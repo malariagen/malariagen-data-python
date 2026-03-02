@@ -107,3 +107,10 @@ line-length = 88
 
 [tool.ruff.lint]
 extend-select = []
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["bokeh", "bokeh.*"]
+follow_imports = "skip"
