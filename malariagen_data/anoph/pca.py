@@ -81,7 +81,7 @@ class AnophelesPca(
         cohort_size: Optional[base_params.cohort_size] = None,
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
-        cohort_size_query: Optional[pca_params.cohort_size_query] = None,
+        cohort_size_column: Optional[pca_params.cohort_size_column] = None,
         exclude_samples: Optional[base_params.samples] = None,
         fit_exclude_samples: Optional[base_params.samples] = None,
         random_seed: base_params.random_seed = 42,
@@ -90,7 +90,7 @@ class AnophelesPca(
     ) -> Tuple[pca_params.df_pca, pca_params.evr]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "pca_v8"
+        name = "pca_v9"
 
         # Check that either sample_query xor sample_indices are provided.
         base_params._validate_sample_selection_params(
@@ -121,12 +121,15 @@ class AnophelesPca(
         del region
         del site_mask
 
-        if cohort_size_query is not None:
-            prepared_sample_indices = self._downsample_sample_indices_by_cohort(
+        if cohort_size_column is not None:
+            (
+                prepared_sample_sets,
+                prepared_sample_indices,
+            ) = self._downsample_sample_indices_by_cohort(
                 sample_sets=prepared_sample_sets,
                 sample_indices=prepared_sample_indices,
                 cohort_size=cohort_size,
-                cohort_size_query=cohort_size_query,
+                cohort_size_column=cohort_size_column,
                 random_seed=random_seed,
             )
 
@@ -145,7 +148,7 @@ class AnophelesPca(
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
-            cohort_size_query=cohort_size_query,
+            cohort_size_column=cohort_size_column,
             exclude_samples=exclude_samples,
             fit_exclude_samples=fit_exclude_samples,
             random_seed=random_seed,
@@ -200,22 +203,22 @@ class AnophelesPca(
         sample_sets,
         sample_indices,
         cohort_size,
-        cohort_size_query,
+        cohort_size_column,
         random_seed,
-    ) -> List[int]:
+    ) -> Tuple[List[str], List[int]]:
         if cohort_size is None:
             raise ValueError(
-                "cohort_size must be provided when cohort_size_query is set."
+                "cohort_size must be provided when cohort_size_column is set."
             )
 
         df_samples = self.sample_metadata(sample_sets=sample_sets)
 
-        cohort_column = cohort_size_query
+        cohort_column = cohort_size_column
         if cohort_column not in df_samples.columns:
-            cohort_column = f"cohort_{cohort_size_query}"
+            cohort_column = f"cohort_{cohort_size_column}"
             if cohort_column not in df_samples.columns:
                 raise ValueError(
-                    f"{cohort_size_query!r} is not a known column in the sample metadata"
+                    f"{cohort_size_column!r} is not a known column in the sample metadata"
                 )
 
         if sample_indices is None:
@@ -251,7 +254,28 @@ class AnophelesPca(
             selected_sample_indices.extend(cohort_sample_indices.tolist())
 
         selected_sample_indices.sort()
-        return selected_sample_indices
+
+        selected_df = df_samples.iloc[selected_sample_indices]
+        selected_sample_ids = selected_df["sample_id"].to_numpy(dtype="U")
+        selected_sample_sets = set(selected_df["sample_set"])
+
+        # Keep only sample sets that still have selected samples, preserving input order.
+        updated_sample_sets = [s for s in sample_sets if s in selected_sample_sets]
+
+        if updated_sample_sets == sample_sets:
+            return updated_sample_sets, selected_sample_indices
+
+        # Remap sample indices to align with the reduced sample sets.
+        updated_samples_df = self.sample_metadata(sample_sets=updated_sample_sets)
+        sample_id_to_index = {
+            sample_id: i
+            for i, sample_id in enumerate(updated_samples_df["sample_id"].to_numpy(dtype="U"))
+        }
+        updated_sample_indices = sorted(
+            sample_id_to_index[sample_id] for sample_id in selected_sample_ids
+        )
+
+        return updated_sample_sets, updated_sample_indices
 
     def _pca(
         self,
@@ -270,7 +294,7 @@ class AnophelesPca(
         cohort_size,
         min_cohort_size,
         max_cohort_size,
-        cohort_size_query,
+        cohort_size_column,
         exclude_samples,
         fit_exclude_samples,
         random_seed,
@@ -280,7 +304,7 @@ class AnophelesPca(
         cohort_size_for_diplotypes = cohort_size
         min_cohort_size_for_diplotypes = min_cohort_size
         max_cohort_size_for_diplotypes = max_cohort_size
-        if cohort_size_query is not None:
+        if cohort_size_column is not None:
             # Downsampling has already been applied via sample indices.
             cohort_size_for_diplotypes = None
             min_cohort_size_for_diplotypes = None

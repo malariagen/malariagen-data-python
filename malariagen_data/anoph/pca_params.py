@@ -12,7 +12,7 @@ n_components: TypeAlias = Annotated[
 
 n_components_default: n_components = 20
 
-cohort_size_query: TypeAlias = Annotated[
+cohort_size_column: TypeAlias = Annotated[
     str,
     """
     Name of a sample metadata column used to define cohorts for per-cohort
