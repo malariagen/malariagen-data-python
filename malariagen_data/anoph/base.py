@@ -600,9 +600,10 @@ class AnophelesBase:
             # Get today's date in ISO format
             today_date_iso = date.today().isoformat()
             # Add an "unrestricted_use" column, set to True if terms-of-use expiry date <= today's date.
-            df["unrestricted_use"] = df[terms_of_use_expiry_date_column].apply(
-                lambda d: True if pd.isna(d) else (d <= today_date_iso)
+            df["unrestricted_use"] = pd.isna(df[terms_of_use_expiry_date_column]) | (
+                df[terms_of_use_expiry_date_column] <= today_date_iso
             )
+
             # Make the "unrestricted_use" column a nullable boolean, to allow missing data.
             df["unrestricted_use"] = df["unrestricted_use"].astype(pd.BooleanDtype())
 
