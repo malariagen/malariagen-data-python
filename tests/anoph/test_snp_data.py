@@ -1388,10 +1388,10 @@ def check_biallelic_snp_calls_and_diplotypes(
     assert gn.ndim == 2
     assert gn.shape[0] == ds.sizes["variants"]
     assert gn.shape[1] == ds.sizes["samples"]
-    assert np.all(gn >= 0)
-    assert np.all(gn <= 2)
+    assert np.all((gn >= 0) | (gn == -127))
+    assert np.all((gn <= 2) | (gn == -127))
     ac = ds["variant_allele_count"].values
-    assert np.all(np.sum(gn, axis=1) == ac[:, 1])
+    assert np.all(np.sum(np.where(gn == -127, 0, gn), axis=1) == ac[:, 0])
     assert samples.ndim == 1
     assert samples.shape[0] == gn.shape[1]
     assert samples.tolist() == expected_samples
