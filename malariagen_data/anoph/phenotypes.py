@@ -1,6 +1,6 @@
 import pandas as pd
 import xarray as xr
-from typing import Callable, Optional, List, Any, TYPE_CHECKING
+from typing import Callable, Optional, List, Any, TYPE_CHECKING, Sequence, Union
 import warnings
 import fsspec
 import numpy as np
@@ -577,13 +577,39 @@ class AnophelesPhenotypeData:
         return binary_series
 
     @_check_types
+    def _association_results_to_dataframe(
+        self,
+        data: Union[pd.DataFrame, xr.Dataset],
+        required_columns: Sequence[str],
+    ) -> pd.DataFrame:
+        if isinstance(data, pd.DataFrame):
+            df = data.copy()
+        elif isinstance(data, xr.Dataset):
+            missing_vars = [c for c in required_columns if c not in data]
+            if missing_vars:
+                raise ValueError(
+                    f"Missing required variables in xarray dataset: {missing_vars}"
+                )
+            df = data[list(required_columns)].to_dataframe().reset_index()
+        else:
+            raise TypeError("data must be a pandas DataFrame or xarray Dataset")
+
+        missing_cols = set(required_columns) - set(df.columns)
+        if missing_cols:
+            raise ValueError(f"Missing required columns: {sorted(missing_cols)}")
+
+        return df
+
+    @_check_types
     def plot_manhattan(
         self,
-        data: pd.DataFrame,
+        data: Union[pd.DataFrame, xr.Dataset],
         *,
         contig_col: str = "contig",
         position_col: str = "position",
         pvalue_col: str = "pvalue",
+        contig_order: Optional[Sequence[str]] = None,
+        contig_spacing: int = 1_000_000,
         pvalue_threshold: Optional[float] = 5e-8,
         width: int = 1000,
         height: int = 500,
@@ -591,18 +617,24 @@ class AnophelesPhenotypeData:
         renderer: Optional[str] = None,
         **kwargs,
     ) -> go.Figure:
-        required_cols = {contig_col, position_col, pvalue_col}
-        missing_cols = required_cols - set(data.columns)
-        if missing_cols:
-            raise ValueError(f"Missing required columns: {sorted(missing_cols)}")
-
-        df = data[[contig_col, position_col, pvalue_col]].copy()
+        df = self._association_results_to_dataframe(
+            data,
+            required_columns=(contig_col, position_col, pvalue_col),
+        )
+        df = df[[contig_col, position_col, pvalue_col]].copy()
         df = df.dropna(subset=[contig_col, position_col, pvalue_col])
         df = df[(df[pvalue_col] > 0) & (df[pvalue_col] <= 1)]
         if df.empty:
             raise ValueError("No valid p-values found for Manhattan plot.")
 
-        contigs = list(df[contig_col].astype(str).dropna().unique())
+        if contig_order is None:
+            contigs = list(df[contig_col].astype(str).dropna().unique())
+        else:
+            observed_contigs = set(df[contig_col].astype(str).dropna().unique())
+            contigs = [c for c in contig_order if c in observed_contigs]
+            missing_from_order = observed_contigs - set(contigs)
+            contigs.extend(sorted(missing_from_order))
+
         contig_offsets = {}
         running_offset = 0.0
         tickvals = []
@@ -615,13 +647,10 @@ class AnophelesPhenotypeData:
             contig_offsets[contig] = running_offset - min_pos
             tickvals.append(running_offset + (max_pos - min_pos) / 2)
             ticktext.append(contig)
-            running_offset += (max_pos - min_pos) + 1e6
+            running_offset += (max_pos - min_pos) + contig_spacing
 
         df["_contig"] = df[contig_col].astype(str)
-        df["_x"] = df.apply(
-            lambda row: float(row[position_col]) + contig_offsets[row["_contig"]],
-            axis=1,
-        )
+        df["_x"] = df[position_col].astype(float) + df["_contig"].map(contig_offsets)
         df["_minus_log10_p"] = -np.log10(df[pvalue_col].astype(float))
 
         fig = px.scatter(
@@ -658,7 +687,7 @@ class AnophelesPhenotypeData:
     @_check_types
     def plot_qq(
         self,
-        data: pd.DataFrame,
+        data: Union[pd.DataFrame, xr.Dataset],
         *,
         pvalue_col: str = "pvalue",
         width: int = 600,
@@ -667,10 +696,11 @@ class AnophelesPhenotypeData:
         renderer: Optional[str] = None,
         **kwargs,
     ) -> go.Figure:
-        if pvalue_col not in data.columns:
-            raise ValueError(f"Missing required column: {pvalue_col!r}")
-
-        pvals_series = data[pvalue_col].dropna().astype(float)
+        df = self._association_results_to_dataframe(
+            data,
+            required_columns=(pvalue_col,),
+        )
+        pvals_series = df[pvalue_col].dropna().astype(float)
         pvals_array = pvals_series[(pvals_series > 0) & (pvals_series <= 1)].to_numpy()
         if pvals_array.size == 0:
             raise ValueError("No valid p-values found for QQ plot.")
