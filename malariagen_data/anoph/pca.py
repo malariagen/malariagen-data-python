@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import allel  # type: ignore
 import numpy as np
@@ -81,6 +81,7 @@ class AnophelesPca(
         cohort_size: Optional[base_params.cohort_size] = None,
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
+        cohort_size_query: Optional[pca_params.cohort_size_query] = None,
         exclude_samples: Optional[base_params.samples] = None,
         fit_exclude_samples: Optional[base_params.samples] = None,
         random_seed: base_params.random_seed = 42,
@@ -120,6 +121,15 @@ class AnophelesPca(
         del region
         del site_mask
 
+        if cohort_size_query is not None:
+            prepared_sample_indices = self._downsample_sample_indices_by_cohort(
+                sample_sets=prepared_sample_sets,
+                sample_indices=prepared_sample_indices,
+                cohort_size=cohort_size,
+                cohort_size_query=cohort_size_query,
+                random_seed=random_seed,
+            )
+
         params = dict(
             region=prepared_region,
             n_snps=n_snps,
@@ -135,6 +145,7 @@ class AnophelesPca(
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
+            cohort_size_query=cohort_size_query,
             exclude_samples=exclude_samples,
             fit_exclude_samples=fit_exclude_samples,
             random_seed=random_seed,
@@ -183,6 +194,65 @@ class AnophelesPca(
 
         return df_pca, evr
 
+    def _downsample_sample_indices_by_cohort(
+        self,
+        *,
+        sample_sets,
+        sample_indices,
+        cohort_size,
+        cohort_size_query,
+        random_seed,
+    ) -> List[int]:
+        if cohort_size is None:
+            raise ValueError(
+                "cohort_size must be provided when cohort_size_query is set."
+            )
+
+        df_samples = self.sample_metadata(sample_sets=sample_sets)
+
+        cohort_column = cohort_size_query
+        if cohort_column not in df_samples.columns:
+            cohort_column = f"cohort_{cohort_size_query}"
+            if cohort_column not in df_samples.columns:
+                raise ValueError(
+                    f"{cohort_size_query!r} is not a known column in the sample metadata"
+                )
+
+        if sample_indices is None:
+            loc_sample_indices = np.arange(df_samples.shape[0], dtype=int)
+        else:
+            loc_sample_indices = np.asarray(sample_indices, dtype=int)
+
+        df_selected = df_samples.iloc[loc_sample_indices].copy()
+        df_selected["_sample_index"] = loc_sample_indices
+        df_selected = df_selected.dropna(subset=[cohort_column])
+        if df_selected.empty:
+            raise ValueError("No samples available for per-cohort downsampling.")
+
+        rng = np.random.default_rng(seed=random_seed)
+        selected_sample_indices: List[int] = []
+        for cohort_label, cohort_df in df_selected.groupby(cohort_column):
+            n_samples = cohort_df.shape[0]
+            if n_samples < cohort_size:
+                raise ValueError(
+                    f"Not enough samples ({n_samples}) for cohort size ({cohort_size}) "
+                    f"in cohort {cohort_label!r}."
+                )
+
+            cohort_sample_indices = cohort_df["_sample_index"].to_numpy(dtype=int)
+            if n_samples > cohort_size:
+                cohort_sample_indices = rng.choice(
+                    cohort_sample_indices,
+                    size=cohort_size,
+                    replace=False,
+                )
+                cohort_sample_indices.sort()
+
+            selected_sample_indices.extend(cohort_sample_indices.tolist())
+
+        selected_sample_indices.sort()
+        return selected_sample_indices
+
     def _pca(
         self,
         *,
@@ -200,12 +270,22 @@ class AnophelesPca(
         cohort_size,
         min_cohort_size,
         max_cohort_size,
+        cohort_size_query,
         exclude_samples,
         fit_exclude_samples,
         random_seed,
         chunks,
         inline_array,
     ):
+        cohort_size_for_diplotypes = cohort_size
+        min_cohort_size_for_diplotypes = min_cohort_size
+        max_cohort_size_for_diplotypes = max_cohort_size
+        if cohort_size_query is not None:
+            # Downsampling has already been applied via sample indices.
+            cohort_size_for_diplotypes = None
+            min_cohort_size_for_diplotypes = None
+            max_cohort_size_for_diplotypes = None
+
         # Load diplotypes.
         gn, samples = self.biallelic_diplotypes(
             region=region,
@@ -217,9 +297,9 @@ class AnophelesPca(
             min_minor_ac=min_minor_ac,
             max_missing_an=max_missing_an,
             site_class=site_class,
-            cohort_size=cohort_size,
-            min_cohort_size=min_cohort_size,
-            max_cohort_size=max_cohort_size,
+            cohort_size=cohort_size_for_diplotypes,
+            min_cohort_size=min_cohort_size_for_diplotypes,
+            max_cohort_size=max_cohort_size_for_diplotypes,
             random_seed=random_seed,
             chunks=chunks,
             inline_array=inline_array,
