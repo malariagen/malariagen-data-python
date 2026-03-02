@@ -1,3 +1,4 @@
+# mypy: disable-error-code="call-arg,arg-type,attr-defined,list-item"
 from typing import Optional, Tuple, Dict, Mapping
 
 import allel  # type: ignore
