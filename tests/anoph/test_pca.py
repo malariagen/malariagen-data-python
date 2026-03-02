@@ -323,7 +323,12 @@ class DummyAnophelesPca(AnophelesPca):
         self._captured_pca_params = None
 
     def _prep_sample_selection_cache_params(
-        self, *, sample_sets, sample_query, sample_query_options, sample_indices  # noqa: ARG002
+        self,
+        *,
+        sample_sets,
+        sample_query,
+        sample_query_options,
+        sample_indices,  # noqa: ARG002
     ):
         return ["set_a", "set_b"], None
 

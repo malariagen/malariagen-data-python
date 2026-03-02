@@ -269,7 +269,9 @@ class AnophelesPca(
         updated_samples_df = self.sample_metadata(sample_sets=updated_sample_sets)
         sample_id_to_index = {
             sample_id: i
-            for i, sample_id in enumerate(updated_samples_df["sample_id"].to_numpy(dtype="U"))
+            for i, sample_id in enumerate(
+                updated_samples_df["sample_id"].to_numpy(dtype="U")
+            )
         }
         updated_sample_indices = sorted(
             sample_id_to_index[sample_id] for sample_id in selected_sample_ids
