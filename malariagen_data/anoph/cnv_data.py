@@ -1,3 +1,4 @@
+import warnings
 from typing import Dict, List, Optional, Tuple, Union
 
 import dask.array as da
@@ -602,7 +603,9 @@ class AnophelesCnvData(
     )
     def cnv_discordant_read_calls(
         self,
-        contig: base_params.contigs,
+        contigs: Optional[base_params.contigs] = None,
+        *,
+        contig: Optional[base_params.contigs] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         sample_query_options: Optional[base_params.sample_query_options] = None,
@@ -615,10 +618,21 @@ class AnophelesCnvData(
         # CNV alleles have unknown start or end coordinates.
 
         debug("normalise parameters")
+        if contigs is not None and contig is not None:
+            raise TypeError("Please provide only one of 'contigs' or 'contig'.")
+        if contigs is None:
+            if contig is None:
+                raise TypeError("Missing required parameter 'contigs'.")
+            warnings.warn(
+                "Parameter 'contig' is deprecated; use 'contigs' instead.",
+                DeprecationWarning,
+            )
+            contigs = contig
+
         prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         prepared_sample_query = self._prep_sample_query_param(sample_query=sample_query)
-        if isinstance(contig, str):
-            contig = [contig]
+        if isinstance(contigs, str):
+            contigs = [contigs]
 
         # Delete original parameters to prevent accidental use.
         del sample_sets
@@ -626,7 +640,7 @@ class AnophelesCnvData(
 
         debug("access data and concatenate as needed")
         lx = []
-        for c in contig:
+        for c in contigs:
             ly = []
             for s in prepared_sample_sets:
                 y = self._cnv_discordant_read_calls_dataset(
