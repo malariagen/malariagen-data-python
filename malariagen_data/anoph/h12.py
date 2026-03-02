@@ -862,6 +862,9 @@ def _garud_h12(ht):
     # Convert to array of sorted frequencies.
     f = np.sort(np.fromiter(frq_counter.values(), dtype=float))[::-1]
 
+    if f.size == 0:
+        return np.nan
+
     # Compute H12.
     h12 = np.sum(f[:2]) ** 2 + np.sum(f[2:] ** 2)
 

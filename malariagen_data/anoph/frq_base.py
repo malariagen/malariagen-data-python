@@ -16,20 +16,30 @@ from ..util import _check_types
 from .base import AnophelesBase
 
 
-def _prep_samples_for_cohort_grouping(*, df_samples, area_by, period_by, taxon_by):
+def _prep_samples_for_cohort_grouping(
+    *, df_samples, area_by, period_by, taxon_by, filter_unassigned=None
+):
     # Take a copy, as we will modify the dataframe.
     df_samples = df_samples.copy()
 
-    # Fix "intermediate" or "unassigned" taxon values - we only want to build
-    # cohorts with clean taxon calls, so we set other values to None.
-    loc_intermediate_taxon = (
-        df_samples[taxon_by].str.startswith("intermediate").fillna(False)
-    )
-    df_samples.loc[loc_intermediate_taxon, taxon_by] = None
-    loc_unassigned_taxon = (
-        df_samples[taxon_by].str.startswith("unassigned").fillna(False)
-    )
-    df_samples.loc[loc_unassigned_taxon, taxon_by] = None
+    # Determine whether to filter "intermediate"/"unassigned" taxon values.
+    # See: https://github.com/malariagen/malariagen-data-python/issues/806
+    if filter_unassigned is None:
+        # Auto-apply filtering only when using the default "taxon" column.
+        # Users can explicitly override with True/False.
+        filter_unassigned = taxon_by == "taxon"
+
+    if filter_unassigned:
+        # Remove samples with "intermediate" or "unassigned" taxon values,
+        # as we only want cohorts with clean taxon calls.
+        loc_intermediate_taxon = (
+            df_samples[taxon_by].str.startswith("intermediate").fillna(False)
+        )
+        df_samples.loc[loc_intermediate_taxon, taxon_by] = None
+        loc_unassigned_taxon = (
+            df_samples[taxon_by].str.startswith("unassigned").fillna(False)
+        )
+        df_samples.loc[loc_unassigned_taxon, taxon_by] = None
 
     # Add period column.
 
@@ -227,7 +237,7 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         **kwargs,
     ) -> plotly_params.figure:
         # Check len of input.
-        if max_len and len(df) > max_len:
+        if max_len is not None and len(df) > max_len:
             raise ValueError(
                 dedent(
                     f"""

@@ -358,3 +358,10 @@ def test_h12_gwss_multi_with_sample_query_options(
     # Test multi-panel — should not raise.
     fig = api.plot_h12_gwss_multi_panel(**h12_params, show=False)
     assert isinstance(fig, bokeh.models.GridPlot)
+
+
+def test_garud_h12_empty_window():
+    import numpy as np
+    from malariagen_data.anoph.h12 import _garud_h12
+
+    assert np.isnan(_garud_h12(np.empty((0, 0), dtype=int)))
