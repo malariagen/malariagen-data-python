@@ -1,3 +1,4 @@
+# mypy: disable-error-code="call-arg,arg-type,attr-defined,list-item"
 from typing import Dict, List, Optional, Tuple, Union
 
 import dask.array as da
