@@ -122,7 +122,9 @@ class AnophelesAssociationPlotting:
         )
 
         if not isinstance(ds, xr.Dataset) or ds.sizes.get("variants", 0) == 0:
-            raise ValueError("No variant data available to compute association results.")
+            raise ValueError(
+                "No variant data available to compute association results."
+            )
 
         return self.association_results(ds)
 
