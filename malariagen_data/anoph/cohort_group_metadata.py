@@ -3,7 +3,7 @@ from typing import Optional
 import pandas as pd
 from numpydoc_decorator import doc
 
-from ..util import check_types
+from ..util import _check_types
 from . import base_params
 from .base import AnophelesBase
 
@@ -18,7 +18,7 @@ class AnophelesCohortGroupMetadata(AnophelesBase):
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Read metadata for a specific cohort group, including cohort size,
