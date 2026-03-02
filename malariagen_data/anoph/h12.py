@@ -184,12 +184,14 @@ class AnophelesH12Analysis(
         # Make plot.
         if title is None:
             title = sample_query
+        x_start = min(window_sizes)
+        x_end = max(window_sizes)
         fig = bokeh.plotting.figure(
             title=title,
             width=700,
             height=400,
             x_axis_type="log",
-            x_range=bokeh.models.Range1d(window_sizes[0], window_sizes[-1]),
+            x_range=bokeh.models.Range1d(x_start, x_end, bounds=(x_start, x_end)),
         )
         patch_x = list(window_sizes) + list(window_sizes[::-1])
         fig.patch(
