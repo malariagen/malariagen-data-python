@@ -81,6 +81,13 @@ sample_query_options: TypeAlias = Annotated[
     """,
 ]
 
+cohort_group_query: TypeAlias = Annotated[
+    str,
+    """
+    A pandas query string to be evaluated against cohort-group metadata.
+    """,
+]
+
 sample_indices: TypeAlias = Annotated[
     List[int],
     """
