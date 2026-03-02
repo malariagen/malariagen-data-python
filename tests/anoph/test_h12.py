@@ -331,7 +331,7 @@ def test_h12_gwss_multi_with_analysis(fixture, api: AnophelesH12Analysis):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_h12_gwss_multi_with_sample_query_options(fixture, api: AnophelesH12Analysis):
+def test_h12_gwss_multi_param_forwarding(fixture, api: AnophelesH12Analysis):
     """Verify sample_query_options, chunks, and inline_array are
     forwarded through multi-cohort H12 plotting functions."""
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
@@ -347,6 +347,8 @@ def test_h12_gwss_multi_with_sample_query_options(fixture, api: AnophelesH12Anal
         min_cohort_size=1,
         cohorts={"cohort1": cohort1_query, "cohort2": cohort2_query},
         sample_query_options={"engine": "python"},
+        chunks="auto",
+        inline_array=False,
     )
 
     # Test multi-overlay — should not raise.
