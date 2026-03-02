@@ -1066,7 +1066,7 @@ class AnophelesDataResource(
             cohort_label, cohort_query = cohort
 
         else:
-            raise TypeError(r"invalid cohort parameter: {cohort!r}")
+            raise TypeError(f"invalid cohort parameter: {cohort!r}")
 
         debug("access allele counts")
         ac = self.snp_allele_counts(
