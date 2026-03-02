@@ -195,7 +195,7 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         max_missing_an,
     ):
         # Compute diplotypes.
-        gn, samples = self.biallelic_diplotypes(
+        ds = self.biallelic_diplotypes(
             region=region,
             sample_sets=sample_sets,
             sample_indices=sample_indices,
@@ -211,7 +211,10 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
             min_minor_ac=min_minor_ac,
             n_snps=n_snps,
             thin_offset=thin_offset,
+            return_dataset=True,
         )
+        gn = ds["call_diplotype"].values
+        samples = ds["sample_id"].values.astype("U")
 
         # Record number of SNPs used.
         n_snps = gn.shape[0]
