@@ -868,10 +868,10 @@ def _hash_params(params):
     return h, s
 
 
-def _jitter(a, fraction):
+def _jitter(a, fraction, rng):
     """Jitter data in `a` using the fraction `f`."""
     r = a.max() - a.min()
-    return a + fraction * np.random.uniform(-r, r, a.shape)
+    return a + fraction * rng.uniform(-r, r, a.shape)
 
 
 class CacheMiss(Exception):

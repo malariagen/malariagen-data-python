@@ -1,5 +1,3 @@
-import random
-
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go  # type: ignore
@@ -103,13 +101,13 @@ def case_adir1_sim(adir1_sim_fixture, adir1_sim_api):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_pca_plotting(fixture, api: AnophelesPca):
+def test_pca_plotting(fixture, rng, api: AnophelesPca):
     # Parameters for selecting input data.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     data_params = dict(
-        region=random.choice(api.contigs),
-        sample_sets=random.sample(all_sample_sets, 2),
-        site_mask=random.choice((None,) + api.site_mask_ids),
+        region=rng.choice(api.contigs),
+        sample_sets=rng.choice(all_sample_sets, 2, replace=False).tolist(),
+        site_mask=rng.choice((None,) + api.site_mask_ids),
     )
     ds = api.biallelic_snp_calls(
         min_minor_ac=pca_params.min_minor_ac_default,
@@ -120,10 +118,10 @@ def test_pca_plotting(fixture, api: AnophelesPca):
     # PCA parameters.
     n_samples = ds.sizes["samples"]
     n_snps_available = ds.sizes["variants"]
-    n_snps = random.randint(4, n_snps_available)
+    n_snps = rng.integers(4, n_snps_available, endpoint=True, dtype=int)
     # PC3 required for plot_pca_coords_3d()
     assert min(n_samples, n_snps) > 3
-    n_components = random.randint(3, min(n_samples, n_snps, 10))
+    n_components = rng.integers(3, min(n_samples, n_snps, 10), endpoint=True, dtype=int)
 
     # Run the PCA.
     pca_df, pca_evr = api.pca(
@@ -189,13 +187,13 @@ def test_pca_plotting(fixture, api: AnophelesPca):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_pca_exclude_samples(fixture, api: AnophelesPca):
+def test_pca_exclude_samples(fixture, rng, api: AnophelesPca):
     # Parameters for selecting input data.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     data_params = dict(
-        region=random.choice(api.contigs),
-        sample_sets=random.sample(all_sample_sets, 2),
-        site_mask=random.choice((None,) + api.site_mask_ids),
+        region=rng.choice(api.contigs),
+        sample_sets=rng.choice(all_sample_sets, 2, replace=False).tolist(),
+        site_mask=rng.choice((None,) + api.site_mask_ids),
     )
     ds = api.biallelic_snp_calls(
         min_minor_ac=pca_params.min_minor_ac_default,
@@ -204,15 +202,15 @@ def test_pca_exclude_samples(fixture, api: AnophelesPca):
     )
 
     # Exclusion parameters.
-    n_samples_excluded = random.randint(1, 5)
+    n_samples_excluded = rng.integers(1, 6, dtype=int)
     samples = ds["sample_id"].values.tolist()
-    exclude_samples = random.sample(samples, n_samples_excluded)
+    exclude_samples = rng.choice(samples, n_samples_excluded, replace=False).tolist()
 
     # PCA parameters.
     n_samples = ds.sizes["samples"] - n_samples_excluded
     n_snps_available = ds.sizes["variants"]
-    n_snps = random.randint(4, n_snps_available)
-    n_components = random.randint(2, min(n_samples, n_snps, 10))
+    n_snps = rng.integers(4, n_snps_available, endpoint=True, dtype=int)
+    n_components = rng.integers(2, min(n_samples, n_snps, 10), endpoint=True, dtype=int)
 
     # Run the PCA.
     pca_df, pca_evr = api.pca(
@@ -250,13 +248,13 @@ def test_pca_exclude_samples(fixture, api: AnophelesPca):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_pca_fit_exclude_samples(fixture, api: AnophelesPca):
+def test_pca_fit_exclude_samples(fixture, rng, api: AnophelesPca):
     # Parameters for selecting input data.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     data_params = dict(
-        region=random.choice(api.contigs),
-        sample_sets=random.sample(all_sample_sets, 2),
-        site_mask=random.choice((None,) + api.site_mask_ids),
+        region=rng.choice(api.contigs),
+        sample_sets=rng.choice(all_sample_sets, 2, replace=False).tolist(),
+        site_mask=rng.choice((None,) + api.site_mask_ids),
     )
     ds = api.biallelic_snp_calls(
         min_minor_ac=pca_params.min_minor_ac_default,
@@ -265,15 +263,15 @@ def test_pca_fit_exclude_samples(fixture, api: AnophelesPca):
     )
 
     # Exclusion parameters.
-    n_samples_excluded = random.randint(1, 5)
+    n_samples_excluded = rng.integers(1, 6, dtype=int)
     samples = ds["sample_id"].values.tolist()
-    exclude_samples = random.sample(samples, n_samples_excluded)
+    exclude_samples = rng.choice(samples, n_samples_excluded, replace=False).tolist()
 
     # PCA parameters.
     n_samples = ds.sizes["samples"]
     n_snps_available = ds.sizes["variants"]
-    n_snps = random.randint(4, n_snps_available)
-    n_components = random.randint(2, min(n_samples, n_snps, 10))
+    n_snps = rng.integers(4, n_snps_available, endpoint=True, dtype=int)
+    n_components = rng.integers(2, min(n_samples, n_snps, 10), endpoint=True, dtype=int)
 
     # Run the PCA.
     pca_df, pca_evr = api.pca(
