@@ -1,5 +1,3 @@
-import random
-
 import igv_notebook  # type: ignore
 import pytest
 from pytest_cases import parametrize_with_cases
@@ -79,9 +77,9 @@ def test_igv(fixture, api: AnophelesIgv):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_view_alignments(fixture, api: AnophelesIgv):
+def test_view_alignments(fixture, rng, api: AnophelesIgv):
     region = fixture.random_region_str()
-    sample = random.choice(api.sample_metadata()["sample_id"])
+    sample = rng.choice(api.sample_metadata()["sample_id"])
     ret = api.view_alignments(region=region, sample=sample, init=False)
     # No return value to avoid cluttering notebook output.
     assert ret is None
