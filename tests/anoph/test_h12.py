@@ -330,6 +330,34 @@ def test_h12_gwss_multi_with_analysis(fixture, api: AnophelesH12Analysis):
                 api.plot_h12_gwss_multi_panel(**params)
 
 
+@parametrize_with_cases("fixture,api", cases=".")
+def test_h12_gwss_multi_with_sample_query_options(fixture, api: AnophelesH12Analysis):
+    """Verify sample_query_options, chunks, and inline_array are
+    forwarded through multi-cohort H12 plotting functions."""
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    all_countries = api.sample_metadata()["country"].unique().tolist()
+    country1, country2 = random.sample(all_countries, 2)
+    cohort1_query = f"country == '{country1}'"
+    cohort2_query = f"country == '{country2}'"
+
+    h12_params = dict(
+        contig=random.choice(api.contigs),
+        sample_sets=all_sample_sets,
+        window_size=200,
+        min_cohort_size=1,
+        cohorts={"cohort1": cohort1_query, "cohort2": cohort2_query},
+        sample_query_options={"engine": "python"},
+    )
+
+    # Test multi-overlay — should not raise.
+    fig = api.plot_h12_gwss_multi_overlay(**h12_params, show=False)
+    assert isinstance(fig, bokeh.models.GridPlot)
+
+    # Test multi-panel — should not raise.
+    fig = api.plot_h12_gwss_multi_panel(**h12_params, show=False)
+    assert isinstance(fig, bokeh.models.GridPlot)
+
+
 def test_garud_h12_empty_window():
     import numpy as np
     from malariagen_data.anoph.h12 import _garud_h12

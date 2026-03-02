@@ -558,6 +558,8 @@ class AnophelesH12Analysis(
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.optional_figure:
         cohort_queries = self._setup_cohort_queries(
             cohorts=cohorts,
@@ -585,8 +587,11 @@ class AnophelesH12Analysis(
                 min_cohort_size=min_cohort_size,
                 max_cohort_size=max_cohort_size,
                 sample_query=cohort_query,
+                sample_query_options=sample_query_options,
                 sample_sets=sample_sets,
                 random_seed=random_seed,
+                chunks=chunks,
+                inline_array=inline_array,
             )
 
         # Determine X axis range.
@@ -679,6 +684,8 @@ class AnophelesH12Analysis(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         gene_labels: Optional[gplt_params.gene_labels] = None,
         gene_labelset: Optional[gplt_params.gene_labelset] = None,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.optional_figure:
         # Plot GWSS track.
         fig1 = self.plot_h12_gwss_multi_overlay_track(
@@ -700,6 +707,8 @@ class AnophelesH12Analysis(
             height=track_height,
             show=False,
             output_backend=output_backend,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         fig1.xaxis.visible = False
@@ -764,6 +773,8 @@ class AnophelesH12Analysis(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         gene_labels: Optional[gplt_params.gene_labels] = None,
         gene_labelset: Optional[gplt_params.gene_labelset] = None,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.optional_figure:
         cohort_queries = self._setup_cohort_queries(
             cohorts=cohorts,
@@ -789,6 +800,7 @@ class AnophelesH12Analysis(
                 window_size=window_size[cohort_label],
                 sample_sets=sample_sets,
                 sample_query=cohort_query,
+                sample_query_options=sample_query_options,
                 cohort_size=cohort_size,
                 min_cohort_size=min_cohort_size,
                 max_cohort_size=max_cohort_size,
@@ -799,6 +811,8 @@ class AnophelesH12Analysis(
                 height=track_height,
                 show=False,
                 output_backend=output_backend,
+                chunks=chunks,
+                inline_array=inline_array,
             )
             if i > 0:
                 track = self.plot_h12_gwss_track(x_range=figs[0].x_range, **params)
