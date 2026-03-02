@@ -51,7 +51,14 @@ def create_rng(context: str) -> np.random.Generator:
 
 
 def pytest_report_header(config):
-    print("global seed:", GLOBAL_SEED)
+    return f"global seed: {GLOBAL_SEED}"
+
+
+@pytest.fixture(name="rng")
+def test_rng_fixture(request):
+    # The nodeid is the complete name of the pytest function and
+    # is unique across the tests
+    return create_rng(request.node.nodeid)
 
 
 @pytest.fixture(scope="session")
