@@ -1902,7 +1902,9 @@ class AnophelesSnpData(
                     ds_out = ds_out.isel(variants=loc_thin)
 
                 elif ds_out.sizes["variants"] < n_snps:
-                    raise ValueError("Not enough SNPs.")
+                    raise ValueError(
+                        f"Not enough SNPs. Found {ds_out.sizes['variants']}, needed {n_snps}."
+                    )
 
         return ds_out
 
