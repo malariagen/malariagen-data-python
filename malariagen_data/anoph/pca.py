@@ -1,3 +1,4 @@
+import warnings
 from typing import List, Optional, Tuple
 
 import allel  # type: ignore
@@ -90,7 +91,7 @@ class AnophelesPca(
     ) -> Tuple[pca_params.df_pca, pca_params.evr]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "pca_v9"
+        name = "pca_v10"
 
         # Check that either sample_query xor sample_indices are provided.
         base_params._validate_sample_selection_params(
@@ -120,6 +121,12 @@ class AnophelesPca(
         del sample_query_options
         del region
         del site_mask
+
+        # Keep cohort-size parameters aligned, matching existing behavior in
+        # lower-level data access functions.
+        if cohort_size is not None:
+            min_cohort_size = cohort_size
+            max_cohort_size = cohort_size
 
         if cohort_size_column is not None:
             (
@@ -237,10 +244,12 @@ class AnophelesPca(
         for cohort_label, cohort_df in df_selected.groupby(cohort_column):
             n_samples = cohort_df.shape[0]
             if n_samples < cohort_size:
-                raise ValueError(
-                    f"Not enough samples ({n_samples}) for cohort size ({cohort_size}) "
-                    f"in cohort {cohort_label!r}."
+                warnings.warn(
+                    f"Skipping cohort {cohort_label!r}: {n_samples} samples is fewer "
+                    f"than requested cohort_size={cohort_size}.",
+                    UserWarning,
                 )
+                continue
 
             cohort_sample_indices = cohort_df["_sample_index"].to_numpy(dtype=int)
             if n_samples > cohort_size:
@@ -254,6 +263,10 @@ class AnophelesPca(
             selected_sample_indices.extend(cohort_sample_indices.tolist())
 
         selected_sample_indices.sort()
+        if not selected_sample_indices:
+            raise ValueError(
+                "No cohorts had enough samples for per-cohort downsampling."
+            )
 
         selected_df = df_samples.iloc[selected_sample_indices]
         selected_sample_ids = selected_df["sample_id"].to_numpy(dtype="U")
@@ -311,6 +324,10 @@ class AnophelesPca(
             cohort_size_for_diplotypes = None
             min_cohort_size_for_diplotypes = None
             max_cohort_size_for_diplotypes = None
+        elif cohort_size_for_diplotypes is not None:
+            # Keep cohort-size parameters aligned for downstream calls.
+            min_cohort_size_for_diplotypes = cohort_size_for_diplotypes
+            max_cohort_size_for_diplotypes = cohort_size_for_diplotypes
 
         # Load diplotypes.
         gn, samples = self.biallelic_diplotypes(

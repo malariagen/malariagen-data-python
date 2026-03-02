@@ -423,6 +423,9 @@ def test_pca_cohort_size_column_downsamples_per_cohort():
     assert captured is not None
     assert captured["cohort_size_column"] == "country"
     assert captured["sample_indices"] is not None
+    assert captured["cohort_size"] == 2
+    assert captured["min_cohort_size"] == 2
+    assert captured["max_cohort_size"] == 2
 
     selected_df = api.sample_metadata().iloc[captured["sample_indices"]]
     selected_counts = selected_df["country"].value_counts()
@@ -468,3 +471,43 @@ def test_pca_cohort_size_column_updates_sample_sets_after_downsampling():
         sample_sets=captured["sample_sets"], sample_indices=captured["sample_indices"]
     )
     assert set(selected_df["sample_set"]) == {"set_a"}
+
+
+def test_pca_cohort_size_column_skips_small_cohorts_with_warning():
+    class DummyAnophelesPcaSmallCohort(DummyAnophelesPca):
+        def sample_metadata(
+            self,
+            sample_sets=None,
+            sample_query=None,
+            sample_query_options=None,  # noqa: ARG002
+            sample_indices=None,
+        ):
+            df = super().sample_metadata(
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                sample_indices=sample_indices,
+            )
+            # Force one cohort to be too small for cohort_size=2.
+            df.loc[df["sample_id"].isin(["s3", "s4"]), "country"] = "Ghana"
+            df.loc[df["sample_id"] == "s5", "country"] = "Benin"
+            return df
+
+    api = DummyAnophelesPcaSmallCohort()
+
+    with pytest.warns(UserWarning, match="Skipping cohort"):
+        pca_df, _ = api.pca(
+            region="2L",
+            n_snps=4,
+            n_components=2,
+            cohort_size=2,
+            cohort_size_column="country",
+            random_seed=42,
+        )
+
+    captured = api._captured_pca_params
+    assert captured is not None
+    assert captured["sample_indices"] is not None
+    selected_df = api.sample_metadata().iloc[captured["sample_indices"]]
+    selected_counts = selected_df["country"].value_counts()
+    assert selected_counts.to_dict() == {"Ghana": 2}
+    assert len(pca_df) == 2
