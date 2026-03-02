@@ -140,6 +140,9 @@ def _add_frequency_ci(*, ds, ci_method):
             frq_ci_low, frq_ci_upp = proportion_confint(
                 count=count, nobs=nobs, method=ci_method
             )
+        loc_zero = nobs == 0
+        frq_ci_low[loc_zero] = np.nan
+        frq_ci_upp[loc_zero] = np.nan
         ds["event_frequency_ci_low"] = ("variants", "cohorts"), frq_ci_low
         ds["event_frequency_ci_upp"] = ("variants", "cohorts"), frq_ci_upp
 
