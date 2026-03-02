@@ -331,9 +331,7 @@ def test_h12_gwss_multi_with_analysis(fixture, api: AnophelesH12Analysis):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_h12_gwss_multi_with_sample_query_options(
-    fixture, api: AnophelesH12Analysis
-):
+def test_h12_gwss_multi_with_sample_query_options(fixture, api: AnophelesH12Analysis):
     """Verify sample_query_options, chunks, and inline_array are
     forwarded through multi-cohort H12 plotting functions."""
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
