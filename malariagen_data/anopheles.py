@@ -2499,6 +2499,8 @@ class AnophelesDataResource(
             boxSelectionEnabled=True,
             # prevent accidentally zooming out to oblivion
             minZoom=0.1,
+            # lower scroll wheel zoom sensitivity to prevent accidental zooming when trying to navigate large graphs
+            wheelSensitivity=0.1,
         )
 
         debug("create dash app")
