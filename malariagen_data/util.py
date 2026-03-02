@@ -430,6 +430,7 @@ def _init_filesystem(url, **kwargs):
     """Initialise a fsspec filesystem from a given base URL and parameters."""
 
     storage_options = None  # To prevent using before assignment (Pylint).
+    simplecache_options = kwargs.pop("simplecache", None)
 
     # Special case Google Cloud Storage, authenticate the user.
     if "gs://" in url or "gcs://" in url:
@@ -486,6 +487,9 @@ def _init_filesystem(url, **kwargs):
     else:
         # Some other kind of URL, pass through kwargs as-is.
         storage_options = kwargs
+
+    if simplecache_options is not None:
+        storage_options["simplecache"] = simplecache_options
 
     # Process the URL using fsspec.
     fs, path = url_to_fs(url, **storage_options)
