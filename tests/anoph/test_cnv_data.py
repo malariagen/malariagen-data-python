@@ -651,9 +651,10 @@ def test_cnv_discordant_read_calls_deprecated_contig_alias(
 ):
     sample_set = random.choice(api.sample_sets()["sample_set"].to_list())
     contig = random.choice(api.contigs)
+    ds_contigs = api.cnv_discordant_read_calls(contigs=contig, sample_sets=sample_set)
     with pytest.warns(DeprecationWarning, match="deprecated"):
-        ds = api.cnv_discordant_read_calls(contig=contig, sample_sets=sample_set)
-    assert isinstance(ds, xr.Dataset)
+        ds_contig = api.cnv_discordant_read_calls(contig=contig, sample_sets=sample_set)
+    xr.testing.assert_identical(ds_contig, ds_contigs)
 
 
 def test_cnv_discordant_read_calls__sample_query(
