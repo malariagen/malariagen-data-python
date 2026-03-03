@@ -1,7 +1,4 @@
-import pytest
-
-from malariagen_data import Adar1, Region
-from malariagen_data.util import _locate_region, _resolve_region
+from malariagen_data import Adar1
 
 
 def setup_adar1(url="simplecache::gs://vo_adar_release_master_us_central1/", **kwargs):
@@ -18,14 +15,14 @@ def setup_adar1(url="simplecache::gs://vo_adar_release_master_us_central1/", **k
     return Adar1(url, **kwargs)
 
 
-#def test_repr():
+# def test_repr():
 #    adar1 = setup_adar1(check_location=True)
 #    assert isinstance(adar1, Adar1)
 #    assert isinstance(r, str)
 #    r = repr(adar1)
 
 
-#@pytest.mark.parametrize(
+# @pytest.mark.parametrize(
 #    "region_raw",
 #    [
 #        "2",
@@ -34,8 +31,8 @@ def setup_adar1(url="simplecache::gs://vo_adar_release_master_us_central1/", **k
 #        "2:2,630,355-2,633,221",
 #        Region("2", 4871446, 4871535),
 #    ],
-#)
-#def test_locate_region(region_raw):
+# )
+# def test_locate_region(region_raw):
 #    # TODO Migrate this test.
 #    adar1 = setup_adar1()
 #    gene_annotation = adar1.geneset(attributes=["ID"])
@@ -45,32 +42,32 @@ def setup_adar1(url="simplecache::gs://vo_adar_release_master_us_central1/", **k
 #    # ref = adar1.snp_sites(region=region.contig, field="REF")
 #    loc_region = _locate_region(region, pos)
 
-    # check types
+# check types
 #    assert isinstance(loc_region, slice)
 #    assert isinstance(region, Region)
 
-    # check Region with contig
+# check Region with contig
 #    if region_raw == "2":
 #        assert region.contig == "2"
 #        assert region.start is None
 #        assert region.end is None
 
-    # check that Region goes through unchanged
+# check that Region goes through unchanged
 #    if isinstance(region_raw, Region):
 #        assert region == region_raw
 
-    # check that gene name matches coordinates from the geneset and matches gene sequence
+# check that gene name matches coordinates from the geneset and matches gene sequence
 #    if region_raw == "gene-LOC125950257":
 #        gene = gene_annotation.query("ID == 'gene-LOC125950257'").squeeze()
 #        assert region == Region(gene.contig, gene.start, gene.end)
 #        assert pos[loc_region][0] == gene.start
 #        assert pos[loc_region][-1] == gene.end
-        # To be checked
-        # assert (
-        #    ref[loc_region][:5].compute() == np.array(["T", "T", "G", "T", "T"])
-        # ).all()
+# To be checked
+# assert (
+#    ref[loc_region][:5].compute() == np.array(["T", "T", "G", "T", "T"])
+# ).all()
 
-    # check string parsing
+# check string parsing
 #    if region_raw == "2:4871446-4871535":
 #        assert region == Region("2", 4871446, 4871535)
 #    if region_raw == "2:2,630,355-2,633,221":
