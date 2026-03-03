@@ -505,6 +505,7 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         import ipyleaflet  # type: ignore
         import ipywidgets  # type: ignore
 
+
         # Slice dataset to variant of interest.
         if isinstance(variant, int):
             ds_variant = ds.isel(variants=variant)
@@ -606,14 +607,25 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         variants = ds["variant_label"].values
         taxa = ds["cohort_taxon"].to_pandas().dropna().unique()  # type: ignore
         periods = ds["cohort_period"].to_pandas().dropna().unique()  # type: ignore
+
+        def _update_map(variant, taxon, period):
+            if variant is None or taxon is None or period is None:
+                return
+            
+            self.plot_frequencies_map_markers(
+                m=freq_map,
+                ds=ds,
+                variant=variant,
+                taxon=taxon,
+                period=period,
+                clear=True
+            )
+
         controls = ipywidgets.interactive(
-            self.plot_frequencies_map_markers,
-            m=ipywidgets.fixed(freq_map),
-            ds=ipywidgets.fixed(ds),
+            _update_map,
             variant=ipywidgets.Dropdown(options=variants, description="Variant: "),
             taxon=ipywidgets.Dropdown(options=taxa, description="Taxon: "),
             period=ipywidgets.Dropdown(options=periods, description="Period: "),
-            clear=ipywidgets.fixed(True),
         )
 
         # Lay out widgets.
@@ -633,3 +645,4 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         out = ipywidgets.VBox(components)
 
         return out
+    
