@@ -1401,10 +1401,10 @@ def check_biallelic_snp_calls_and_diplotypes(
     assert gn.ndim == 2
     assert gn.shape[0] == ds.sizes["variants"]
     assert gn.shape[1] == ds.sizes["samples"]
-    assert np.all(gn >= 0)
-    assert np.all(gn <= 2)
+    assert np.all((gn >= 0) | (gn == -127))
+    assert np.all((gn <= 2) | (gn == -127))
     ac = ds["variant_allele_count"].values
-    assert np.all(np.sum(gn, axis=1) == ac[:, 1])
+    assert np.all(np.sum(np.where(gn == -127, 0, gn), axis=1) == ac[:, 0])
     assert samples.ndim == 1
     assert samples.shape[0] == gn.shape[1]
     assert samples.tolist() == expected_samples
@@ -1752,8 +1752,9 @@ def test_biallelic_snp_calls_and_diplotypes_with_conditions_fractional(
     an = ac.sum(axis=1)
     ac_min = ac.min(axis=1)
     assert np.all((ac_min / an) >= min_minor_ac)
-    an_missing = (ds.sizes["samples"] * ds.sizes["ploidy"]) - an
-    assert np.all((an_missing / an) <= max_missing_an)
+    an_total = ds.sizes["samples"] * ds.sizes["ploidy"]
+    an_missing = an_total - an
+    assert np.all((an_missing / an_total) <= max_missing_an)
     gt = ds["call_genotype"].values
     ac_check = allel.GenotypeArray(gt).count_alleles(max_allele=1)
     assert np.all(ac == ac_check)
