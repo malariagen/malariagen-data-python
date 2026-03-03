@@ -62,7 +62,9 @@ class Annotator(object):
         return self._idx_feature_id.loc[feature_id]
 
     def get_children(self, feature_id):
-        return self._idx_parent_id.loc[feature_id]
+        # Use a list indexer so pandas always returns a DataFrame, even
+        # when only a single child feature exists for this parent.
+        return self._idx_parent_id.loc[[feature_id]]
 
     def get_ref_seq(self, chrom, start, stop):
         """Accepts 1-based coords."""
