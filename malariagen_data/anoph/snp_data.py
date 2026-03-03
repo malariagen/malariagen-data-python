@@ -116,9 +116,7 @@ class AnophelesSnpData(
         elif site_mask in self.site_mask_ids:
             return site_mask
         else:
-            raise ValueError(
-                f"Invalid site mask, must be one of f{self.site_mask_ids}."
-            )
+            raise ValueError(f"Invalid site mask, must be one of {self.site_mask_ids}.")
 
     def _prep_optional_site_mask_param(
         self,
@@ -1874,9 +1872,10 @@ class AnophelesSnpData(
 
                 # Apply missingness condition.
                 if max_missing_an is not None:
-                    an_missing = (ds_out.sizes["samples"] * ds_out.sizes["ploidy"]) - an
+                    an_total = ds_out.sizes["samples"] * ds_out.sizes["ploidy"]
+                    an_missing = an_total - an
                     if isinstance(max_missing_an, float):
-                        an_missing_frac = an_missing / an
+                        an_missing_frac = an_missing / an_total
                         loc_missing = an_missing_frac <= max_missing_an
                     else:
                         loc_missing = an_missing <= max_missing_an
@@ -1941,7 +1940,7 @@ class AnophelesSnpData(
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "biallelic_diplotypes"
+        name = "biallelic_diplotypes_v2"
 
         # Check that either sample_query xor sample_indices are provided.
         base_params._validate_sample_selection_params(
@@ -2048,8 +2047,12 @@ class AnophelesSnpData(
         samples = ds["sample_id"].values.astype("U")
 
         # Compute diplotypes as the number of alt alleles per genotype call.
+        # with missing calls coded as -127.
         gt = allel.GenotypeDaskArray(ds["call_genotype"].data)
         with self._dask_progress(desc="Compute biallelic diplotypes"):
-            gn = gt.to_n_alt().compute()
+            gn = gt.to_n_ref().compute()
+        # Code missing calls as -127.
+        missing = np.all(ds["call_genotype"].values == -1, axis=2)
+        gn[missing] = -127
 
         return dict(samples=samples, gn=gn)

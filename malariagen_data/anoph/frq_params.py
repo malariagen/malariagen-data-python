@@ -87,3 +87,13 @@ taxon_by: TypeAlias = Annotated[
 ]
 
 taxon_by_default: taxon_by = "taxon"
+
+filter_unassigned: TypeAlias = Annotated[
+    Optional[bool],
+    """
+    Whether to filter out samples with "intermediate" or "unassigned" taxon
+    values before building cohorts. If None (default), filtering is applied
+    only when using the default "taxon" column. Set True to always filter,
+    or False to never filter.
+    """,
+]

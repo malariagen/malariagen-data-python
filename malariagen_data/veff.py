@@ -1,6 +1,7 @@
 import collections
 import operator
 
+import pandas as pd
 from Bio.Seq import Seq  # type: ignore
 
 VariantEffect = collections.namedtuple(
@@ -62,7 +63,15 @@ class Annotator(object):
         return self._idx_feature_id.loc[feature_id]
 
     def get_children(self, feature_id):
-        return self._idx_parent_id.loc[feature_id]
+        result = self._idx_parent_id.loc[feature_id]
+        # When there is only one child, pandas .loc returns a Series
+        # instead of a DataFrame. Ensure we always return a DataFrame
+        # so downstream code (e.g. .sort_values, column filtering) works.
+        if isinstance(result, pd.Series):
+            result = result.to_frame().T
+            # Preserve the index name from the parent DataFrame.
+            result.index.name = self._idx_parent_id.index.name
+        return result
 
     def get_ref_seq(self, chrom, start, stop):
         """Accepts 1-based coords."""
@@ -103,6 +112,17 @@ class Annotator(object):
         utr5 = list(children[children.type == "five_prime_UTR"].itertuples())
         utr3 = list(children[children.type == "three_prime_UTR"].itertuples())
         introns = [(x.end + 1, y.start - 1) for x, y in zip(exons[:-1], exons[1:])]
+
+        # Guard: raise an informative error if the transcript has no CDS
+        # regions, as variant effect annotation is not meaningful for
+        # non-coding transcripts.
+        if len(cdss) == 0 and len(utr5) == 0 and len(utr3) == 0:
+            raise ValueError(
+                f"Transcript {transcript!r} has no CDS or UTR children. "
+                f"Variant effect annotation is only supported for "
+                f"protein-coding transcripts. This may indicate "
+                f"incomplete or incorrect genome annotations."
+            )
 
         effect_values = []
         impact_values = []
@@ -548,7 +568,21 @@ def _get_within_intron_effect(base_effect, intron):
             effect = base_effect._replace(effect="INTRONIC", impact="MODIFIER")
 
     else:
-        # TODO intronic INDELs and MNPs
-        effect = base_effect._replace(effect="TODO intronic indels and MNPs")
+        # INDELs and MNPs — use the closest edge of the variant to the splice site
+        if strand == "+":
+            dist_5prime = ref_start - (intron_start - 1)
+            dist_3prime = -(ref_stop - (intron_stop + 1))
+        else:
+            dist_5prime = (intron_stop + 1) - ref_stop
+            dist_3prime = -((intron_start - 1) - ref_start)
+
+        indel_min_dist = min(dist_5prime, dist_3prime)
+
+        if indel_min_dist <= 2:
+            effect = base_effect._replace(effect="SPLICE_CORE", impact="HIGH")
+        elif indel_min_dist <= 7:
+            effect = base_effect._replace(effect="SPLICE_REGION", impact="MODERATE")
+        else:
+            effect = base_effect._replace(effect="INTRONIC", impact="MODIFIER")
 
     return effect
