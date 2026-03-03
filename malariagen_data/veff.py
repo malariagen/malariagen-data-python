@@ -62,7 +62,9 @@ class Annotator(object):
         return self._idx_feature_id.loc[feature_id]
 
     def get_children(self, feature_id):
-        return self._idx_parent_id.loc[feature_id]
+        # Use a list indexer so pandas always returns a DataFrame, even
+        # when only a single child feature exists for this parent.
+        return self._idx_parent_id.loc[[feature_id]]
 
     def get_ref_seq(self, chrom, start, stop):
         """Accepts 1-based coords."""
@@ -92,6 +94,12 @@ class Annotator(object):
     def get_effects(self, transcript, variants, progress=None):
         children = self.get_children(transcript).sort_values("start")
         feature = self.get_feature(transcript)
+
+        if not (children["type"] == "CDS").any():
+            raise ValueError(
+                f"Transcript {transcript!r} has no CDS features; "
+                "cannot compute coding variant effects."
+            )
 
         # make sure all alleles are uppercase
         variants.ref_allele = variants.ref_allele.str.upper()
