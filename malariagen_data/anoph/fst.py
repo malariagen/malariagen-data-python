@@ -477,6 +477,7 @@ class AnophelesFstAnalysis(
                     cohort1_query=cohort_queries[i],
                     cohort2_query=cohort_queries[j],
                     sample_sets=sample_sets,
+                    sample_query_options=sample_query_options,
                     cohort_size=cohort_size,
                     min_cohort_size=min_cohort_size,
                     max_cohort_size=max_cohort_size,
