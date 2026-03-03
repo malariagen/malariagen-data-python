@@ -44,6 +44,11 @@ You'll need:
    ```bash
    poetry install
    ```
+   > **Note:** If you encounter `ModuleNotFoundError: No module named 'pytest_cases'`
+   > when running tests, install it explicitly:
+   > ```bash
+   > poetry run pip install pytest-cases
+   > ```
 
    **Recommended**: Use `poetry run` to run commands inside the virtual environment:
 
