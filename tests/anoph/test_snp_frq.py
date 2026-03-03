@@ -141,6 +141,8 @@ expected_effects = [
     "FIVE_PRIME_UTR",
     "THREE_PRIME_UTR",
     "SYNONYMOUS_CODING",
+    "SYNONYMOUS_STOP",
+    "SYNONYMOUS_START",
     "NON_SYNONYMOUS_CODING",
     "START_LOST",
     "STOP_LOST",

@@ -1,5 +1,6 @@
 """Parameters for functions plotting maps using ipyleaflet."""
 
+import warnings
 from typing import Dict, Tuple, Union
 
 import ipyleaflet  # type: ignore
@@ -17,22 +18,70 @@ zoom: TypeAlias = Annotated[Union[int, float], "Initial zoom level."]
 
 zoom_default: zoom = 3
 
-basemap_abbrevs = {
-    "mapnik": ipyleaflet.basemaps.OpenStreetMap.Mapnik,
-    "natgeoworldmap": ipyleaflet.basemaps.Esri.NatGeoWorldMap,
-    "opentopomap": ipyleaflet.basemaps.OpenTopoMap,
-    "positron": ipyleaflet.basemaps.CartoDB.Positron,
-    "satellite": ipyleaflet.basemaps.Gaode.Satellite,
-    "worldimagery": ipyleaflet.basemaps.Esri.WorldImagery,
-    "worldstreetmap": ipyleaflet.basemaps.Esri.WorldStreetMap,
-    "worldtopomap": ipyleaflet.basemaps.Esri.WorldTopoMap,
+# Candidate basemap abbreviations — loaded lazily to avoid import failures
+# if a provider has been decommissioned upstream.
+_basemap_abbrev_candidates = {
+    "mapnik": lambda: ipyleaflet.basemaps.OpenStreetMap.Mapnik,
+    "natgeoworldmap": lambda: ipyleaflet.basemaps.Esri.NatGeoWorldMap,
+    "opentopomap": lambda: ipyleaflet.basemaps.OpenTopoMap,
+    "positron": lambda: ipyleaflet.basemaps.CartoDB.Positron,
+    "satellite": lambda: ipyleaflet.basemaps.Gaode.Satellite,
+    "worldimagery": lambda: ipyleaflet.basemaps.Esri.WorldImagery,
+    "worldstreetmap": lambda: ipyleaflet.basemaps.Esri.WorldStreetMap,
+    "worldtopomap": lambda: ipyleaflet.basemaps.Esri.WorldTopoMap,
 }
+
+_basemap_abbrevs: dict | None = None
+
+
+def get_basemap_abbrevs() -> dict:
+    """Return available basemap abbreviations, skipping any unavailable providers."""
+    global _basemap_abbrevs
+    if _basemap_abbrevs is None:
+        _basemap_abbrevs = {}
+        for key, provider_fn in _basemap_abbrev_candidates.items():
+            try:
+                _basemap_abbrevs[key] = provider_fn()
+            except Exception:
+                warnings.warn(
+                    f"Basemap provider {key!r} is not available and will be skipped.",
+                    stacklevel=2,
+                )
+    return _basemap_abbrevs
+
+
+# Keep basemap_abbrevs as a property-like alias for backwards compatibility.
+# Code that does `map_params.basemap_abbrevs` will call get_basemap_abbrevs().
+class _BasemapAbbrevProxy:
+    def __getattr__(self, item):
+        return getattr(get_basemap_abbrevs(), item)
+
+    def __iter__(self):
+        return iter(get_basemap_abbrevs())
+
+    def __getitem__(self, item):
+        return get_basemap_abbrevs()[item]
+
+    def __contains__(self, item):
+        return item in get_basemap_abbrevs()
+
+    def keys(self):
+        return get_basemap_abbrevs().keys()
+
+    def values(self):
+        return get_basemap_abbrevs().values()
+
+    def items(self):
+        return get_basemap_abbrevs().items()
+
+
+basemap_abbrevs = _BasemapAbbrevProxy()
 
 basemap: TypeAlias = Annotated[
     Union[str, Dict, ipyleaflet.TileLayer, xyzservices.lib.TileProvider],
     f"""
     Basemap from ipyleaflet or other TileLayer provider. Strings are abbreviations mapped to corresponding
-    basemaps, available values are {list(basemap_abbrevs.keys())}.
+    basemaps, available values are {list(_basemap_abbrev_candidates.keys())}.
     """,
 ]
 
