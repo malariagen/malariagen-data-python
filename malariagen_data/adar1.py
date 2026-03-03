@@ -123,7 +123,7 @@ class Adar1(AnophelesDataResource):
             gcs_region_urls=GCS_REGION_URLS,
             major_version_number=MAJOR_VERSION_NUMBER,
             major_version_path=MAJOR_VERSION_PATH,
-            gff_gene_type="protein_coding_gene",
+            gff_gene_type="gene",
             gff_gene_name_attribute="Note",
             gff_default_attributes=("ID", "Parent", "Note", "description"),
             storage_options=storage_options,
