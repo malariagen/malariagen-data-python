@@ -884,8 +884,14 @@ class AnophelesDataResource(
         n_sites = ac.shape[0]
         ac = allel.AlleleCountsArray(ac)
         n = ac.sum(axis=1).max()  # number of chromosomes sampled
-        n_sites = min(n_sites, ac.shape[0])  # number of sites
         block_length = n_sites // n_jack  # number of sites in each block
+
+        if block_length < 1:
+            raise ValueError(
+                f"Not enough sites ({n_sites}) for {n_jack} jackknife blocks. "
+                "Choose a larger region or reduce n_jack."
+            )
+
         n_sites_j = n_sites - block_length  # number of sites in each jackknife resample
 
         debug("compute scaling constants")
