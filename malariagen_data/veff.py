@@ -82,10 +82,12 @@ class Annotator(object):
 
         # check the reference allele matches the reference sequence
         ref_seq = self.get_ref_seq(chrom, ref_start, ref_stop).lower()
-        assert ref_seq == ref.lower(), (
-            "reference allele does not match reference sequence, "
-            f"expected {ref_seq!r}, found {ref.lower()!r}"
-        )
+        if ref_seq != ref.lower():
+            raise ValueError(
+                f"Reference allele does not match reference sequence at "
+                f"{chrom}:{ref_start}-{ref_stop}. Expected {ref_seq!r}, "
+                f"found {ref.lower()!r}."
+            )
 
         return ref_start, ref_stop
 
@@ -147,7 +149,12 @@ class Annotator(object):
             )
 
             # reference allele falls within current transcript
-            assert feature_start <= ref_start <= ref_stop <= feature_stop
+            if not (feature_start <= ref_start <= ref_stop <= feature_stop):
+                raise ValueError(
+                    f"Variant coordinates ({ref_start}-{ref_stop}) fall outside "
+                    f"transcript boundaries ({feature_start}-{feature_stop}) "
+                    f"on {chrom}."
+                )
 
             effect = _get_within_transcript_effect(
                 ann=self,
@@ -234,7 +241,11 @@ def _get_cds_effect(ann, base_effect, cds, cdss):
     cds_stop = cds.end
 
     # reference allele falls within current transcript
-    assert cds_start <= ref_start <= ref_stop <= cds_stop
+    if not (cds_start <= ref_start <= ref_stop <= cds_stop):
+        raise ValueError(
+            f"Variant coordinates ({ref_start}-{ref_stop}) fall outside "
+            f"CDS boundaries ({cds_start}-{cds_stop})."
+        )
     return _get_within_cds_effect(ann, base_effect, cds, cdss)
 
 
