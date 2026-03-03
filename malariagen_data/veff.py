@@ -95,12 +95,6 @@ class Annotator(object):
         children = self.get_children(transcript).sort_values("start")
         feature = self.get_feature(transcript)
 
-        if not (children["type"] == "CDS").any():
-            raise ValueError(
-                f"Transcript {transcript!r} has no CDS features; "
-                "cannot compute coding variant effects."
-            )
-
         # make sure all alleles are uppercase
         variants.ref_allele = variants.ref_allele.str.upper()
         variants.alt_allele = variants.alt_allele.str.upper()
