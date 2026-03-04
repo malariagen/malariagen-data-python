@@ -1,6 +1,5 @@
 import hashlib
 import json
-import secrets
 import shutil
 import string
 from pathlib import Path
@@ -40,25 +39,19 @@ from malariagen_data.util import _gff3_parse_attributes
 # In order for reproducibility to work, it is essential to *not* use the
 # python random library or any legacy numpy.random calls to generate data.
 
-GLOBAL_SEED = secrets.randbits(128)
 
-
-def create_rng(context: str) -> np.random.Generator:
+def create_rng(global_seed: int, context: str) -> np.random.Generator:
     # Hash the string to an integer so we can make it into another seed
     digest = hashlib.shake_128(context.encode("utf-8")).hexdigest(16)
     context_seed = int(digest, 16)
-    return np.random.default_rng([context_seed, GLOBAL_SEED])
-
-
-def pytest_report_header(config):
-    return f"global seed: {GLOBAL_SEED}"
+    return np.random.default_rng([context_seed, global_seed])
 
 
 @pytest.fixture(name="rng")
-def test_rng_fixture(request):
+def test_rng_fixture(request, global_seed):
     # The nodeid is the complete name of the pytest function and
     # is unique across the tests
-    return create_rng(request.node.nodeid)
+    return create_rng(global_seed, request.node.nodeid)
 
 
 @pytest.fixture(scope="session")
@@ -902,7 +895,7 @@ def simulate_cnv_discordant_read_calls(
     # consistent number of variants for each contig for all sample set, otherwise the shapes will not align,
     # which will raise an error and cause test failures.
     # Use the same rng per contig, otherwise n_cnv_variants (and shapes) will not align.
-    contig_rngs = create_rng("contigs").spawn(len(contigs))
+    contig_rngs = create_rng(42, "contigs").spawn(len(contigs))
 
     for contig_rng, contig in zip(contig_rngs, contigs):
         # Create the contig group.
@@ -3186,20 +3179,20 @@ class Amin1Simulator(AnophelesSimulator):
 
 
 @pytest.fixture(scope="session")
-def ag3_sim_fixture(fixture_dir):
-    return Ag3Simulator(fixture_dir=fixture_dir, rng=create_rng("Ag3"))
+def ag3_sim_fixture(fixture_dir, global_seed):
+    return Ag3Simulator(fixture_dir=fixture_dir, rng=create_rng(global_seed, "Ag3"))
 
 
 @pytest.fixture(scope="session")
-def af1_sim_fixture(fixture_dir):
-    return Af1Simulator(fixture_dir=fixture_dir, rng=create_rng("Af1"))
+def af1_sim_fixture(fixture_dir, global_seed):
+    return Af1Simulator(fixture_dir=fixture_dir, rng=create_rng(global_seed, "Af1"))
 
 
 @pytest.fixture(scope="session")
-def adir1_sim_fixture(fixture_dir):
-    return Adir1Simulator(fixture_dir=fixture_dir, rng=create_rng("Adir1"))
+def adir1_sim_fixture(fixture_dir, global_seed):
+    return Adir1Simulator(fixture_dir=fixture_dir, rng=create_rng(global_seed, "Adir1"))
 
 
 @pytest.fixture(scope="session")
-def amin1_sim_fixture(fixture_dir):
-    return Amin1Simulator(fixture_dir=fixture_dir, rng=create_rng("Amin1"))
+def amin1_sim_fixture(fixture_dir, global_seed):
+    return Amin1Simulator(fixture_dir=fixture_dir, rng=create_rng(global_seed, "Amin1"))
