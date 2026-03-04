@@ -1,5 +1,4 @@
 import random
-from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
@@ -14,7 +13,6 @@ from malariagen_data import adir1 as _adir1
 
 from malariagen_data.anoph.pca import AnophelesPca
 from malariagen_data.anoph import pca_params
-from malariagen_data.util import CacheMiss
 
 
 @pytest.fixture
@@ -77,6 +75,34 @@ def adir1_sim_api(adir1_sim_fixture):
         default_site_mask="dirus",
         results_cache=adir1_sim_fixture.results_cache_path.as_posix(),
         taxon_colors=_adir1.TAXON_COLORS,
+    )
+
+
+@pytest.fixture
+def ag3_sim_api_local_path(ag3_sim_fixture):
+    data_path = ag3_sim_fixture.bucket_path.as_posix()
+    return AnophelesPca(
+        url=data_path,
+        public_url=data_path,
+        config_path=_ag3.CONFIG_PATH,
+        major_version_number=_ag3.MAJOR_VERSION_NUMBER,
+        major_version_path=_ag3.MAJOR_VERSION_PATH,
+        pre=True,
+        aim_metadata_dtype={
+            "aim_species_fraction_arab": "float64",
+            "aim_species_fraction_colu": "float64",
+            "aim_species_fraction_colu_no2l": "float64",
+            "aim_species_gambcolu_arabiensis": object,
+            "aim_species_gambiae_coluzzii": object,
+            "aim_species": object,
+        },
+        gff_gene_type="gene",
+        gff_gene_name_attribute="Name",
+        gff_default_attributes=("ID", "Parent", "Name", "description"),
+        default_site_mask="gamb_colu_arab",
+        results_cache=ag3_sim_fixture.results_cache_path.as_posix(),
+        taxon_colors=_ag3.TAXON_COLORS,
+        virtual_contigs=_ag3.VIRTUAL_CONTIGS,
     )
 
 
@@ -317,197 +343,118 @@ def test_pca_fit_exclude_samples(fixture, api: AnophelesPca):
     )
 
 
-class DummyAnophelesPca(AnophelesPca):
-    def __init__(self):
-        self._log = SimpleNamespace(debug=lambda *args, **kwargs: None)
-        self._captured_pca_params = None
-
-    def _prep_sample_selection_cache_params(
-        self,
-        *,
-        sample_sets,
-        sample_query,
-        sample_query_options,
-        sample_indices,  # noqa: ARG002
-    ):
-        return ["set_a", "set_b"], None
-
-    def _prep_region_cache_param(self, *, region):
-        return region
-
-    def _prep_optional_site_mask_param(self, *, site_mask):
-        return site_mask
-
-    def results_cache_get(self, *, name, params):  # noqa: ARG002
-        raise CacheMiss
-
-    def results_cache_set(self, *, name, params, results):  # noqa: ARG002
-        return None
-
-    def sample_metadata(
-        self,
-        sample_sets=None,
-        sample_query=None,
-        sample_query_options=None,  # noqa: ARG002
-        sample_indices=None,
-    ):
-        df = pd.DataFrame(
-            {
-                "sample_id": [f"s{i}" for i in range(6)],
-                "sample_set": [
-                    "set_a",
-                    "set_a",
-                    "set_a",
-                    "set_b",
-                    "set_b",
-                    "set_b",
-                ],
-                "country": ["Ghana", "Ghana", "Ghana", "Benin", "Benin", "Benin"],
-                "location": ["x", "x", "x", "y", "y", "y"],
-            }
-        )
-        if sample_sets is not None:
-            df = df[df["sample_set"].isin(sample_sets)].reset_index(drop=True)
-        if sample_query is not None:
-            df = df.query(sample_query).reset_index(drop=True)
-        if sample_indices is not None:
-            df = df.iloc[sample_indices].reset_index(drop=True)
-        return df
-
-    def _pca(self, **params):
-        self._captured_pca_params = params
-        all_samples = self.sample_metadata(sample_sets=params["sample_sets"])[
-            "sample_id"
-        ].to_numpy(dtype="U")
-        sample_indices = params["sample_indices"]
-        if sample_indices is None:
-            samples = all_samples
-        else:
-            samples = all_samples[np.asarray(sample_indices, dtype=int)]
-
-        n_components = params["n_components"]
-        n_samples = samples.shape[0]
-        return {
-            "samples": samples,
-            "coords": np.zeros((n_samples, n_components)),
-            "evr": np.ones(n_components),
-            "loc_keep_fit": np.ones(n_samples, dtype=bool),
-        }
-
-
-def test_pca_cohort_size_column_requires_cohort_size():
-    api = DummyAnophelesPca()
-
+def test_pca_cohort_size_column_requires_cohort_size(ag3_sim_api_local_path):
+    api = ag3_sim_api_local_path
+    sample_set = api.sample_sets()["sample_set"].iloc[0]
     with pytest.raises(ValueError, match="cohort_size must be provided"):
         api.pca(
-            region="2L",
+            region=api.contigs[0],
             n_snps=4,
             n_components=2,
+            sample_sets=[sample_set],
             cohort_size_column="country",
         )
 
 
-def test_pca_cohort_size_column_downsamples_per_cohort():
-    api = DummyAnophelesPca()
+def test_pca_cohort_size_column_downsamples_per_cohort(ag3_sim_api_local_path):
+    api = ag3_sim_api_local_path
+    df_samples = api.sample_metadata()
+    cohort_size = 2
+    cohort_counts = df_samples["country"].value_counts(dropna=True)
+    eligible_cohorts = cohort_counts[cohort_counts >= cohort_size]
+    if len(eligible_cohorts) < 2:
+        pytest.skip("not enough simulated cohorts with sufficient sample size")
+    selected_cohorts = eligible_cohorts.index[:2].to_list()
 
     pca_df, _ = api.pca(
-        region="2L",
+        region=api.contigs[0],
         n_snps=4,
         n_components=2,
-        cohort_size=2,
+        cohort_size=cohort_size,
+        cohort_size_column="country",
+        sample_query=f"country in {selected_cohorts!r}",
+        random_seed=42,
+    )
+
+    selected_counts = pca_df["country"].value_counts()
+    assert set(selected_counts.index.to_list()) == set(selected_cohorts)
+    assert (selected_counts == cohort_size).all()
+
+
+def test_pca_cohort_size_column_updates_sample_sets_after_downsampling(
+    ag3_sim_api_local_path, monkeypatch
+):
+    api = ag3_sim_api_local_path
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    if len(all_sample_sets) < 2:
+        pytest.skip("not enough simulated sample sets")
+    dropped_sample_set = all_sample_sets[-1]
+    cohort_size = 2
+
+    original_sample_metadata = api.sample_metadata
+
+    def sample_metadata_with_missing_cohort_column(*args, **kwargs):
+        df = original_sample_metadata(*args, **kwargs)
+        df = df.copy()
+        df.loc[df["sample_set"] == dropped_sample_set, "country"] = np.nan
+        return df
+
+    monkeypatch.setattr(
+        api, "sample_metadata", sample_metadata_with_missing_cohort_column
+    )
+
+    (
+        prepared_sample_sets,
+        prepared_sample_indices,
+    ) = api._prep_sample_selection_cache_params(
+        sample_sets=all_sample_sets,
+        sample_query=None,
+        sample_query_options=None,
+        sample_indices=None,
+    )
+    (
+        updated_sample_sets,
+        updated_sample_indices,
+    ) = api._downsample_sample_indices_by_cohort(
+        sample_sets=prepared_sample_sets,
+        sample_indices=prepared_sample_indices,
+        cohort_size=cohort_size,
         cohort_size_column="country",
         random_seed=42,
     )
 
-    captured = api._captured_pca_params
-    assert captured is not None
-    assert captured["cohort_size_column"] == "country"
-    assert captured["sample_indices"] is not None
-    assert captured["cohort_size"] == 2
-    assert captured["min_cohort_size"] == 2
-    assert captured["max_cohort_size"] == 2
-
-    selected_df = api.sample_metadata().iloc[captured["sample_indices"]]
-    selected_counts = selected_df["country"].value_counts()
-    assert selected_counts["Ghana"] == 2
-    assert selected_counts["Benin"] == 2
-    assert len(pca_df) == 4
+    assert dropped_sample_set not in updated_sample_sets
+    assert updated_sample_indices
+    selected_df = api.sample_metadata(sample_sets=updated_sample_sets).iloc[
+        updated_sample_indices
+    ]
+    assert dropped_sample_set not in selected_df["sample_set"].to_list()
 
 
-def test_pca_cohort_size_column_updates_sample_sets_after_downsampling():
-    class DummyAnophelesPcaMissingCohort(DummyAnophelesPca):
-        def sample_metadata(
-            self,
-            sample_sets=None,
-            sample_query=None,
-            sample_query_options=None,  # noqa: ARG002
-            sample_indices=None,
-        ):
-            df = super().sample_metadata(
-                sample_sets=sample_sets,
-                sample_query=sample_query,
-                sample_indices=sample_indices,
-            )
-            df.loc[df["sample_set"] == "set_b", "country"] = np.nan
-            return df
+def test_pca_cohort_size_column_skips_small_cohorts_with_warning(
+    ag3_sim_api_local_path, monkeypatch
+):
+    api = ag3_sim_api_local_path
+    cohort_size = 2
+    original_sample_metadata = api.sample_metadata
 
-    api = DummyAnophelesPcaMissingCohort()
+    def sample_metadata_with_small_cohort(*args, **kwargs):
+        df = original_sample_metadata(*args, **kwargs)
+        df = df.copy()
+        if not df.empty:
+            df.loc[df.index[0], "country"] = "__tiny_cohort__"
+        return df
 
-    api.pca(
-        region="2L",
-        n_snps=4,
-        n_components=2,
-        cohort_size=2,
-        cohort_size_column="country",
-        random_seed=42,
-    )
-
-    captured = api._captured_pca_params
-    assert captured is not None
-    assert captured["sample_sets"] == ["set_a"]
-    assert captured["sample_indices"] is not None
-
-    selected_df = api.sample_metadata(
-        sample_sets=captured["sample_sets"], sample_indices=captured["sample_indices"]
-    )
-    assert set(selected_df["sample_set"]) == {"set_a"}
-
-
-def test_pca_cohort_size_column_skips_small_cohorts_with_warning():
-    class DummyAnophelesPcaSmallCohort(DummyAnophelesPca):
-        def sample_metadata(
-            self,
-            sample_sets=None,
-            sample_query=None,
-            sample_query_options=None,  # noqa: ARG002
-            sample_indices=None,
-        ):
-            df = super().sample_metadata(
-                sample_sets=sample_sets,
-                sample_query=sample_query,
-                sample_indices=sample_indices,
-            )
-            # Force one cohort to be too small for cohort_size=2.
-            df.loc[df["sample_id"].isin(["s3", "s4"]), "country"] = "Ghana"
-            df.loc[df["sample_id"] == "s5", "country"] = "Benin"
-            return df
-
-    api = DummyAnophelesPcaSmallCohort()
+    monkeypatch.setattr(api, "sample_metadata", sample_metadata_with_small_cohort)
 
     with pytest.warns(UserWarning, match="Skipping cohort"):
         pca_df, _ = api.pca(
-            region="2L",
+            region=api.contigs[0],
             n_snps=4,
             n_components=2,
-            cohort_size=2,
+            cohort_size=cohort_size,
             cohort_size_column="country",
             random_seed=42,
         )
 
-    captured = api._captured_pca_params
-    assert captured is not None
-    assert captured["sample_indices"] is not None
-    selected_df = api.sample_metadata().iloc[captured["sample_indices"]]
-    selected_counts = selected_df["country"].value_counts()
-    assert selected_counts.to_dict() == {"Ghana": 2}
-    assert len(pca_df) == 2
+    assert "__tiny_cohort__" not in pca_df["country"].to_list()
