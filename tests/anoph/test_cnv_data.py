@@ -564,7 +564,7 @@ def test_cnv_discordant_read_calls(fixture, api: AnophelesCnvData):
 
     for sample_sets in parametrize_sample_sets:
         for contig in parametrize_contig:
-            ds = api.cnv_discordant_read_calls(contig=contig, sample_sets=sample_sets)
+            ds = api.cnv_discordant_read_calls(contigs=contig, sample_sets=sample_sets)
             assert isinstance(ds, xr.Dataset)
 
             # check fields
@@ -631,18 +631,30 @@ def test_cnv_discordant_read_calls(fixture, api: AnophelesCnvData):
         match="No CNV discordant read calls data found|no CNVs available for contig",
     ):
         api.cnv_discordant_read_calls(
-            contig="foobar", sample_sets=random.choice(all_sample_sets)
+            contigs="foobar", sample_sets=random.choice(all_sample_sets)
         )
 
     # Check with a sample set that should not exist
     with pytest.raises(ValueError):
         api.cnv_discordant_read_calls(
-            contig=random.choice(api.contigs), sample_sets="foobar"
+            contigs=random.choice(api.contigs), sample_sets="foobar"
         )
 
     # Check with a contig and sample set that should not exist
     with pytest.raises(ValueError):
-        api.cnv_discordant_read_calls(contig="foobar", sample_sets="bazqux")
+        api.cnv_discordant_read_calls(contigs="foobar", sample_sets="bazqux")
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_cnv_discordant_read_calls_deprecated_contig_alias(
+    fixture, api: AnophelesCnvData
+):
+    sample_set = random.choice(api.sample_sets()["sample_set"].to_list())
+    contig = random.choice(api.contigs)
+    ds_contigs = api.cnv_discordant_read_calls(contigs=contig, sample_sets=sample_set)
+    with pytest.warns(DeprecationWarning, match="deprecated"):
+        ds_contig = api.cnv_discordant_read_calls(contig=contig, sample_sets=sample_set)
+    xr.testing.assert_identical(ds_contig, ds_contigs)
 
 
 def test_cnv_discordant_read_calls__sample_query(
@@ -670,13 +682,13 @@ def test_cnv_discordant_read_calls__sample_query(
         if len(df_samples) == 0:
             with pytest.raises(ValueError):
                 ds = api.cnv_discordant_read_calls(
-                    contig=contig,
+                    contigs=contig,
                     sample_sets=sample_sets,
                     sample_query=sample_query,
                 )
         else:
             ds = api.cnv_discordant_read_calls(
-                contig=contig,
+                contigs=contig,
                 sample_sets=sample_sets,
                 sample_query=sample_query,
             )
@@ -755,14 +767,14 @@ def test_cnv_discordant_read_calls__sample_query_options(
         if len(df_samples) == 0:
             with pytest.raises(ValueError):
                 ds = api.cnv_discordant_read_calls(
-                    contig=contig,
+                    contigs=contig,
                     sample_sets=sample_sets,
                     sample_query=sample_query,
                     sample_query_options=sample_query_options,
                 )
         else:
             ds = api.cnv_discordant_read_calls(
-                contig=contig,
+                contigs=contig,
                 sample_sets=sample_sets,
                 sample_query=sample_query,
                 sample_query_options=sample_query_options,
