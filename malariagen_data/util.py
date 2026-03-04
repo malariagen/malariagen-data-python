@@ -26,7 +26,6 @@ import numba  # type: ignore
 import numpy as np
 import pandas as pd
 import plotly.express as px  # type: ignore
-import typeguard
 import xarray as xr
 import zarr  # type: ignore
 
@@ -1156,28 +1155,38 @@ def _check_colab_location(gcp_region: Optional[str]):
 
 
 def _check_types(f):
-    """Simple decorator to provide runtime checking of parameter types.
+    """Decorator to provide runtime checking of parameter types.
 
-    N.B., the typeguard package does have a decorator function called
-    @typechecked which performs a similar purpose. However, the typeguard
-    decorator causes a memory leak and doesn't seem usable. Also, the
-    typeguard decorator performs runtime checking of all variables within
-    the function as well as the arguments and return values. We only want
-    checking of the arguments to help users provide correct inputs.
+    Uses Pydantic v2's TypeAdapter for parameter validation.
+    Validates input types without coercing arguments — the original
+    function is called with the original unmodified arguments.
 
     """
+    from pydantic import ConfigDict, TypeAdapter, ValidationError
+
+    type_hints = get_type_hints(f)
+    config = ConfigDict(arbitrary_types_allowed=True)
+
+    # Build a TypeAdapter for each annotated parameter (skip 'return').
+    adapters: dict = {}
+    for k, t in type_hints.items():
+        if k == "return":
+            continue
+        try:
+            adapters[k] = TypeAdapter(t, config=config)
+        except Exception:
+            pass  # Skip types pydantic cannot handle
 
     @wraps(f)
-    def check_types_wrapper(*args, **kwargs):
-        type_hints = get_type_hints(f)
+    def wrapper(*args, **kwargs):
         call_args = getcallargs(f, *args, **kwargs)
-        for k, t in type_hints.items():
+        for k, adapter in adapters.items():
             if k in call_args:
                 v = call_args[k]
                 try:
-                    typeguard.check_type(v, t)
-                except typeguard.TypeCheckError as e:
-                    expected_type = humanize_type(t)
+                    adapter.validate_python(v, strict=True)
+                except ValidationError as e:
+                    expected_type = humanize_type(type_hints[k])
                     actual_type = humanize_type(type(v))
                     message = fill(
                         dedent(
@@ -1188,11 +1197,10 @@ def _check_types(f):
                         )
                     )
                     message += f"\n\n{e}"
-                    error = TypeError(message)
-                    raise error from None
+                    raise TypeError(message) from None
         return f(*args, **kwargs)
 
-    return check_types_wrapper
+    return wrapper
 
 
 @numba.njit
