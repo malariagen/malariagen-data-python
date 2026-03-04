@@ -1,8 +1,9 @@
+import hashlib
 import json
+import secrets
 import shutil
 import string
 from pathlib import Path
-from random import choice, choices, randint
 from typing import Any, Dict, Tuple
 
 import numpy as np
@@ -28,6 +29,29 @@ from malariagen_data.util import _gff3_parse_attributes
 # data locally which follows the same layout and format of the
 # real data in GCS, but which is much smaller and so can be used
 # for faster test runs.
+#
+# The simulated data is generated randomly, but it needs to be reproducible
+# after the fact for debugging if there is a failure in one of the test cases.
+# This is done by generating a different global seed on each run, and then
+# creating context-specific RNG's in every situation they are needed. The context
+# is mixed into the seed of the RNG to ensure that all contexts will generate
+# independent random numbers, but still be reproducible from the global seed.
+# See https://numpy.org/doc/stable/reference/random/parallel.html#sequence-of-integer-seeds
+# In order for reproducibility to work, it is essential to *not* use the
+# python random library or any legacy numpy.random calls to generate data.
+
+GLOBAL_SEED = secrets.randbits(128)
+
+
+def create_rng(context: str) -> np.random.Generator:
+    # Hash the string to an integer so we can make it into another seed
+    digest = hashlib.shake_128(context.encode("utf-8")).hexdigest(16)
+    context_seed = int(digest, 16)
+    return np.random.default_rng([context_seed, GLOBAL_SEED])
+
+
+def pytest_report_header(config):
+    print("global seed:", GLOBAL_SEED)
 
 
 @pytest.fixture(scope="session")
@@ -36,19 +60,21 @@ def fixture_dir():
     return cwd / "fixture"
 
 
-def simulate_contig(*, low, high, base_composition):
-    size = np.random.randint(low=low, high=high)
+def simulate_contig(*, low, high, base_composition, rng):
+    size = rng.integers(low=low, high=high)
     bases = np.array([b"a", b"c", b"g", b"t", b"n", b"A", b"C", b"G", b"T", b"N"])
     p = np.array([base_composition[b] for b in bases])
-    seq = np.random.choice(bases, size=size, replace=True, p=p)
+    seq = rng.choice(bases, size=size, replace=True, p=p)
     return seq
 
 
-def simulate_genome(*, path, contigs, low, high, base_composition):
+def simulate_genome(*, path, contigs, low, high, base_composition, rng):
     path.mkdir(parents=True, exist_ok=True)
     root = zarr.open(path, mode="w")
     for contig in contigs:
-        seq = simulate_contig(low=low, high=high, base_composition=base_composition)
+        seq = simulate_contig(
+            low=low, high=high, base_composition=base_composition, rng=rng
+        )
         root.create_dataset(name=contig, data=seq)
     zarr.consolidate_metadata(path)
     return root
@@ -59,6 +85,7 @@ class Gff3Simulator:
         self,
         *,
         contig_sizes,
+        rng,
         gene_type="gene",
         transcript_type="mRNA",
         exon_type="exon",
@@ -82,6 +109,7 @@ class Gff3Simulator:
         attrs=("Name", "description"),
     ):
         self.contig_sizes = contig_sizes
+        self.rng = rng
         self.gene_type = gene_type
         self.transcript_type = transcript_type
         self.exon_type = exon_type
@@ -148,9 +176,13 @@ class Gff3Simulator:
         # Simulate genes.
         for gene_ix in range(self.max_genes):
             gene_id = f"gene-{contig}-{gene_ix}"
-            strand = choice(["+", "-"])
-            inter_size = randint(self.inter_size_low, self.inter_size_high)
-            gene_size = randint(self.gene_size_low, self.gene_size_high)
+            strand = self.rng.choice(["+", "-"])
+            inter_size = self.rng.integers(
+                self.inter_size_low, self.inter_size_high, endpoint=True
+            )
+            gene_size = self.rng.integers(
+                self.gene_size_low, self.gene_size_high, endpoint=True
+            )
             if strand == "+":
                 gene_start = cur_fwd + inter_size
             else:
@@ -163,7 +195,9 @@ class Gff3Simulator:
             gene_attrs = f"ID={gene_id}"
             for attr in self.attrs:
                 random_str = "".join(
-                    choices(string.ascii_uppercase + string.digits, k=5)
+                    self.rng.choice(
+                        list(string.ascii_uppercase + string.digits), size=5
+                    )
                 )
                 gene_attrs += f";{attr}={random_str}"
             gene = (
@@ -209,7 +243,9 @@ class Gff3Simulator:
         # accurate in real data.
 
         for transcript_ix in range(
-            randint(self.n_transcripts_low, self.n_transcripts_high)
+            self.rng.integers(
+                self.n_transcripts_low, self.n_transcripts_high, endpoint=True
+            )
         ):
             transcript_id = f"transcript-{contig}-{gene_ix}-{transcript_ix}"
             transcript_start = gene_start
@@ -257,13 +293,15 @@ class Gff3Simulator:
         transcript_size = transcript_end - transcript_start
         exons = []
         exon_end = transcript_start
-        n_exons = randint(self.n_exons_low, self.n_exons_high)
+        n_exons = self.rng.integers(self.n_exons_low, self.n_exons_high, endpoint=True)
         for exon_ix in range(n_exons):
             exon_id = f"exon-{contig}-{gene_ix}-{transcript_ix}-{exon_ix}"
             if exon_ix > 0:
                 # Insert an intron between this exon and the previous one.
-                intron_size = randint(
-                    self.intron_size_low, min(transcript_size, self.intron_size_high)
+                intron_size = self.rng.integers(
+                    self.intron_size_low,
+                    min(transcript_size, self.intron_size_high),
+                    endpoint=True,
                 )
                 exon_start = exon_end + intron_size
                 if exon_start >= transcript_end:
@@ -272,7 +310,9 @@ class Gff3Simulator:
             else:
                 # First exon, assume exon starts where the transcript starts.
                 exon_start = transcript_start
-            exon_size = randint(self.exon_size_low, self.exon_size_high)
+            exon_size = self.rng.integers(
+                self.exon_size_low, self.exon_size_high, endpoint=True
+            )
             exon_end = min(exon_start + exon_size, transcript_end)
             assert exon_end > exon_start
             exon = (
@@ -308,7 +348,7 @@ class Gff3Simulator:
             else:
                 feature_type = self.cds_type
                 # Cheat a little, random phase.
-                phase = choice([1, 2, 3])
+                phase = self.rng.choice([1, 2, 3])
             feature = (
                 contig,
                 self.source,
@@ -357,19 +397,19 @@ def simulate_snp_sites(path, contigs, genome):
     return root, n_sites
 
 
-def simulate_site_filters(path, contigs, p_pass, n_sites):
+def simulate_site_filters(path, contigs, p_pass, n_sites, rng):
     root = zarr.open(path, mode="w")
     p = np.array([1 - p_pass, p_pass])
     for contig in contigs:
         variants = root.require_group(contig).require_group("variants")
         size = n_sites[contig]
-        filter_pass = np.random.choice([False, True], size=size, p=p)
+        filter_pass = rng.choice([False, True], size=size, p=p)
         variants.create_dataset(name="filter_pass", data=filter_pass)
     zarr.consolidate_metadata(path)
 
 
 def simulate_snp_genotypes(
-    zarr_path, metadata_path, contigs, n_sites, p_allele, p_missing
+    zarr_path, metadata_path, contigs, n_sites, p_allele, p_missing, rng
 ):
     root = zarr.open(zarr_path, mode="w")
 
@@ -386,7 +426,7 @@ def simulate_snp_genotypes(
         contig_n_sites = n_sites[contig]
 
         # Simulate genotype calls.
-        gt = np.random.choice(
+        gt = rng.choice(
             np.arange(4, dtype="i1"),
             size=(contig_n_sites, n_samples, 2),
             replace=True,
@@ -395,9 +435,7 @@ def simulate_snp_genotypes(
 
         # Simulate missing calls.
         n_calls = contig_n_sites * n_samples
-        loc_missing = np.random.choice(
-            [False, True], size=n_calls, replace=True, p=p_missing
-        )
+        loc_missing = rng.choice([False, True], size=n_calls, replace=True, p=p_missing)
         gt.reshape(-1, 2)[loc_missing] = -1
 
         # Store genotype calls.
@@ -424,7 +462,7 @@ def simulate_snp_genotypes(
     zarr.consolidate_metadata(zarr_path)
 
 
-def simulate_site_annotations(path, genome):
+def simulate_site_annotations(path, genome, rng):
     root = zarr.open(path, mode="w")
     contigs = list(genome)
 
@@ -438,7 +476,7 @@ def simulate_site_annotations(path, genome):
     p = [0.897754, 0.0, 0.060577, 0.014287, 0.011096, 0.016286]
     for contig in contigs:
         size = genome[contig].shape[0]
-        x = np.random.choice(vals, size=size, replace=True, p=p)
+        x = rng.choice(vals, size=size, replace=True, p=p)
         grp.create_dataset(name=contig, data=x)
 
     # codon_nonsyn
@@ -447,7 +485,7 @@ def simulate_site_annotations(path, genome):
     p = [0.91404, 0.001646, 0.018698, 0.065616]
     for contig in contigs:
         size = genome[contig].shape[0]
-        x = np.random.choice(vals, size=size, replace=True, p=p)
+        x = rng.choice(vals, size=size, replace=True, p=p)
         grp.create_dataset(name=contig, data=x)
 
     # codon_position
@@ -456,7 +494,7 @@ def simulate_site_annotations(path, genome):
     p = [0.897754, 0.034082, 0.034082, 0.034082]
     for contig in contigs:
         size = genome[contig].shape[0]
-        x = np.random.choice(vals, size=size, replace=True, p=p)
+        x = rng.choice(vals, size=size, replace=True, p=p)
         grp.create_dataset(name=contig, data=x)
 
     # seq_cls
@@ -477,34 +515,34 @@ def simulate_site_annotations(path, genome):
     ]
     for contig in contigs:
         size = genome[contig].shape[0]
-        x = np.random.choice(vals, size=size, replace=True, p=p)
+        x = rng.choice(vals, size=size, replace=True, p=p)
         grp.create_dataset(name=contig, data=x)
 
     # seq_flen
     grp = root.require_group("seq_flen")
     for contig in contigs:
         size = genome[contig].shape[0]
-        x = np.random.randint(low=0, high=40_000, size=size)
+        x = rng.integers(low=0, high=40_000, size=size)
         grp.create_dataset(name=contig, data=x)
 
     # seq_relpos_start
     grp = root.require_group("seq_relpos_start")
     for contig in contigs:
         size = genome[contig].shape[0]
-        x = np.random.beta(a=0.4, b=4, size=size) * 40_000
+        x = rng.beta(a=0.4, b=4, size=size) * 40_000
         grp.create_dataset(name=contig, data=x)
 
     # seq_relpos_stop
     grp = root.require_group("seq_relpos_stop")
     for contig in contigs:
         size = genome[contig].shape[0]
-        x = np.random.beta(a=0.4, b=4, size=size) * 40_000
+        x = rng.beta(a=0.4, b=4, size=size) * 40_000
         grp.create_dataset(name=contig, data=x)
 
     zarr.consolidate_metadata(path)
 
 
-def simulate_hap_sites(path, contigs, snp_sites, p_site):
+def simulate_hap_sites(path, contigs, snp_sites, p_site, rng):
     n_sites = dict()
     root = zarr.open(path, mode="w")
 
@@ -514,7 +552,7 @@ def simulate_hap_sites(path, contigs, snp_sites, p_site):
 
         # Simulate POS.
         snp_pos = snp_sites[f"{contig}/variants/POS"][:]
-        loc_hap_sites = np.random.choice(
+        loc_hap_sites = rng.choice(
             [False, True], size=snp_pos.shape[0], p=[1 - p_site, p_site]
         )
         pos = snp_pos[loc_hap_sites]
@@ -527,7 +565,7 @@ def simulate_hap_sites(path, contigs, snp_sites, p_site):
 
         # Simulate ALT.
         snp_alt = snp_sites[f"{contig}/variants/ALT"][:]
-        sim_alt_choice = np.random.choice(3, size=pos.shape[0])
+        sim_alt_choice = rng.choice(3, size=pos.shape[0])
         alt = np.take_along_axis(
             snp_alt[loc_hap_sites], indices=sim_alt_choice[:, None], axis=1
         )[:, 0]
@@ -539,7 +577,7 @@ def simulate_hap_sites(path, contigs, snp_sites, p_site):
     return root, n_sites
 
 
-def simulate_aim_variants(path, contigs, snp_sites, n_sites_low, n_sites_high):
+def simulate_aim_variants(path, contigs, snp_sites, n_sites_low, n_sites_high, rng):
     ds = xr.Dataset()
     variant_position_arrays = []
     variant_allele_arrays = []
@@ -547,8 +585,8 @@ def simulate_aim_variants(path, contigs, snp_sites, n_sites_low, n_sites_high):
     for contig_index, contig in enumerate(contigs):
         # Simulate AIM positions variable.
         snp_pos = snp_sites[f"{contig}/variants/POS"][:]
-        loc_aim_sites = np.random.choice(
-            snp_pos.shape[0], size=np.random.randint(n_sites_low, n_sites_high)
+        loc_aim_sites = rng.choice(
+            snp_pos.shape[0], size=rng.integers(n_sites_low, n_sites_high)
         )
         loc_aim_sites.sort()
         aim_pos = snp_pos[loc_aim_sites]
@@ -564,10 +602,7 @@ def simulate_aim_variants(path, contigs, snp_sites, n_sites_low, n_sites_high):
         snp_alleles = np.concatenate([snp_ref[:, None], snp_alt], axis=1)
         aim_site_snp_alleles = snp_alleles[loc_aim_sites]
         sim_allele_choice = np.vstack(
-            [
-                np.random.choice(4, size=2, replace=False)
-                for _ in range(len(loc_aim_sites))
-            ]
+            [rng.choice(4, size=2, replace=False) for _ in range(len(loc_aim_sites))]
         )
         aim_alleles = np.take_along_axis(
             aim_site_snp_alleles, indices=sim_allele_choice, axis=1
@@ -591,7 +626,7 @@ def simulate_aim_variants(path, contigs, snp_sites, n_sites_low, n_sites_high):
     return ds
 
 
-def simulate_cnv_hmm(zarr_path, metadata_path, contigs, contig_sizes):
+def simulate_cnv_hmm(zarr_path, metadata_path, contigs, contig_sizes, rng):
     # zarr_path is the output path to the zarr store
     # metadata_path is the input path for the sample metadata
     # contigs is the list of contigs, e.g. Ag has ('2L', '2R', '3R', '3L', 'X')
@@ -612,7 +647,7 @@ def simulate_cnv_hmm(zarr_path, metadata_path, contigs, contig_sizes):
     # - samples [1D array] [str]
 
     # Get a random probability for a sample being high variance, between 0 and 1.
-    p_variance = np.random.random()
+    p_variance = rng.random()
 
     # Open a zarr at the specified path.
     root = zarr.open(zarr_path, mode="w")
@@ -626,11 +661,11 @@ def simulate_cnv_hmm(zarr_path, metadata_path, contigs, contig_sizes):
     n_samples = len(df_samples)
 
     # Simulate sample_coverage_variance array.
-    sample_coverage_variance = np.random.uniform(low=0, high=0.5, size=n_samples)
+    sample_coverage_variance = rng.uniform(low=0, high=0.5, size=n_samples)
     root.create_dataset(name="sample_coverage_variance", data=sample_coverage_variance)
 
     # Simulate sample_is_high_variance array.
-    sample_is_high_variance = np.random.choice(
+    sample_is_high_variance = rng.choice(
         [False, True], size=n_samples, p=[1 - p_variance, p_variance]
     )
     root.create_dataset(name="sample_is_high_variance", data=sample_is_high_variance)
@@ -661,9 +696,9 @@ def simulate_cnv_hmm(zarr_path, metadata_path, contigs, contig_sizes):
         )
 
         # Simulate CN, NormCov, RawCov under calldata.
-        cn = np.random.randint(low=-1, high=12, size=(n_windows, n_samples))
-        normCov = np.random.randint(low=0, high=356, size=(n_windows, n_samples))
-        rawCov = np.random.randint(low=-1, high=18465, size=(n_windows, n_samples))
+        cn = rng.integers(low=-1, high=12, size=(n_windows, n_samples))
+        normCov = rng.integers(low=0, high=356, size=(n_windows, n_samples))
+        rawCov = rng.integers(low=-1, high=18465, size=(n_windows, n_samples))
         calldata_grp.create_dataset(name="CN", data=cn)
         calldata_grp.create_dataset(name="NormCov", data=normCov)
         calldata_grp.create_dataset(name="RawCov", data=rawCov)
@@ -683,7 +718,7 @@ def simulate_cnv_hmm(zarr_path, metadata_path, contigs, contig_sizes):
     zarr.consolidate_metadata(zarr_path)
 
 
-def simulate_cnv_coverage_calls(zarr_path, metadata_path, contigs, contig_sizes):
+def simulate_cnv_coverage_calls(zarr_path, metadata_path, contigs, contig_sizes, rng):
     # zarr_path is the output path to the zarr store
     # metadata_path is the input path for the sample metadata
     # contigs is the list of contigs, e.g. Ag has ('2L', '2R', '3R', '3L', 'X')
@@ -705,13 +740,13 @@ def simulate_cnv_coverage_calls(zarr_path, metadata_path, contigs, contig_sizes)
     #         - POS [1D array] [int for n_variants]
 
     # Get a random probability for choosing allele 1, between 0 and 1.
-    p_allele = np.random.random()
+    p_allele = rng.random()
 
     # Get a random probability for passing a particular SNP site (position), between 0 and 1.
-    p_filter_pass = np.random.random()
+    p_filter_pass = rng.random()
 
     # Get a random probability for applying qMerge filter to a particular SNP site (position), between 0 and 1.
-    p_filter_qMerge = np.random.random()
+    p_filter_qMerge = rng.random()
 
     # Open a zarr at the specified path.
     root = zarr.open(zarr_path, mode="w")
@@ -733,17 +768,15 @@ def simulate_cnv_coverage_calls(zarr_path, metadata_path, contigs, contig_sizes)
         contig_length_bp = contig_sizes[contig]
 
         # Get a random number of CNV alleles ("variants") to simulate.
-        n_cnv_alleles = np.random.randint(1, 5_000)
+        n_cnv_alleles = rng.integers(1, 5_000)
 
         # Produce a set of random start positions for each allele as a sorted list.
-        allele_start_pos = sorted(
-            np.random.randint(1, contig_length_bp, size=n_cnv_alleles)
-        )
+        allele_start_pos = sorted(rng.integers(1, contig_length_bp, size=n_cnv_alleles))
 
         # Produce a set of random allele lengths for each allele, according to a range.
         allele_length_bp_min = 100
         allele_length_bp_max = 100_000
-        allele_lengths_bp = np.random.randint(
+        allele_lengths_bp = rng.integers(
             allele_length_bp_min, allele_length_bp_max, size=n_cnv_alleles
         )
 
@@ -755,7 +788,7 @@ def simulate_cnv_coverage_calls(zarr_path, metadata_path, contigs, contig_sizes)
 
         # Simulate the genotype calls.
         # Note: this is only 2D, unlike SNP, HAP, AIM GT which are 3D
-        gt = np.random.choice(
+        gt = rng.choice(
             np.array([0, 1], dtype="i1"),
             size=(n_cnv_alleles, n_samples),
             replace=True,
@@ -772,8 +805,8 @@ def simulate_cnv_coverage_calls(zarr_path, metadata_path, contigs, contig_sizes)
         variants_grp = contig_grp.require_group("variants")
 
         # Simulate the CIEND and CIPOS arrays under variants.
-        ciend = np.random.randint(low=0, high=13200, size=n_cnv_alleles)
-        cipos = np.random.randint(low=0, high=37200, size=n_cnv_alleles)
+        ciend = rng.integers(low=0, high=13200, size=n_cnv_alleles)
+        cipos = rng.integers(low=0, high=37200, size=n_cnv_alleles)
         variants_grp.create_dataset(name="CIEND", data=ciend)
         variants_grp.create_dataset(name="CIPOS", data=cipos)
 
@@ -787,10 +820,10 @@ def simulate_cnv_coverage_calls(zarr_path, metadata_path, contigs, contig_sizes)
         variants_grp.create_dataset(name="ID", data=variant_IDs)
 
         # Simulate the filters under variants.
-        filter_pass = np.random.choice(
+        filter_pass = rng.choice(
             [False, True], size=n_cnv_alleles, p=[1 - p_filter_pass, p_filter_pass]
         )
-        filter_qMerge = np.random.choice(
+        filter_qMerge = rng.choice(
             [False, True], size=n_cnv_alleles, p=[1 - p_filter_qMerge, p_filter_qMerge]
         )
         variants_grp.create_dataset(name="FILTER_PASS", data=filter_pass)
@@ -805,7 +838,9 @@ def simulate_cnv_coverage_calls(zarr_path, metadata_path, contigs, contig_sizes)
     zarr.consolidate_metadata(zarr_path)
 
 
-def simulate_cnv_discordant_read_calls(zarr_path, metadata_path, contigs, contig_sizes):
+def simulate_cnv_discordant_read_calls(
+    zarr_path, metadata_path, contigs, contig_sizes, rng
+):
     # zarr_path is the output path to the zarr store
     # metadata_path is the input path for the sample metadata
     # contigs is the list of contigs, e.g. Ag has ('2R', '3R', 'X')
@@ -828,10 +863,10 @@ def simulate_cnv_discordant_read_calls(zarr_path, metadata_path, contigs, contig
     # - samples [1D array] [str for n_samples]
 
     # Get a random probability for a sample being high variance, between 0 and 1.
-    p_variance = np.random.random()
+    p_variance = rng.random()
 
     # Get a random probability for choosing allele 1, between 0 and 1.
-    p_allele = np.random.random()
+    p_allele = rng.random()
 
     # Open a zarr at the specified path.
     root = zarr.open(zarr_path, mode="w")
@@ -845,11 +880,11 @@ def simulate_cnv_discordant_read_calls(zarr_path, metadata_path, contigs, contig
     n_samples = len(df_samples)
 
     # Simulate sample_coverage_variance array.
-    sample_coverage_variance = np.random.uniform(low=0, high=0.5, size=n_samples)
+    sample_coverage_variance = rng.uniform(low=0, high=0.5, size=n_samples)
     root.create_dataset(name="sample_coverage_variance", data=sample_coverage_variance)
 
     # Simulate sample_is_high_variance array.
-    sample_is_high_variance = np.random.choice(
+    sample_is_high_variance = rng.choice(
         [False, True], size=n_samples, p=[1 - p_variance, p_variance]
     )
     root.create_dataset(name="sample_is_high_variance", data=sample_is_high_variance)
@@ -859,13 +894,10 @@ def simulate_cnv_discordant_read_calls(zarr_path, metadata_path, contigs, contig
     # the same number of variants for all sample sets with respect to each contig. So we need to maintain a
     # consistent number of variants for each contig for all sample set, otherwise the shapes will not align,
     # which will raise an error and cause test failures.
-    fixed_seed = 42
+    # Use the same rng per contig, otherwise n_cnv_variants (and shapes) will not align.
+    contig_rngs = create_rng("contigs").spawn(len(contigs))
 
-    for i, contig in enumerate(contigs):
-        # Use the same random seed per contig, otherwise n_cnv_variants (and shapes) will not align.
-        unique_seed = fixed_seed + i
-        np.random.seed(unique_seed)
-
+    for contig_rng, contig in zip(contig_rngs, contigs):
         # Create the contig group.
         contig_grp = root.require_group(contig)
 
@@ -876,17 +908,17 @@ def simulate_cnv_discordant_read_calls(zarr_path, metadata_path, contigs, contig
         contig_length_bp = contig_sizes[contig]
 
         # Get a random number of CNV variants to simulate.
-        n_cnv_variants = np.random.randint(1, 100)
+        n_cnv_variants = contig_rng.integers(1, 100)
 
         # Produce a set of random start positions for each variant as a sorted list.
         variant_start_pos = sorted(
-            np.random.randint(1, contig_length_bp, size=n_cnv_variants)
+            contig_rng.integers(1, contig_length_bp, size=n_cnv_variants)
         )
 
         # Produce a set of random lengths for each variant, according to a range.
         variant_length_bp_min = 100
         variant_length_bp_max = 100_000
-        variant_lengths_bp = np.random.randint(
+        variant_lengths_bp = contig_rng.integers(
             variant_length_bp_min, variant_length_bp_max, size=n_cnv_variants
         )
 
@@ -898,7 +930,7 @@ def simulate_cnv_discordant_read_calls(zarr_path, metadata_path, contigs, contig
 
         # Simulate the genotype calls.
         # Note: this is only 2D, unlike SNP, HAP, AIM GT which are 3D
-        gt = np.random.choice(
+        gt = rng.choice(
             np.array([0, 1], dtype="i1"),
             size=(n_cnv_variants, n_samples),
             replace=True,
@@ -915,8 +947,8 @@ def simulate_cnv_discordant_read_calls(zarr_path, metadata_path, contigs, contig
         variants_grp = contig_grp.require_group("variants")
 
         # Simulate the StartBreakpointMethod and EndBreakpointMethod arrays.
-        startBreakpointMethod = np.random.randint(low=-1, high=1, size=n_cnv_variants)
-        endBreakpointMethod = np.random.randint(low=-1, high=2, size=n_cnv_variants)
+        startBreakpointMethod = rng.integers(low=-1, high=1, size=n_cnv_variants)
+        endBreakpointMethod = rng.integers(low=-1, high=2, size=n_cnv_variants)
         variants_grp.create_dataset(
             name="StartBreakpointMethod", data=startBreakpointMethod
         )
@@ -956,6 +988,7 @@ class AnophelesSimulator:
     def __init__(
         self,
         fixture_dir: Path,
+        rng: np.random.Generator,
         bucket: str,
         releases: Tuple[str, ...],
         has_aims: bool,
@@ -963,6 +996,7 @@ class AnophelesSimulator:
         has_sequence_qc: bool,
     ):
         self.fixture_dir = fixture_dir
+        self.rng = rng
         self.bucket = bucket
         self.bucket_path = (self.fixture_dir / "simulated" / self.bucket).resolve()
         self.results_cache_path = (
@@ -1012,20 +1046,20 @@ class AnophelesSimulator:
         return tuple(self.config["CONTIGS"])
 
     def random_contig(self):
-        return choice(self.contigs)
+        return self.rng.choice(self.contigs)
 
     def random_transcript_id(self):
         df_transcripts = self.genome_features.query("type == 'mRNA'")
         transcript_ids = [
             _gff3_parse_attributes(t)["ID"] for t in df_transcripts.loc[:, "attributes"]
         ]
-        transcript_id = choice(transcript_ids)
+        transcript_id = self.rng.choice(transcript_ids)
         return transcript_id
 
     def random_region_str(self, region_size=None):
         contig = self.random_contig()
         contig_size = self.contig_sizes[contig]
-        region_start = randint(1, contig_size)
+        region_start = self.rng.integers(1, contig_size, endpoint=True)
         if region_size:
             # Ensure we the region span doesn't exceed the contig size.
             if contig_size - region_start < region_size:
@@ -1033,7 +1067,7 @@ class AnophelesSimulator:
 
             region_end = region_start + region_size
         else:
-            region_end = randint(region_start, contig_size)
+            region_end = self.rng.integers(region_start, contig_size, endpoint=True)
         region = f"{contig}:{region_start:,}-{region_end:,}"
         return region
 
@@ -1092,9 +1126,10 @@ class AnophelesSimulator:
 
 
 class Ag3Simulator(AnophelesSimulator):
-    def __init__(self, fixture_dir):
+    def __init__(self, fixture_dir, rng):
         super().__init__(
             fixture_dir=fixture_dir,
+            rng=rng,
             bucket="vo_agam_release_master_us_central1",
             releases=("3.0", "3.1"),
             has_aims=True,
@@ -1135,7 +1170,10 @@ class Ag3Simulator(AnophelesSimulator):
         manifest = pd.DataFrame(
             {
                 "sample_set": ["AG1000G-AO", "AG1000G-BF-A"],
-                "sample_count": [randint(10, 50), randint(10, 40)],
+                "sample_count": [
+                    self.rng.integers(10, 50, endpoint=True),
+                    self.rng.integers(10, 40, endpoint=True),
+                ],
                 "study_id": ["AG1000G-AO", "AG1000G-BF-1"],
                 "study_url": [
                     "https://www.malariagen.net/network/where-we-work/AG1000G-AO",
@@ -1167,7 +1205,7 @@ class Ag3Simulator(AnophelesSimulator):
                     "1177-VO-ML-LEHMANN-VMF00004",
                 ],
                 # Make sure we have some gambiae, coluzzii and arabiensis.
-                "sample_count": [randint(20, 60)],
+                "sample_count": [self.rng.integers(20, 60, endpoint=True)],
                 "study_id": ["1177-VO-ML-LEHMANN"],
                 "study_url": [
                     "https://www.malariagen.net/network/where-we-work/1177-VO-ML-LEHMANN"
@@ -1208,6 +1246,7 @@ class Ag3Simulator(AnophelesSimulator):
             low=50_000,
             high=100_000,
             base_composition=base_composition,
+            rng=self.rng,
         )
         self.contig_sizes = {
             contig: self.genome[contig].shape[0] for contig in self.contigs
@@ -1216,7 +1255,7 @@ class Ag3Simulator(AnophelesSimulator):
     def init_genome_features(self):
         path = self.bucket_path / self.config["GENESET_GFF3_PATH"]
         path.parent.mkdir(parents=True, exist_ok=True)
-        simulator = Gff3Simulator(contig_sizes=self.contig_sizes)
+        simulator = Gff3Simulator(contig_sizes=self.contig_sizes, rng=self.rng)
         self.genome_features = simulator.simulate_gff(path=path)
 
     def write_metadata(
@@ -1252,7 +1291,9 @@ class Ag3Simulator(AnophelesSimulator):
         )
         df_general = pd.read_csv(src_path)
         # Randomly downsample.
-        df_general_ds = df_general.sample(n_samples_sim, replace=False)
+        df_general_ds = df_general.sample(
+            n_samples_sim, replace=False, random_state=self.rng
+        )
         samples_ds = df_general_ds["sample_id"].tolist()
         dst_path = (
             self.bucket_path
@@ -1454,7 +1495,11 @@ class Ag3Simulator(AnophelesSimulator):
         p_pass = 0.71
         path = self.bucket_path / "v3/site_filters" / analysis / mask
         simulate_site_filters(
-            path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_snp_sites
+            path=path,
+            contigs=self.contigs,
+            p_pass=p_pass,
+            n_sites=self.n_snp_sites,
+            rng=self.rng,
         )
 
         # Simulate the arab mask.
@@ -1462,7 +1507,11 @@ class Ag3Simulator(AnophelesSimulator):
         p_pass = 0.70
         path = self.bucket_path / "v3/site_filters" / analysis / mask
         simulate_site_filters(
-            path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_snp_sites
+            path=path,
+            contigs=self.contigs,
+            p_pass=p_pass,
+            n_sites=self.n_snp_sites,
+            rng=self.rng,
         )
 
         # Simulate the gamb_colu_arab mask.
@@ -1470,7 +1519,11 @@ class Ag3Simulator(AnophelesSimulator):
         p_pass = 0.62
         path = self.bucket_path / "v3/site_filters" / analysis / mask
         simulate_site_filters(
-            path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_snp_sites
+            path=path,
+            contigs=self.contigs,
+            p_pass=p_pass,
+            n_sites=self.n_snp_sites,
+            rng=self.rng,
         )
 
     def init_snp_genotypes(self):
@@ -1513,11 +1566,12 @@ class Ag3Simulator(AnophelesSimulator):
                     n_sites=self.n_snp_sites,
                     p_allele=p_allele,
                     p_missing=p_missing,
+                    rng=self.rng,
                 )
 
     def init_site_annotations(self):
         path = self.bucket_path / self.config["SITE_ANNOTATIONS_ZARR_PATH"]
-        simulate_site_annotations(path=path, genome=self.genome)
+        simulate_site_annotations(path=path, genome=self.genome, rng=self.rng)
 
     def init_hap_sites(self):
         self.hap_sites = dict()
@@ -1529,6 +1583,7 @@ class Ag3Simulator(AnophelesSimulator):
             contigs=self.contigs,
             snp_sites=self.snp_sites,
             p_site=0.09,
+            rng=self.rng,
         )
 
         analysis = "gamb_colu"
@@ -1538,6 +1593,7 @@ class Ag3Simulator(AnophelesSimulator):
             contigs=self.contigs,
             snp_sites=self.snp_sites,
             p_site=0.28,
+            rng=self.rng,
         )
 
         analysis = "gamb_colu_arab"
@@ -1547,6 +1603,7 @@ class Ag3Simulator(AnophelesSimulator):
             contigs=self.contigs,
             snp_sites=self.snp_sites,
             p_site=0.25,
+            rng=self.rng,
         )
 
     def init_haplotypes(self):
@@ -1592,7 +1649,7 @@ class Ag3Simulator(AnophelesSimulator):
                 root.create_dataset(name="samples", data=samples, dtype=str)
                 for contig in self.contigs:
                     n_sites = self.n_hap_sites[analysis][contig]
-                    gt = np.random.choice(
+                    gt = self.rng.choice(
                         np.array([0, 1], dtype="i1"),
                         size=(n_sites, n_samples, 2),
                         replace=True,
@@ -1623,7 +1680,7 @@ class Ag3Simulator(AnophelesSimulator):
                     root.create_dataset(name="samples", data=samples, dtype=str)
                     for contig in self.contigs:
                         n_sites = self.n_hap_sites[analysis][contig]
-                        gt = np.random.choice(
+                        gt = self.rng.choice(
                             np.array([0, 1], dtype="i1"),
                             size=(n_sites, n_samples, 2),
                             replace=True,
@@ -1654,7 +1711,7 @@ class Ag3Simulator(AnophelesSimulator):
                     root.create_dataset(name="samples", data=samples, dtype=str)
                     for contig in self.contigs:
                         n_sites = self.n_hap_sites[analysis][contig]
-                        gt = np.random.choice(
+                        gt = self.rng.choice(
                             np.array([0, 1], dtype="i1"),
                             size=(n_sites, n_samples, 2),
                             replace=True,
@@ -1675,6 +1732,7 @@ class Ag3Simulator(AnophelesSimulator):
             snp_sites=self.snp_sites,
             n_sites_low=1000,
             n_sites_high=4000,
+            rng=self.rng,
         )
 
         aims = "gamb_vs_colu"
@@ -1685,6 +1743,7 @@ class Ag3Simulator(AnophelesSimulator):
             snp_sites=self.snp_sites,
             n_sites_low=40,
             n_sites_high=400,
+            rng=self.rng,
         )
 
     def init_aim_calls(self):
@@ -1720,7 +1779,7 @@ class Ag3Simulator(AnophelesSimulator):
                     ds["sample_id"] = ("samples",), df_samples["sample_id"]
 
                     # Add call_genotype variable.
-                    gt = np.random.choice(
+                    gt = self.rng.choice(
                         np.arange(2, dtype="i1"),
                         size=(ds.sizes["variants"], ds.sizes["samples"], 2),
                         replace=True,
@@ -1771,6 +1830,7 @@ class Ag3Simulator(AnophelesSimulator):
                     metadata_path=metadata_path,
                     contigs=self.contigs,
                     contig_sizes=self.contig_sizes,
+                    rng=self.rng,
                 )
 
     def init_cnv_coverage_calls(self):
@@ -1810,6 +1870,7 @@ class Ag3Simulator(AnophelesSimulator):
                     metadata_path=metadata_path,
                     contigs=self.contigs,
                     contig_sizes=self.contig_sizes,
+                    rng=self.rng,
                 )
 
                 # Simulate CNV coverage calls data for the arab analysis.
@@ -1828,6 +1889,7 @@ class Ag3Simulator(AnophelesSimulator):
                     metadata_path=metadata_path,
                     contigs=self.contigs,
                     contig_sizes=self.contig_sizes,
+                    rng=self.rng,
                 )
 
     def init_cnv_discordant_read_calls(self):
@@ -1879,13 +1941,15 @@ class Ag3Simulator(AnophelesSimulator):
                     # Note: the real data does not include every contig.
                     contigs=self.contigs,
                     contig_sizes=self.contig_sizes,
+                    rng=self.rng,
                 )
 
 
 class Af1Simulator(AnophelesSimulator):
-    def __init__(self, fixture_dir):
+    def __init__(self, fixture_dir, rng):
         super().__init__(
             fixture_dir=fixture_dir,
+            rng=rng,
             bucket="vo_afun_release_master_us_central1",
             releases=("1.0",),
             has_aims=False,
@@ -1990,6 +2054,7 @@ class Af1Simulator(AnophelesSimulator):
             low=80_000,
             high=120_000,
             base_composition=base_composition,
+            rng=self.rng,
         )
         self.contig_sizes = {
             contig: self.genome[contig].shape[0] for contig in self.contigs
@@ -2000,6 +2065,7 @@ class Af1Simulator(AnophelesSimulator):
         path.parent.mkdir(parents=True, exist_ok=True)
         simulator = Gff3Simulator(
             contig_sizes=self.contig_sizes,
+            rng=self.rng,
             # Af1 has a different gene type
             gene_type="protein_coding_gene",
             # Af1 has different attributes
@@ -2031,7 +2097,9 @@ class Af1Simulator(AnophelesSimulator):
             / "samples.meta.csv"
         )
         df_general = pd.read_csv(src_path)
-        df_general_ds = df_general.sample(n_samples_sim, replace=False)
+        df_general_ds = df_general.sample(
+            n_samples_sim, replace=False, random_state=self.rng
+        )
         samples_ds = df_general_ds["sample_id"].tolist()
         dst_path = (
             self.bucket_path
@@ -2205,7 +2273,11 @@ class Af1Simulator(AnophelesSimulator):
         p_pass = 0.59
         path = self.bucket_path / "v1.0/site_filters" / analysis / mask
         simulate_site_filters(
-            path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_snp_sites
+            path=path,
+            contigs=self.contigs,
+            p_pass=p_pass,
+            n_sites=self.n_snp_sites,
+            rng=self.rng,
         )
 
     def init_snp_genotypes(self):
@@ -2245,11 +2317,12 @@ class Af1Simulator(AnophelesSimulator):
                     n_sites=self.n_snp_sites,
                     p_allele=p_allele,
                     p_missing=p_missing,
+                    rng=self.rng,
                 )
 
     def init_site_annotations(self):
         path = self.bucket_path / self.config["SITE_ANNOTATIONS_ZARR_PATH"]
-        simulate_site_annotations(path=path, genome=self.genome)
+        simulate_site_annotations(path=path, genome=self.genome, rng=self.rng)
 
     def init_hap_sites(self):
         self.hap_sites = dict()
@@ -2260,7 +2333,8 @@ class Af1Simulator(AnophelesSimulator):
             path=path,
             contigs=self.contigs,
             snp_sites=self.snp_sites,
-            p_site=np.random.uniform(0.5, 1.0),
+            p_site=self.rng.uniform(0.5, 1.0),
+            rng=self.rng,
         )
 
     def init_haplotypes(self):
@@ -2287,7 +2361,7 @@ class Af1Simulator(AnophelesSimulator):
 
                 # Simulate haplotypes.
                 analysis = "funestus"
-                p_1 = np.random.random()
+                p_1 = self.rng.random()
                 samples = df_samples["sample_id"].values
                 self.phasing_samples[sample_set, analysis] = samples
                 n_samples = len(samples)
@@ -2303,7 +2377,7 @@ class Af1Simulator(AnophelesSimulator):
                 root.create_dataset(name="samples", data=samples, dtype=str)
                 for contig in self.contigs:
                     n_sites = self.n_hap_sites[analysis][contig]
-                    gt = np.random.choice(
+                    gt = self.rng.choice(
                         np.array([0, 1], dtype="i1"),
                         size=(n_sites, n_samples, 2),
                         replace=True,
@@ -2347,6 +2421,7 @@ class Af1Simulator(AnophelesSimulator):
                     metadata_path=metadata_path,
                     contigs=self.contigs,
                     contig_sizes=self.contig_sizes,
+                    rng=self.rng,
                 )
 
     def init_cnv_coverage_calls(self):
@@ -2383,6 +2458,7 @@ class Af1Simulator(AnophelesSimulator):
                     metadata_path=metadata_path,
                     contigs=self.contigs,
                     contig_sizes=self.contig_sizes,
+                    rng=self.rng,
                 )
 
     def init_cnv_discordant_read_calls(self):
@@ -2431,13 +2507,15 @@ class Af1Simulator(AnophelesSimulator):
                     # Note: the real data does not include every contig.
                     contigs=self.contigs,
                     contig_sizes=self.contig_sizes,
+                    rng=self.rng,
                 )
 
 
 class Adir1Simulator(AnophelesSimulator):
-    def __init__(self, fixture_dir):
+    def __init__(self, fixture_dir, rng):
         super().__init__(
             fixture_dir=fixture_dir,
+            rng=rng,
             bucket="vo_adir_release_master_us_central1",
             releases=("1.0",),
             has_aims=False,
@@ -2530,6 +2608,7 @@ class Adir1Simulator(AnophelesSimulator):
             low=80_000,
             high=120_000,
             base_composition=base_composition,
+            rng=self.rng,
         )
         self.contig_sizes = {
             contig: self.genome[contig].shape[0] for contig in self.contigs
@@ -2540,6 +2619,7 @@ class Adir1Simulator(AnophelesSimulator):
         path.parent.mkdir(parents=True, exist_ok=True)
         simulator = Gff3Simulator(
             contig_sizes=self.contig_sizes,
+            rng=self.rng,
             # Adir1 has a different gene type
             gene_type="protein_coding_gene",
             # Adir1 has different attributes
@@ -2571,7 +2651,9 @@ class Adir1Simulator(AnophelesSimulator):
             / "samples.meta.csv"
         )
         df_general = pd.read_csv(src_path)
-        df_general_ds = df_general.sample(n_samples_sim, replace=False)
+        df_general_ds = df_general.sample(
+            n_samples_sim, replace=False, random_state=self.rng
+        )
         samples_ds = df_general_ds["sample_id"].tolist()
         dst_path = (
             self.bucket_path
@@ -2707,7 +2789,11 @@ class Adir1Simulator(AnophelesSimulator):
         p_pass = 0.59
         path = self.bucket_path / "v1.0/site_filters" / analysis / mask
         simulate_site_filters(
-            path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_snp_sites
+            path=path,
+            contigs=self.contigs,
+            p_pass=p_pass,
+            n_sites=self.n_snp_sites,
+            rng=self.rng,
         )
 
     def init_snp_genotypes(self):
@@ -2747,17 +2833,19 @@ class Adir1Simulator(AnophelesSimulator):
                     n_sites=self.n_snp_sites,
                     p_allele=p_allele,
                     p_missing=p_missing,
+                    rng=self.rng,
                 )
 
     def init_site_annotations(self):
         path = self.bucket_path / self.config["SITE_ANNOTATIONS_ZARR_PATH"]
-        simulate_site_annotations(path=path, genome=self.genome)
+        simulate_site_annotations(path=path, genome=self.genome, rng=self.rng)
 
 
 class Amin1Simulator(AnophelesSimulator):
-    def __init__(self, fixture_dir):
+    def __init__(self, fixture_dir, rng):
         super().__init__(
             fixture_dir=fixture_dir,
+            rng=rng,
             bucket="vo_amin_release_master_us_central1",
             releases=("1.0",),
             has_aims=False,
@@ -2847,6 +2935,7 @@ class Amin1Simulator(AnophelesSimulator):
             low=80_000,
             high=120_000,
             base_composition=base_composition,
+            rng=self.rng,
         )
         self.contig_sizes = {
             contig: self.genome[contig].shape[0] for contig in self.contigs
@@ -2857,6 +2946,7 @@ class Amin1Simulator(AnophelesSimulator):
         path.parent.mkdir(parents=True, exist_ok=True)
         simulator = Gff3Simulator(
             contig_sizes=self.contig_sizes,
+            rng=self.rng,
             # Amin1 has a different gene type
             gene_type="protein_coding_gene",
             # Amin1 has different attributes
@@ -2888,7 +2978,9 @@ class Amin1Simulator(AnophelesSimulator):
             / "samples.meta.csv"
         )
         df_general = pd.read_csv(src_path)
-        df_general_ds = df_general.sample(n_samples_sim, replace=False)
+        df_general_ds = df_general.sample(
+            n_samples_sim, replace=False, random_state=self.rng
+        )
         samples_ds = df_general_ds["sample_id"].tolist()
         dst_path = (
             self.bucket_path
@@ -3019,7 +3111,11 @@ class Amin1Simulator(AnophelesSimulator):
         p_pass = 0.59
         path = self.bucket_path / "v1.0/site_filters" / analysis / mask
         simulate_site_filters(
-            path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_snp_sites
+            path=path,
+            contigs=self.contigs,
+            p_pass=p_pass,
+            n_sites=self.n_snp_sites,
+            rng=self.rng,
         )
 
     def init_snp_genotypes(self):
@@ -3059,11 +3155,12 @@ class Amin1Simulator(AnophelesSimulator):
                     n_sites=self.n_snp_sites,
                     p_allele=p_allele,
                     p_missing=p_missing,
+                    rng=self.rng,
                 )
 
     def init_site_annotations(self):
         path = self.bucket_path / self.config["SITE_ANNOTATIONS_ZARR_PATH"]
-        simulate_site_annotations(path=path, genome=self.genome)
+        simulate_site_annotations(path=path, genome=self.genome, rng=self.rng)
 
 
 # For the following data fixtures we will use the "session" scope
@@ -3076,23 +3173,26 @@ class Amin1Simulator(AnophelesSimulator):
 #
 # However, only recreating the data once per test session minimises
 # the amount of work needed to create the data.
+#
+# Each fixture is created with its own context-specific RNG so they
+# generate independent random data.
 
 
 @pytest.fixture(scope="session")
 def ag3_sim_fixture(fixture_dir):
-    return Ag3Simulator(fixture_dir=fixture_dir)
+    return Ag3Simulator(fixture_dir=fixture_dir, rng=create_rng("Ag3"))
 
 
 @pytest.fixture(scope="session")
 def af1_sim_fixture(fixture_dir):
-    return Af1Simulator(fixture_dir=fixture_dir)
+    return Af1Simulator(fixture_dir=fixture_dir, rng=create_rng("Af1"))
 
 
 @pytest.fixture(scope="session")
 def adir1_sim_fixture(fixture_dir):
-    return Adir1Simulator(fixture_dir=fixture_dir)
+    return Adir1Simulator(fixture_dir=fixture_dir, rng=create_rng("Adir1"))
 
 
 @pytest.fixture(scope="session")
 def amin1_sim_fixture(fixture_dir):
-    return Amin1Simulator(fixture_dir=fixture_dir)
+    return Amin1Simulator(fixture_dir=fixture_dir, rng=create_rng("Amin1"))

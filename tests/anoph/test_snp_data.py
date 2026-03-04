@@ -1723,8 +1723,9 @@ def test_biallelic_snp_calls_and_diplotypes_with_conditions_fractional(
     an = ac.sum(axis=1)
     ac_min = ac.min(axis=1)
     assert np.all((ac_min / an) >= min_minor_ac)
-    an_missing = (ds.sizes["samples"] * ds.sizes["ploidy"]) - an
-    assert np.all((an_missing / an) <= max_missing_an)
+    an_total = ds.sizes["samples"] * ds.sizes["ploidy"]
+    an_missing = an_total - an
+    assert np.all((an_missing / an_total) <= max_missing_an)
     gt = ds["call_genotype"].values
     ac_check = allel.GenotypeArray(gt).count_alleles(max_allele=1)
     assert np.all(ac == ac_check)

@@ -1070,7 +1070,7 @@ class AnophelesDataResource(
             cohort_label, cohort_query = cohort
 
         else:
-            raise TypeError(r"invalid cohort parameter: {cohort!r}")
+            raise TypeError(f"invalid cohort parameter: {cohort!r}")
 
         params = dict(
             cohort_label=cohort_label,
