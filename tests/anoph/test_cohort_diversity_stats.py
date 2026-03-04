@@ -46,7 +46,9 @@ def test_cohort_diversity_stats_uses_cache(ag3_sim_api, monkeypatch):
             "cohort_diversity_stats recomputed instead of loading from cache"
         )
 
-    monkeypatch.setattr(api, "_block_jackknife_cohort_diversity_stats", _unexpected_recompute)
+    monkeypatch.setattr(
+        api, "_block_jackknife_cohort_diversity_stats", _unexpected_recompute
+    )
     stats_second = api.cohort_diversity_stats(**params)
 
     pd.testing.assert_series_equal(
