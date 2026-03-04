@@ -1,6 +1,6 @@
 """Parameter definitions for Fst functions."""
 
-from typing import Optional, Literal
+from typing import Optional
 
 import pandas as pd
 from typing_extensions import Annotated, TypeAlias
@@ -34,13 +34,16 @@ df_pairwise_fst: TypeAlias = Annotated[
     """,
 ]
 
-annotation: TypeAlias = Annotated[
-    Optional[Literal["standard error", "Z score", "lower triangle"]],
+show_se: TypeAlias = Annotated[
+    bool,
     """
-    How to annotate the upper-right corner of the plot. Default behaviour (None)
-    is using Fst, other options are using the standard error (if annotation is
-    'standard error'), the Z score of the two cohorts being the same (if
-    annotation is 'Z score'), or leaving the upper triangle empty (if annotation
-    is 'lower triangle').
+    If True, show a separate heatmap for the pairwise standard errors below the Fst heatmap.
+    """,
+]
+
+show_zscore: TypeAlias = Annotated[
+    bool,
+    """
+    If True, show a separate heatmap for the pairwise Z scores (Fst / SE) below the Fst heatmap.
     """,
 ]
