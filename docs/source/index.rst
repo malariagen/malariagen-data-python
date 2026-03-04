@@ -35,17 +35,37 @@ API documentation
 
       .. image:: https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Anopheles_minimus_1.jpg/640px-Anopheles_minimus_1.jpg
 
-   .. grid-item-card:: ``Adir1``
-      :link: Adir1
+   .. grid-item-card:: ``Adar1``
+      :link: Adar1
       :link-type: doc
 
       *Anopheles dirus* complex.
 
       .. image:: https://phil.cdc.gov//PHIL_Images/8777/8777_lores.jpg
 
-Documentation for the `Pf7 <https://malariagen.github.io/parasite-data/pf7/api.html>`_ (*Plasmodium falciparum*)
-and `Pv4 <https://malariagen.github.io/parasite-data/pv4/api.html>`_ (*Plasmodium vivax*) APIs is also available,
-currently hosted on a separate site.
+   .. grid-item-card:: ``Pf7``
+      :link: Pf7
+      :link-type: doc
+
+      *Plasmodium falciparum* (Pf7 release).
+
+      .. image:: https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Plasmodium_falciparum_01.jpg/640px-Plasmodium_falciparum_01.jpg
+
+   .. grid-item-card:: ``Pf8``
+      :link: Pf8
+      :link-type: doc
+
+      *Plasmodium falciparum* (Pf8 release).
+
+      .. image:: https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Plasmodium_falciparum_01.jpg/640px-Plasmodium_falciparum_01.jpg
+
+   .. grid-item-card:: ``Pv4``
+      :link: Pv4
+      :link-type: doc
+
+      *Plasmodium vivax* (Pv4 release).
+
+      .. image:: https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Plasmodium_vivax_01.jpg/640px-Plasmodium_vivax_01.jpg
 
 
 Installation
