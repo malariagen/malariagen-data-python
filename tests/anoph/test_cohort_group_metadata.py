@@ -16,6 +16,7 @@ def ag3_sim_api(ag3_sim_fixture):
         pre=True,
     )
 
+
 def case_ag3_sim(ag3_sim_fixture, ag3_sim_api):
     return ag3_sim_fixture, ag3_sim_api
 
