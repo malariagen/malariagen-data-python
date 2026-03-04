@@ -415,10 +415,31 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
             effect = base_effect._replace(effect="CODON_CHANGE", impact="MODERATE")
 
         else:
-            # TODO in-frame complex variation (MNP + INDEL)
-            effect = base_effect._replace(
-                effect="TODO in-frame complex variation (MNP + INDEL)", impact="UNKNOWN"
-            )
+            # in-frame complex variation (MNP + INDEL)
+            # This case handles complex variants where both ref and alt are >1 nucleotide,
+            # lengths are different, but the difference is a multiple of 3 (in-frame)
+            
+            # Determine if there are codon changes by comparing amino acid sequences
+            # Check if any amino acids differ between ref and alt
+            aa_changed = any(r != a for r, a in zip(ref_aa, alt_aa) if r and a)
+            
+            if aa_changed:
+                # Complex variant with both codon changes and indels
+                # e.g., A complex variant that changes some codons and inserts/deletes others
+                effect = base_effect._replace(
+                    effect="CODON_CHANGE_PLUS_INDEL", impact="MODERATE"
+                )
+            else:
+                # Pure in-frame insertion/deletion without codon changes
+                # e.g., Insertion or deletion of complete codons
+                if len(alt) > len(ref):
+                    effect = base_effect._replace(
+                        effect="CODON_INSERTION", impact="MODERATE"
+                    )
+                else:
+                    effect = base_effect._replace(
+                        effect="CODON_DELETION", impact="MODERATE"
+                    )
 
     return effect
 
