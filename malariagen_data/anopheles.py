@@ -1123,7 +1123,8 @@ class AnophelesDataResource(
                 confidence_level=confidence_level,
             )
 
-            self.results_cache_set(name=name, params=params, results=stats)
+            cache_results = {key: np.asarray(value) for key, value in stats.items()}
+            self.results_cache_set(name=name, params=params, results=cache_results)
 
         debug("compute some extra cohort variables")
         df_samples = self.sample_metadata(
