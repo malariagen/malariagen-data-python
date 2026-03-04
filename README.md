@@ -48,6 +48,24 @@ To get setup for development, see [this video if you prefer VS Code](https://you
 
 Detailed instructions can be found in the [Contributors guide](https://github.com/malariagen/malariagen-data-python/blob/master/CONTRIBUTING.md).
 
+### Quick Setup Verification
+
+After setting up your development environment, you can verify everything is working correctly by running:
+
+```bash
+python scripts/verify_setup.py
+```
+
+This script checks:
+- Python version compatibility
+- Core dependencies installation
+- API import functionality  
+- Documentation completeness
+- Basic functionality testing
+- Git hooks configuration
+
+This helps ensure your environment is properly configured and ready for development.
+
 ## AI use policy and guidelines
 
 See [AI use policy and guidelines](https://github.com/malariagen/malariagen-data-python/blob/master/AI-POLICY.md) for more details.

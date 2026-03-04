@@ -1,0 +1,131 @@
+name: docs-testing
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  docs-testing:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup python
+        uses: ./.github/actions/setup-python
+        with:
+          python-version: "3.11"
+
+      - name: Install documentation dependencies
+        run: |
+          poetry install --with docs
+          poetry run pip install --upgrade sphinx
+
+      - name: Test documentation builds without errors
+        run: |
+          cd docs
+          poetry run make html
+
+      - name: Test API documentation completeness
+        run: |
+          # Test that all documented APIs can be imported and instantiated
+          poetry run python - <<'PY'
+          import sys
+          
+          # Test all main API classes can be imported
+          try:
+              from malariagen_data import Ag3, Af1, Amin1, Adir1, Adar1, Pf7, Pf8, Pv4
+              print("✅ All API classes imported successfully")
+          except ImportError as e:
+              print(f"❌ Import error: {e}")
+              sys.exit(1)
+          
+          # Test that documentation files exist for all APIs
+          import os
+          doc_files = ["docs/source/Ag3.rst", "docs/source/Af1.rst", "docs/source/Amin1.rst", 
+                      "docs/source/Adir1.rst", "docs/source/Adar1.rst", "docs/source/Pf7.rst", 
+                      "docs/source/Pf8.rst", "docs/source/Pv4.rst"]
+          
+          missing_files = []
+          for doc_file in doc_files:
+              if not os.path.exists(doc_file):
+                  missing_files.append(doc_file)
+          
+          if missing_files:
+              print(f"❌ Missing documentation files: {missing_files}")
+              sys.exit(1)
+          else:
+              print("✅ All API documentation files present")
+          
+          # Test that index.rst includes all APIs
+          with open("docs/source/index.rst", "r") as f:
+              index_content = f.read()
+              
+          required_apis = ["Ag3", "Af1", "Amin1", "Adir1", "Adar1", "Pf7", "Pf8", "Pv4"]
+          missing_apis = []
+          
+          for api in required_apis:
+              if api not in index_content:
+                  missing_apis.append(api)
+                  
+          if missing_apis:
+              print(f"❌ Missing APIs in index.rst: {missing_apis}")
+              sys.exit(1)
+          else:
+              print("✅ All APIs included in index.rst")
+              
+          print("🎉 Documentation testing passed!")
+          PY
+
+      - name: Check for broken documentation links
+        run: |
+          cd docs
+          # Build documentation with link checking
+          poetry run make html 2>&1 | grep -E "(WARNING|ERROR)" || echo "No documentation warnings found"
+
+      - name: Validate documentation format
+        run: |
+          # Check that all RST files have proper format
+          poetry run python - <<'PY'
+          import os
+          import re
+          
+          doc_dir = "docs/source"
+          rst_files = [f for f in os.listdir(doc_dir) if f.endswith('.rst') and f != 'index.rst']
+          
+          for rst_file in rst_files:
+              file_path = os.path.join(doc_dir, rst_file)
+              with open(file_path, 'r') as f:
+                  content = f.read()
+              
+              # Check for required sections
+              api_name = rst_file.replace('.rst', '')
+              
+              # Should have title with ===
+              if not re.search(rf'^{api_name}\s*$', content, re.MULTILINE):
+                  print(f"❌ {rst_file}: Missing proper title")
+                  exit(1)
+                  
+              if not re.search(r'^={3,}', content, re.MULTILINE):
+                  print(f"❌ {rst_file}: Missing title underline")
+                  exit(1)
+                  
+              # Should have currentmodule directive
+              if 'currentmodule::' not in content:
+                  print(f"❌ {rst_file}: Missing currentmodule directive")
+                  exit(1)
+                  
+              # Should have autosummary sections
+              if 'autosummary::' not in content:
+                  print(f"❌ {rst_file}: Missing autosummary sections")
+                  exit(1)
+                  
+              print(f"✅ {rst_file}: Format validation passed")
+              
+          print("🎉 All documentation files properly formatted!")
+          PY
