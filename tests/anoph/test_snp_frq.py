@@ -1335,12 +1335,10 @@ def test_allele_frequencies_advanced_with_area_by(
     check_snp_allele_frequencies_advanced(
         api=api,
         area_by=area_by,
-        min_cohort_size=0,
     )
     check_aa_allele_frequencies_advanced(
         api=api,
         area_by=area_by,
-        min_cohort_size=0,
     )
 
 
@@ -1354,12 +1352,10 @@ def test_allele_frequencies_advanced_with_period_by(
     check_snp_allele_frequencies_advanced(
         api=api,
         period_by=period_by,
-        min_cohort_size=0,
     )
     check_aa_allele_frequencies_advanced(
         api=api,
         period_by=period_by,
-        min_cohort_size=0,
     )
 
 
