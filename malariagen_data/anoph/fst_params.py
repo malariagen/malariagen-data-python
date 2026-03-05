@@ -35,10 +35,12 @@ df_pairwise_fst: TypeAlias = Annotated[
 ]
 
 annotation: TypeAlias = Annotated[
-    Optional[Literal["standard error", "Z score"]],
+    Optional[Literal["standard error", "Z score", "lower triangle"]],
     """
-    How to annotate the upper-right corner of the plot. Default behaviour (None) is using Fst, other options
-    are using the standard error (if annotation is 'standard error') or the Z score of the two
-    cohorts being the same (if annotation is 'Z score').
+    How to annotate the upper-right corner of the plot. Default behaviour (None)
+    is using Fst, other options are using the standard error (if annotation is
+    'standard error'), the Z score of the two cohorts being the same (if
+    annotation is 'Z score'), or leaving the upper triangle empty (if annotation
+    is 'lower triangle').
     """,
 ]
