@@ -144,6 +144,8 @@ expected_effects = [
     "SYNONYMOUS_STOP",
     "SYNONYMOUS_START",
     "NON_SYNONYMOUS_CODING",
+    "NON_SYNONYMOUS_START",
+    "NON_SYNONYMOUS_STOP",
     "START_LOST",
     "STOP_LOST",
     "STOP_GAINED",
@@ -1002,6 +1004,8 @@ def check_snp_allele_frequencies_advanced(
         "variant_alt_aa",
         "variant_aa_pos",
         "variant_aa_change",
+        "variant_grantham_score",
+        "variant_sneath_score",
     ]
     expected_variant_vars += [f"variant_pass_{m}" for m in api.site_mask_ids]
     for v in expected_variant_vars:
@@ -1194,6 +1198,8 @@ def check_aa_allele_frequencies_advanced(
         "variant_alt_aa",
         "variant_aa_pos",
         "variant_aa_change",
+        "variant_grantham_score",
+        "variant_sneath_score",
     )
     for v in expected_variant_vars:
         a = ds[v]
@@ -1333,10 +1339,12 @@ def test_allele_frequencies_advanced_with_area_by(
     check_snp_allele_frequencies_advanced(
         api=api,
         area_by=area_by,
+        min_cohort_size=0,
     )
     check_aa_allele_frequencies_advanced(
         api=api,
         area_by=area_by,
+        min_cohort_size=0,
     )
 
 
@@ -1350,10 +1358,12 @@ def test_allele_frequencies_advanced_with_period_by(
     check_snp_allele_frequencies_advanced(
         api=api,
         period_by=period_by,
+        min_cohort_size=0,
     )
     check_aa_allele_frequencies_advanced(
         api=api,
         period_by=period_by,
+        min_cohort_size=0,
     )
 
 
