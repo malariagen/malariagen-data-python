@@ -81,6 +81,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         # Initialize cache attributes.
         self._cache_sample_metadata: Dict = dict()
+        self._cache_cohorts: Dict = dict()
 
     def _metadata_paths(
         self,
@@ -1485,7 +1486,11 @@ class AnophelesSampleMetadata(AnophelesBase):
                 A cohort set name. Accepted values are:
                 "admin1_month", "admin1_quarter", "admin1_year",
                 "admin2_month", "admin2_quarter", "admin2_year".
-            """
+            """,
+            query="""
+                An optional pandas query string to filter the resulting
+                dataframe, e.g., "country == 'Burkina Faso'".
+            """,
         ),
         returns="""A dataframe of cohort data, one row per cohort. There are up to 18 columns:
         `cohort_id` is the identifier of the cohort,
@@ -1512,20 +1517,45 @@ class AnophelesSampleMetadata(AnophelesBase):
     def cohorts(
         self,
         cohort_set: base_params.cohorts,
+        query: Optional[str] = None,
     ) -> pd.DataFrame:
-        major_version_path = self._major_version_path
+        valid_cohort_sets = {
+            "admin1_month",
+            "admin1_quarter",
+            "admin1_year",
+            "admin2_month",
+            "admin2_quarter",
+            "admin2_year",
+        }
+        if cohort_set not in valid_cohort_sets:
+            raise ValueError(
+                f"{cohort_set!r} is not a valid cohort set. "
+                f"Accepted values are: {sorted(valid_cohort_sets)}."
+            )
+
         cohorts_analysis = self._cohorts_analysis
 
-        path = f"{major_version_path[:2]}_cohorts/cohorts_{cohorts_analysis}/cohorts_{cohort_set}.csv"
+        # Cache to avoid repeated reads.
+        cache_key = (cohorts_analysis, cohort_set)
+        try:
+            df_cohorts = self._cache_cohorts[cache_key]
+        except KeyError:
+            major_version_path = self._major_version_path
+            path = f"{major_version_path[:2]}_cohorts/cohorts_{cohorts_analysis}/cohorts_{cohort_set}.csv"
 
-        # Read the manifest into a pandas dataframe.
-        with self.open_file(path) as f:
-            df_cohorts = pd.read_csv(f, sep=",", na_values="")
+            with self.open_file(path) as f:
+                df_cohorts = pd.read_csv(f, sep=",", na_values="")
 
-        # Ensure all column names are lower case.
-        df_cohorts.columns = [c.lower() for c in df_cohorts.columns]  # type: ignore
+            # Ensure all column names are lower case.
+            df_cohorts.columns = [c.lower() for c in df_cohorts.columns]  # type: ignore
 
-        return df_cohorts
+            self._cache_cohorts[cache_key] = df_cohorts
+
+        if query is not None:
+            df_cohorts = df_cohorts.query(query)
+            df_cohorts = df_cohorts.reset_index(drop=True)
+
+        return df_cohorts.copy()
 
     @_check_types
     @doc(
