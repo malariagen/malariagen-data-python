@@ -1,6 +1,4 @@
-import hashlib
 import json
-import secrets
 import shutil
 import string
 from pathlib import Path
@@ -12,6 +10,8 @@ import pytest
 import xarray as xr
 import zarr  # type: ignore
 from malariagen_data.util import _gff3_parse_attributes
+
+from tests.rng_util import create_rng
 
 # N.B., this file (conftest.py) is handled in a special way
 # by pytest. In short, this file is a place to define any
@@ -40,18 +40,12 @@ from malariagen_data.util import _gff3_parse_attributes
 # In order for reproducibility to work, it is essential to *not* use the
 # python random library or any legacy numpy.random calls to generate data.
 
-GLOBAL_SEED = secrets.randbits(128)
 
-
-def create_rng(context: str) -> np.random.Generator:
-    # Hash the string to an integer so we can make it into another seed
-    digest = hashlib.shake_128(context.encode("utf-8")).hexdigest(16)
-    context_seed = int(digest, 16)
-    return np.random.default_rng([context_seed, GLOBAL_SEED])
-
-
-def pytest_report_header(config):
-    print("global seed:", GLOBAL_SEED)
+@pytest.fixture(name="rng")
+def test_rng_fixture(request):
+    # The nodeid is the complete name of the pytest function and
+    # is unique across the tests
+    return create_rng(request.node.nodeid)
 
 
 @pytest.fixture(scope="session")

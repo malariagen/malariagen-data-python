@@ -1,5 +1,4 @@
 import itertools
-import random
 
 import plotly.graph_objects as go
 import pytest
@@ -80,7 +79,7 @@ def test_aim_variants(aims, ag3_sim_api):
 
 
 @pytest.mark.parametrize("aims", ["gambcolu_vs_arab", "gamb_vs_colu"])
-def test_aim_calls(aims, ag3_sim_api):
+def test_aim_calls(aims, ag3_sim_api, rng):
     api = ag3_sim_api
 
     # Parametrize sample_sets.
@@ -88,9 +87,9 @@ def test_aim_calls(aims, ag3_sim_api):
     all_releases = api.releases
     parametrize_sample_sets = [
         None,
-        random.choice(all_sample_sets),
-        random.sample(all_sample_sets, 2),
-        random.choice(all_releases),
+        rng.choice(all_sample_sets),
+        rng.choice(all_sample_sets, 2, replace=False).tolist(),
+        rng.choice(all_releases),
     ]
 
     # Parametrize sample_query.
@@ -171,7 +170,7 @@ def test_aim_calls_errors(ag3_sim_api):
 
 
 @pytest.mark.parametrize("aims", ["gambcolu_vs_arab", "gamb_vs_colu"])
-def test_plot_aim_heatmap(aims, ag3_sim_api):
+def test_plot_aim_heatmap(aims, ag3_sim_api, rng):
     api = ag3_sim_api
 
     # Parametrize sample_sets.
@@ -179,9 +178,9 @@ def test_plot_aim_heatmap(aims, ag3_sim_api):
     all_releases = api.releases
     parametrize_sample_sets = [
         None,
-        random.choice(all_sample_sets),
-        random.sample(all_sample_sets, 2),
-        random.choice(all_releases),
+        rng.choice(all_sample_sets),
+        rng.choice(all_sample_sets, 2, replace=False).tolist(),
+        rng.choice(all_releases),
     ]
 
     # Parametrize sample_query.

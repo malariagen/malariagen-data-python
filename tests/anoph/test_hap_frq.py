@@ -1,5 +1,3 @@
-import random
-
 import pandas as pd
 import numpy as np
 import xarray as xr
@@ -107,15 +105,11 @@ def check_hap_frequencies(*, api, df, sample_sets, cohorts, min_cohort_size):
     assert sorted(df.columns.tolist()) == sorted(expected_fields)
 
 
-def check_hap_frequencies_advanced(
-    *,
-    api,
-    ds,
-):
+def check_hap_frequencies_advanced(*, api, ds, rng):
     assert isinstance(ds, xr.Dataset)
     check_plot_frequencies_time_series(api, ds)
-    check_plot_frequencies_time_series_with_taxa(api, ds)
-    check_plot_frequencies_time_series_with_areas(api, ds)
+    check_plot_frequencies_time_series_with_taxa(api, ds, rng)
+    check_plot_frequencies_time_series_with_areas(api, ds, rng)
     check_plot_frequencies_interactive_map(api, ds)
     assert set(ds.dims) == {"cohorts", "variants"}
 
@@ -163,13 +157,14 @@ def check_hap_frequencies_advanced(
 @parametrize_with_cases("fixture,api", cases=".")
 def test_hap_frequencies_with_str_cohorts(
     fixture,
+    rng,
     api: AnophelesHapFrequencyAnalysis,
     cohorts,
 ):
     # Pick test parameters at random.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    min_cohort_size = random.randint(0, 2)
+    sample_sets = rng.choice(all_sample_sets)
+    min_cohort_size = rng.integers(0, 3, dtype=int)
     region = fixture.random_region_str()
 
     # Set up call params.
@@ -207,16 +202,16 @@ def test_hap_frequencies_with_str_cohorts(
 )
 @parametrize_with_cases("fixture,api", cases=".")
 def test_hap_frequencies_advanced(
-    fixture, api: AnophelesHapFrequencyAnalysis, area_by, period_by
+    fixture, rng, api: AnophelesHapFrequencyAnalysis, area_by, period_by
 ):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    min_cohort_size = random.randint(0, 2)
+    sample_sets = rng.choice(all_sample_sets)
+    min_cohort_size = rng.integers(0, 3, dtype=int)
     region = fixture.random_region_str()
 
     if period_by == "random_year":
         # Add a random_year column to the sample metadata, if there isn't already.
-        api = add_random_year(api=api)
+        api = add_random_year(api=api, rng=rng)
 
     # Set up call params.
     params_advanced = dict(
@@ -231,4 +226,4 @@ def test_hap_frequencies_advanced(
     ds_hap = api.haplotypes_frequencies_advanced(**params_advanced)
 
     # Standard checks.
-    check_hap_frequencies_advanced(api=api, ds=ds_hap)
+    check_hap_frequencies_advanced(api=api, ds=ds_hap, rng=rng)
