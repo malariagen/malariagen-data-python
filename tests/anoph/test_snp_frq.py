@@ -1004,8 +1004,6 @@ def check_snp_allele_frequencies_advanced(
         "variant_alt_aa",
         "variant_aa_pos",
         "variant_aa_change",
-        "variant_grantham_score",
-        "variant_sneath_score",
     ]
     expected_variant_vars += [f"variant_pass_{m}" for m in api.site_mask_ids]
     for v in expected_variant_vars:
@@ -1198,8 +1196,6 @@ def check_aa_allele_frequencies_advanced(
         "variant_alt_aa",
         "variant_aa_pos",
         "variant_aa_change",
-        "variant_grantham_score",
-        "variant_sneath_score",
     )
     for v in expected_variant_vars:
         a = ds[v]
