@@ -855,9 +855,7 @@ def _value_error(
     value,
     expectation,
 ):
-    message = (
-        f"Bad value for parameter {name}; expected {expectation}, " f"found {value!r}"
-    )
+    message = f"Bad value for parameter {name}; expected {expectation}, found {value!r}"
     raise ValueError(message)
 
 
@@ -898,6 +896,12 @@ class LoggingHelper:
         elif isinstance(out, str):
             handler = logging.FileHandler(out)
         self._handler = handler
+
+        # Remove any pre-existing handlers from the singleton logger to prevent
+        # accumulation (and FileHandler FD leaks) on repeated instantiation.
+        for existing_handler in logger.handlers[:]:
+            logger.removeHandler(existing_handler)
+            existing_handler.close()
 
         # configure handler
         if handler is not None:

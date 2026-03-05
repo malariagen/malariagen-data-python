@@ -298,9 +298,9 @@ def test_logging_helper_set_level_updates_logger():
     helper.set_level(logging.DEBUG)
     helper.debug("should appear")
     output = out.getvalue()
-    assert "should appear" in output, (
-        "set_level(DEBUG) had no effect: debug message was silently dropped"
-    )
+    assert (
+        "should appear" in output
+    ), "set_level(DEBUG) had no effect: debug message was silently dropped"
 
 
 def _strip_terms_of_use_from_manifest(manifest_path):
