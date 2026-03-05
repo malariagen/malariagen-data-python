@@ -12,6 +12,16 @@ from . import plink_params
 from . import pca_params
 from numpydoc_decorator import doc  # type: ignore
 
+# Mapping from internal contig indices to PLINK chromosome codes.
+# In PLINK format, 0 means "unknown" and 23 represents the X chromosome.
+_CHROM_MAP = {
+    0: 1,  # 2R -> 1
+    1: 2,  # 2L -> 2
+    2: 3,  # 3R -> 3
+    3: 4,  # 3L -> 4
+    4: 23,  # X  -> 23
+}
+
 
 class PlinkConverter(
     AnophelesSnpData,
@@ -52,7 +62,7 @@ class PlinkConverter(
         self,
         output_dir: plink_params.output_dir,
         region: base_params.regions,
-        n_snps: base_params.n_snps,
+        n_snps: Optional[base_params.n_snps] = None,
         overwrite: plink_params.overwrite = False,
         thin_offset: base_params.thin_offset = 0,
         sample_sets: Optional[base_params.sample_sets] = None,
@@ -69,6 +79,8 @@ class PlinkConverter(
         random_seed: base_params.random_seed = 42,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
+        output_name: Optional[plink_params.output_name] = None,
+        phenotypes: Optional[plink_params.phenotypes] = None,
     ):
         # Check that either sample_query xor sample_indices are provided.
         base_params._validate_sample_selection_params(
@@ -76,7 +88,11 @@ class PlinkConverter(
         )
 
         # Define output files
-        plink_file_path = f"{output_dir}/{region}.{n_snps}.{min_minor_ac}.{max_missing_an}.{thin_offset}"
+        if output_name is not None:
+            plink_file_path = f"{output_dir}/{output_name}"
+        else:
+            n_snps_label = n_snps if n_snps is not None else "all"
+            plink_file_path = f"{output_dir}/{region}.{n_snps_label}.{min_minor_ac}.{max_missing_an}.{thin_offset}"
 
         bed_file_path = f"{plink_file_path}.bed"
 
@@ -121,12 +137,57 @@ class PlinkConverter(
         val = gn_ref_final.T
         with self._spinner("Prepare output data"):
             alleles = ds_snps_final["variant_allele"].values
+
+            # Map chromosome indices to PLINK conventions.
+            raw_contigs = ds_snps_final["variant_contig"].values
+            mapped_contigs = np.array(
+                [_CHROM_MAP.get(int(c), int(c)) for c in raw_contigs]
+            )
+
+            # Get sample IDs for property lookups.
+            sample_ids = ds_snps_final["sample_id"].values
+
+            # Get sex calls from sample metadata and map to PLINK codes.
+            # PLINK sex codes: 0 = unknown, 1 = male, 2 = female.
+            df_samples = self.sample_metadata(
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                sample_query_options=sample_query_options,
+                sample_indices=sample_indices,
+            )
+            sex_map = {"M": 1, "F": 2}
+            if "sex_call" in df_samples.columns:
+                sex_lookup = dict(
+                    zip(
+                        df_samples["sample_id"].values,
+                        df_samples["sex_call"]
+                        .map(sex_map)
+                        .fillna(0)
+                        .astype(int)
+                        .values,
+                    )
+                )
+            else:
+                sex_lookup = {}
+            sex_values = np.array([sex_lookup.get(str(sid), 0) for sid in sample_ids])
+
+            # Build phenotype values. Default is -9 (missing) per PLINK convention.
+            if phenotypes is not None:
+                pheno_values = np.array(
+                    [phenotypes.get(str(sid), -9) for sid in sample_ids],
+                    dtype=float,
+                )
+            else:
+                pheno_values = np.full(len(sample_ids), -9, dtype=float)
+
             properties = {
-                "iid": ds_snps_final["sample_id"].values,
-                "chromosome": ds_snps_final["variant_contig"].values,
+                "iid": sample_ids,
+                "chromosome": mapped_contigs,
                 "bp_position": ds_snps_final["variant_position"].values,
                 "allele_1": alleles[:, 0],
                 "allele_2": alleles[:, 1],
+                "sex": sex_values,
+                "pheno": pheno_values,
             }
 
         bed_reader.to_bed(
