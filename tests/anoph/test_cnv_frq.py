@@ -204,7 +204,7 @@ def test_gene_cnv_frequencies_with_str_cohorts_and_sample_query(
         ["admin1_year", "admin1_month", "admin2_year", "admin2_month"]
     )
     df_samples = api.sample_metadata(sample_sets=sample_sets)
-    countries = df_samples["country"].unique().tolist()
+    countries = df_samples["country"].unique()
     country = random.choice(countries)
     sample_query = f"country == '{country}'"
 
@@ -502,7 +502,7 @@ def test_gene_cnv_frequencies_advanced_with_sample_query(
 ):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     df_samples = api.sample_metadata(sample_sets=all_sample_sets)
-    countries = df_samples["country"].unique().tolist()
+    countries = df_samples["country"].unique()
     country = random.choice(countries)
     sample_query = f"country == '{country}'"
 
