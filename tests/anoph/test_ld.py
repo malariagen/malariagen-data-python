@@ -158,6 +158,18 @@ def test_biallelic_snps_ld_pruned_with_n_snps(fixture, api: AnophelesLdAnalysis)
     # Use a small n_snps to avoid "Not enough SNPs" with simulated data.
     n_snps = 20
 
+    # Get the baseline variant count that biallelic_snp_calls returns for
+    # these params — n_snps is a thinning hint, not a hard maximum.
+    ds_base = api.biallelic_snp_calls(
+        region=contig,
+        sample_sets=all_sample_sets,
+        n_snps=n_snps,
+        min_minor_ac=1,
+        site_mask=None,
+        max_missing_an=None,
+    )
+    n_variants_base = ds_base.sizes["variants"]
+
     ds_pruned = api.biallelic_snps_ld_pruned(
         region=contig,
         sample_sets=all_sample_sets,
@@ -169,8 +181,8 @@ def test_biallelic_snps_ld_pruned_with_n_snps(fixture, api: AnophelesLdAnalysis)
 
     assert isinstance(ds_pruned, xr.Dataset)
 
-    # Pruned result should have <= n_snps variants.
-    assert ds_pruned.sizes["variants"] <= n_snps
+    # LD pruning can only reduce the variant count, never increase it.
+    assert ds_pruned.sizes["variants"] <= n_variants_base
 
 
 @parametrize_with_cases("fixture,api", cases=".")
