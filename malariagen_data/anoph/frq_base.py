@@ -499,7 +499,7 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         self,
         m,
         ds: frq_params.ds_frequencies_advanced,
-        variant: Union[int, str],
+        variant: Optional[Union[int, str]],
         taxon: str,
         period: pd.Period,
         clear: bool = True,
@@ -507,6 +507,11 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         # Only import here because of some problems importing globally.
         import ipyleaflet  # type: ignore
         import ipywidgets  # type: ignore
+
+        # --- ADD THESE TWO LINES ---
+        if variant is None:
+            return
+        # ---------------------------
 
         # Slice dataset to variant of interest.
         if isinstance(variant, int):
