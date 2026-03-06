@@ -78,34 +78,6 @@ def adir1_sim_api(adir1_sim_fixture):
     )
 
 
-@pytest.fixture
-def ag3_sim_api_local_path(ag3_sim_fixture):
-    data_path = ag3_sim_fixture.bucket_path.as_posix()
-    return AnophelesPca(
-        url=data_path,
-        public_url=data_path,
-        config_path=_ag3.CONFIG_PATH,
-        major_version_number=_ag3.MAJOR_VERSION_NUMBER,
-        major_version_path=_ag3.MAJOR_VERSION_PATH,
-        pre=True,
-        aim_metadata_dtype={
-            "aim_species_fraction_arab": "float64",
-            "aim_species_fraction_colu": "float64",
-            "aim_species_fraction_colu_no2l": "float64",
-            "aim_species_gambcolu_arabiensis": object,
-            "aim_species_gambiae_coluzzii": object,
-            "aim_species": object,
-        },
-        gff_gene_type="gene",
-        gff_gene_name_attribute="Name",
-        gff_default_attributes=("ID", "Parent", "Name", "description"),
-        default_site_mask="gamb_colu_arab",
-        results_cache=ag3_sim_fixture.results_cache_path.as_posix(),
-        taxon_colors=_ag3.TAXON_COLORS,
-        virtual_contigs=_ag3.VIRTUAL_CONTIGS,
-    )
-
-
 # N.B., here we use pytest_cases to parametrize tests. Each
 # function whose name begins with "case_" defines a set of
 # inputs to the test functions. See the documentation for
@@ -343,8 +315,8 @@ def test_pca_fit_exclude_samples(fixture, api: AnophelesPca):
     )
 
 
-def test_pca_cohort_size_column_requires_cohort_size(ag3_sim_api_local_path):
-    api = ag3_sim_api_local_path
+def test_pca_cohort_size_column_requires_cohort_size(ag3_sim_api):
+    api = ag3_sim_api
     sample_set = api.sample_sets()["sample_set"].iloc[0]
     with pytest.raises(ValueError, match="cohort_size must be provided"):
         api.pca(
@@ -356,8 +328,8 @@ def test_pca_cohort_size_column_requires_cohort_size(ag3_sim_api_local_path):
         )
 
 
-def test_pca_cohort_size_column_downsamples_per_cohort(ag3_sim_api_local_path):
-    api = ag3_sim_api_local_path
+def test_pca_cohort_size_column_downsamples_per_cohort(ag3_sim_api):
+    api = ag3_sim_api
     df_samples = api.sample_metadata()
     cohort_size = 2
     cohort_counts = df_samples["country"].value_counts(dropna=True)
@@ -382,9 +354,9 @@ def test_pca_cohort_size_column_downsamples_per_cohort(ag3_sim_api_local_path):
 
 
 def test_pca_cohort_size_column_updates_sample_sets_after_downsampling(
-    ag3_sim_api_local_path, monkeypatch
+    ag3_sim_api, monkeypatch
 ):
-    api = ag3_sim_api_local_path
+    api = ag3_sim_api
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     if len(all_sample_sets) < 2:
         pytest.skip("not enough simulated sample sets")
@@ -432,9 +404,9 @@ def test_pca_cohort_size_column_updates_sample_sets_after_downsampling(
 
 
 def test_pca_cohort_size_column_skips_small_cohorts_with_warning(
-    ag3_sim_api_local_path, monkeypatch
+    ag3_sim_api, monkeypatch
 ):
-    api = ag3_sim_api_local_path
+    api = ag3_sim_api
     cohort_size = 2
     original_sample_metadata = api.sample_metadata
 
