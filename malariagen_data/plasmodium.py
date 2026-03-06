@@ -11,6 +11,7 @@ from malariagen_data.util import (
     DIM_PLOIDY,
     DIM_SAMPLE,
     DIM_VARIANT,
+    Region,
     _prep_geneset_attributes_arg,
     _da_from_zarr,
     _init_filesystem,
@@ -170,6 +171,19 @@ class PlasmodiumDataResource:
         ds : xarray.Dataset
             Dataset containing either default or extended variables from the variant calls Zarr.
         """
+        if not isinstance(extended, bool):
+            raise TypeError(
+                f"'extended' must be bool, got {type(extended).__name__}"
+            )
+        if not isinstance(inline_array, bool):
+            raise TypeError(
+                f"'inline_array' must be bool, got {type(inline_array).__name__}"
+            )
+        if not isinstance(chunks, (str, int, tuple)):
+            raise TypeError(
+                f"'chunks' must be str, int, or tuple, got {type(chunks).__name__}"
+            )
+
         # setup
         root = self._open_variant_calls_zarr()
         var_names_for_outputs = {
@@ -273,6 +287,20 @@ class PlasmodiumDataResource:
             given region/gene/contig.
 
         """
+        if not isinstance(region, (str, list, tuple, Region, type(None))):
+            raise TypeError(
+                f"'region' must be str, list, tuple, Region, or None, "
+                f"got {type(region).__name__}"
+            )
+        if not isinstance(inline_array, bool):
+            raise TypeError(
+                f"'inline_array' must be bool, got {type(inline_array).__name__}"
+            )
+        if not isinstance(chunks, (str, int, tuple)):
+            raise TypeError(
+                f"'chunks' must be str, int, or tuple, got {type(chunks).__name__}"
+            )
+
         genome = self.open_genome()
         if type(region) not in [tuple, list] and region != "*" and region is not None:
             d = self._subset_genome_sequence_region(
