@@ -64,7 +64,7 @@ class AnophelesHapData(
             return analysis
         else:
             raise ValueError(
-                f"Invalid phasing analysis, must be one of f{self.phasing_analysis_ids}."
+                f"Invalid phasing analysis, must be one of {self.phasing_analysis_ids}."
             )
 
     @_check_types
