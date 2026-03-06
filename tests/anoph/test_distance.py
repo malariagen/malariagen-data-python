@@ -269,3 +269,20 @@ def test_plot_njt(fixture, api: AnophelesDistanceAnalysis):
             **data_params,
         )
         assert isinstance(fig, go.Figure)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_njt_not_enough_snps(fixture, api: AnophelesDistanceAnalysis):
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    with pytest.raises(
+        ValueError,
+        match="Unable to construct neighbour-joining tree|Not enough SNPs",
+    ):
+        api.njt(
+            region=random.choice(api.contigs),
+            n_snps=1_000_000_000,  # impossibly high to guarantee failure
+            sample_sets=random.sample(all_sample_sets, 1),
+            site_mask=random.choice((None,) + api.site_mask_ids),
+            min_minor_ac=pca_params.min_minor_ac_default,
+            max_missing_an=pca_params.max_missing_an_default,
+        )
