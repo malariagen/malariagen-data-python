@@ -1,7 +1,6 @@
 from typing import Optional
 import os
 import allel  # type: ignore
-import numpy as np
 
 from .snp_data import AnophelesSnpData
 from . import base_params
@@ -102,9 +101,7 @@ class VcfExporter(
 
         # Compute genotype array from dask
         with self._dask_progress("Computing genotype array"):
-            gt_array = allel.GenotypeDaskArray(
-                ds_snps["call_genotype"].data
-            ).compute()
+            gt_array = allel.GenotypeDaskArray(ds_snps["call_genotype"].data).compute()
 
         # Extract variant info
         with self._spinner("Preparing VCF output data"):
