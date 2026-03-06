@@ -8,7 +8,6 @@ from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.admixture import AnophelesAdmixture
 
 import os
-import numpy as np
 
 
 @pytest.fixture

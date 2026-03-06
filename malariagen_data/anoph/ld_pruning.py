@@ -106,9 +106,7 @@ class AnophelesLdPruning(
         n_before = gn_var.shape[0]
         loc_unlinked = np.ones(gn_var.shape[0], dtype=bool)
 
-        with self._spinner(
-            f"LD pruning (r²={r2_threshold}, window={window_size})"
-        ):
+        with self._spinner(f"LD pruning (r²={r2_threshold}, window={window_size})"):
             for i in range(n_iter):
                 # Compute LD on current set of unlinked SNPs.
                 gn_current = gn_var[loc_unlinked]

@@ -1,6 +1,5 @@
 from typing import Optional
 
-import allel  # type: ignore
 import numpy as np
 import os
 
@@ -8,7 +7,7 @@ import bed_reader
 
 from numpydoc_decorator import doc  # type: ignore
 
-from ..util import _check_types, _dask_compress_dataset
+from ..util import _check_types
 from . import base_params, pca_params, plink_params, ld_pruning_params, admixture_params
 from .ld_pruning import AnophelesLdPruning
 
@@ -82,9 +81,7 @@ class AnophelesAdmixture(
         os.makedirs(output_dir, exist_ok=True)
 
         # Define output file path.
-        plink_file_path = (
-            f"{output_dir}/admixture.{region}.r2_{r2_threshold}"
-        )
+        plink_file_path = f"{output_dir}/admixture.{region}.r2_{r2_threshold}"
         bed_file_path = f"{plink_file_path}.bed"
 
         # Check for existing output.
