@@ -21,13 +21,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup python
-        uses: actions/setup-python@v5
+        uses: ./.github/actions/setup-python
         with:
           python-version: ${{ matrix.python-version }}
-          cache: "pip"
-
-      - name: Install package
-        run: pip install .[dev]
 
       - id: 'auth'
         name: 'Set up Google Cloud authentication'
@@ -50,7 +46,7 @@ jobs:
           key: gcs_cache_integration_tests_20240922
 
       - name: Run integration tests
-        run: pytest --durations=20 -v tests/integration
+        run: poetry run pytest --durations=20 -v tests/integration
 
       - name: Save GCS cache
         uses: actions/cache/save@v3
