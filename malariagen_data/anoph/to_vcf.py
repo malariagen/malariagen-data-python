@@ -99,51 +99,33 @@ class VcfExporter(
             chunks=chunks,
         )
 
-        # Compute genotype array from dask
-        with self._dask_progress("Computing genotype array"):
-            gt_array = allel.GenotypeDaskArray(ds_snps["call_genotype"].data).compute()
-
         # Extract variant info
         with self._spinner("Preparing VCF output data"):
             chrom = ds_snps["variant_contig"].values
             pos = ds_snps["variant_position"].values
             alleles = ds_snps["variant_allele"].values
             ref = alleles[:, 0]
-            alt = alleles[:, 1]
+            alt = alleles[:, 1:]
             sample_ids = ds_snps["sample_id"].values
+
+        # Compute genotype array from dask
+        with self._dask_progress("Computing genotype array"):
+            gt_array = allel.GenotypeDaskArray(ds_snps["call_genotype"].data).compute()
 
         # Build output directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
 
-        # Write VCF file
+        # Write VCF file using scikit-allel's optimized writer
         with self._spinner("Writing VCF file"):
-            with open(vcf_file_path, "w") as vcf_out:
-                # Write VCF header
-                vcf_out.write("##fileformat=VCFv4.1\n")
-                vcf_out.write(
-                    '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">\n'
+            with open(vcf_file_path, "w", encoding="utf-8") as f:
+                allel.write_vcf(
+                    f,
+                    chrom=chrom,
+                    pos=pos,
+                    ref=ref,
+                    alt=alt,
+                    samples=sample_ids,
+                    calldata_2d={"GT": gt_array},
                 )
-                # Write column header line
-                sample_cols = "\t".join(sample_ids)
-                vcf_out.write(
-                    f"#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t{sample_cols}\n"
-                )
-
-                # Write one line per variant
-                n_variants = len(pos)
-                for i in range(n_variants):
-                    gt_row = gt_array[i]  # shape: (n_samples, ploidy)
-                    # Convert genotype calls to VCF GT string e.g. "0/1"
-                    gt_strings = []
-                    for sample_gt in gt_row:
-                        if -1 in sample_gt:
-                            gt_strings.append("./.")
-                        else:
-                            gt_strings.append("/".join(str(a) for a in sample_gt))
-                    gt_col = "\t".join(gt_strings)
-                    vcf_out.write(
-                        f"{chrom[i]}\t{pos[i]}\t.\t{ref[i]}\t{alt[i]}"
-                        f"\t.\tPASS\t.\tGT\t{gt_col}\n"
-                    )
 
         return vcf_file_path
