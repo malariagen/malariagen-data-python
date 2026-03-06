@@ -272,7 +272,10 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
                 )
             )
         else:
-            assert isinstance(index, str)
+            if not isinstance(index, str):
+                raise TypeError(
+                    f"'index' must be a string or list, got {type(index).__name__}."
+                )
             index_col = df[index].astype(str)
 
         # Check that index is unique.
@@ -523,7 +526,10 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
             ds_variant = ds.isel(variants=variant)
             variant_label = ds["variant_label"].values[variant]
         else:
-            assert isinstance(variant, str)
+            if not isinstance(variant, str):
+                raise TypeError(
+                    f"'variant' must be an int or str, got {type(variant).__name__}."
+                )
             ds_variant = ds.set_index(variants="variant_label").sel(variants=variant)
             variant_label = variant
 

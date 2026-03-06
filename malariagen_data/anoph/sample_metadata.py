@@ -1164,7 +1164,10 @@ class AnophelesSampleMetadata(AnophelesBase):
         if isinstance(sample, str):
             sample_rec = df_samples.loc[sample]
         else:
-            assert isinstance(sample, int)
+            if not isinstance(sample, int):
+                raise TypeError(
+                    f"'sample' must be a str or int, got {type(sample).__name__}."
+                )
             sample_rec = df_samples.iloc[sample]
         return sample_rec
 
@@ -1277,7 +1280,10 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         else:
             # Custom grouping using queries.
-            assert isinstance(symbol, Mapping)
+            if not isinstance(symbol, Mapping):
+                raise TypeError(
+                    f"'symbol' must be a str or Mapping, got {type(symbol).__name__}."
+                )
             data["symbol"] = ""
             for key, value in symbol.items():
                 data.loc[data.query(value).index, "symbol"] = key
@@ -1326,7 +1332,10 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         else:
             # Custom grouping using queries.
-            assert isinstance(color, Mapping)
+            if not isinstance(color, Mapping):
+                raise TypeError(
+                    f"'color' must be a str or Mapping, got {type(color).__name__}."
+                )
             data["color"] = ""
             for key, value in color.items():
                 data.loc[data.query(value).index, "color"] = key
@@ -1428,7 +1437,10 @@ class AnophelesSampleMetadata(AnophelesBase):
             cohort_queries = cohorts
 
         else:
-            assert isinstance(cohorts, str)
+            if not isinstance(cohorts, str):
+                raise TypeError(
+                    f"'cohorts' must be a dict or str, got {type(cohorts).__name__}."
+                )
             # User has supplied a column in the sample metadata.
             df_samples = self.sample_metadata(
                 sample_sets=sample_sets,
@@ -1692,7 +1704,10 @@ def _locate_cohorts(*, cohorts, data, min_cohort_size):
             coh_dict[coh] = loc_coh
 
     else:
-        assert isinstance(cohorts, str)
+        if not isinstance(cohorts, str):
+            raise TypeError(
+                f"'cohorts' must be a dict or str, got {type(cohorts).__name__}."
+            )
         # User has supplied the name of a sample metadata column.
 
         # Convenience to allow things like "admin1_year" instead of "cohort_admin1_year".
