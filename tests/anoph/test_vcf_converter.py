@@ -153,6 +153,7 @@ def test_vcf_converter(fixture, api: VcfConverter, tmp_path):
             assert sample in expected_samples
 
     # Validate that data lines exist after the header.
+    assert header_line_idx is not None
     data_lines = lines[header_line_idx + 1 :]
     assert len(data_lines) > 0, "VCF file contains no data records"
 
