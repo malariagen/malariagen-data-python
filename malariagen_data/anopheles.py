@@ -36,6 +36,7 @@ from .anoph.distance import AnophelesDistanceAnalysis
 from .anoph.sample_metadata import AnophelesSampleMetadata
 from .anoph.snp_data import AnophelesSnpData
 from .anoph.to_plink import PlinkConverter
+from .anoph.to_vcf import VcfConverter
 from .anoph.g123 import AnophelesG123Analysis
 from .anoph.fst import AnophelesFstAnalysis
 from .anoph.h12 import AnophelesH12Analysis
@@ -87,6 +88,7 @@ class AnophelesDataResource(
     AnophelesHapFrequencyAnalysis,
     AnophelesDistanceAnalysis,
     AnophelesPca,
+    VcfConverter,
     PlinkConverter,
     AnophelesIgv,
     AnophelesKaryotypeAnalysis,
@@ -1786,9 +1788,9 @@ class AnophelesDataResource(
             # charts
             for i, (v, c) in enumerate(color_discrete_map_prepped.items()):
                 node_style[f"pie-{i + 1}-background-color"] = c
-                node_style[
-                    f"pie-{i + 1}-background-size"
-                ] = f"mapData({v}, 0, 100, 0, 100)"
+                node_style[f"pie-{i + 1}-background-size"] = (
+                    f"mapData({v}, 0, 100, 0, 100)"
+                )
         node_stylesheet = {
             "selector": "node",
             "style": node_style,
