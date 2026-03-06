@@ -89,9 +89,7 @@ def _prep_samples_for_cohort_grouping(
     return df_samples
 
 
-def _build_cohorts_from_sample_grouping(
-    *, group_samples_by_cohort, min_cohort_size
-):
+def _build_cohorts_from_sample_grouping(*, group_samples_by_cohort, min_cohort_size):
     # Build cohorts dataframe.
     df_cohorts = group_samples_by_cohort.agg(
         size=("sample_id", len),
