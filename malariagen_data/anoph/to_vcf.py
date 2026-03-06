@@ -117,20 +117,56 @@ class VcfConverter(
             samples = ds_snps_final["sample_id"].values
 
             ref = alleles[:, 0]
-            alt = [
-                a[1:] for a in alleles
-            ]  # Get the alternate alleles as a list of arrays
+            alt = alleles[:, 1]
 
-            # We format everything into a VCF using scikit-allel's optimized exporter
+            # Write VCF manually since allel.write_vcf does not support
+            # sample/genotype data.
             with open(vcf_file_path, "w", encoding="utf-8") as f:
-                allel.write_vcf(
-                    f,
-                    chrom=chrom,
-                    pos=pos,
-                    ref=ref,
-                    alt=alt,
-                    samples=samples,
-                    calldata_2d={"GT": genotypes},
+                # Write VCF header.
+                print("##fileformat=VCFv4.1", file=f)
+                print(
+                    '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">',
+                    file=f,
                 )
+
+                # Write column header line with sample IDs.
+                fixed_cols = [
+                    "#CHROM",
+                    "POS",
+                    "ID",
+                    "REF",
+                    "ALT",
+                    "QUAL",
+                    "FILTER",
+                    "INFO",
+                    "FORMAT",
+                ]
+                header_fields = fixed_cols + [str(s) for s in samples]
+                print("\t".join(header_fields), file=f)
+
+                # Write data rows.
+                for i in range(len(pos)):
+                    # Format genotype calls for each sample.
+                    gt_calls = []
+                    for j in range(genotypes.shape[1]):
+                        a0 = genotypes[i, j, 0]
+                        a1 = genotypes[i, j, 1]
+                        if a0 < 0 or a1 < 0:
+                            gt_calls.append("./.")
+                        else:
+                            gt_calls.append(f"{a0}/{a1}")
+
+                    row = [
+                        str(chrom[i]),
+                        str(pos[i]),
+                        ".",
+                        str(ref[i]),
+                        str(alt[i]),
+                        ".",
+                        ".",
+                        ".",
+                        "GT",
+                    ] + gt_calls
+                    print("\t".join(row), file=f)
 
         return vcf_file_path
