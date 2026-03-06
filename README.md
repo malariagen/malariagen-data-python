@@ -13,7 +13,20 @@ pip install malariagen-data
 
 ## Documentation
 
-Documentation of classes and methods in the public API are available
+### Quick Start
+
+```python
+import malariagen_data
+
+# API for data on mosquitoes from the Anopheles gambiae complex.
+ag3 = malariagen_data.Ag3()
+
+# Access a dataframe of sample sets.
+df_samples = ag3.sample_metadata()
+print(df_samples.head())
+```
+
+All other documentation of classes and methods in the public API are available
 from the following locations:
 
 -   [Ag3 API
