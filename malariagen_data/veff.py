@@ -356,13 +356,32 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
             effect = base_effect._replace(effect="STOP_GAINED", impact="HIGH")
 
         else:
-            # TODO NON_SYNONYMOUS_START and NON_SYNONYMOUS_STOP
+            if ref_cds_start == 0 and alt_aa != "*":
+                # variant at the start codon produces a different (non-stop)
+                # amino acid — the canonical ATG start is affected but the
+                # result is not a complete loss of start (START_LOST covers M→X
+                # when ref_aa is M; here we catch any other start-codon missense)
+                # e.g.: ATG/TTG, M/L
+                effect = base_effect._replace(
+                    effect="NON_SYNONYMOUS_START", impact="LOW"
+                )
 
-            # variant causes a codon that produces a different amino acid
-            # e.g.: Tgg/Cgg, W/R
-            effect = base_effect._replace(
-                effect="NON_SYNONYMOUS_CODING", impact="MODERATE"
-            )
+            elif ref_aa == "*" and alt_aa == "*":
+                # stop codon mutates to a different stop codon triplet, but
+                # produces a different amino acid in non-stop-read context.
+                # N.B. SYNONYMOUS_STOP already covers ref_aa == alt_aa == "*";
+                # this branch handles the case where two distinct stop codons
+                # are involved (e.g. TGA → TAA = both *, but different triplets).
+                effect = base_effect._replace(
+                    effect="NON_SYNONYMOUS_STOP", impact="LOW"
+                )
+
+            else:
+                # variant causes a codon that produces a different amino acid
+                # e.g.: Tgg/Cgg, W/R
+                effect = base_effect._replace(
+                    effect="NON_SYNONYMOUS_CODING", impact="MODERATE"
+                )
 
     else:
         # INDELs and MNPs
