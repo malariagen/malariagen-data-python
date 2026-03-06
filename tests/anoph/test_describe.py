@@ -55,9 +55,9 @@ def test_describe_api_no_private_methods(fixture, api):
     """Test that describe_api does not include private or dunder methods."""
     df = api.describe_api()
     for method_name in df["method"]:
-        assert not method_name.startswith("_"), (
-            f"Private method {method_name!r} should not appear in describe_api output"
-        )
+        assert not method_name.startswith(
+            "_"
+        ), f"Private method {method_name!r} should not appear in describe_api output"
 
 
 @parametrize_with_cases("fixture,api", cases=".")
