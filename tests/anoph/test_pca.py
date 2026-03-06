@@ -139,7 +139,7 @@ def test_pca_plotting(fixture, api: AnophelesPca):
     # Check sizes.
     assert len(pca_df) == ds.sizes["samples"]
     for i in range(n_components):
-        assert f"PC{i+1}" in pca_df.columns, (
+        assert f"PC{i + 1}" in pca_df.columns, (
             "n_components",
             n_components,
             "n_samples",
@@ -229,7 +229,7 @@ def test_pca_exclude_samples(fixture, api: AnophelesPca):
     # Check sizes.
     assert len(pca_df) == n_samples
     for i in range(n_components):
-        assert f"PC{i+1}" in pca_df.columns, (
+        assert f"PC{i + 1}" in pca_df.columns, (
             "n_components",
             n_components,
             "n_samples",
@@ -239,7 +239,7 @@ def test_pca_exclude_samples(fixture, api: AnophelesPca):
             "n_snps",
             n_snps,
         )
-    assert f"PC{n_components+1}" not in pca_df.columns
+    assert f"PC{n_components + 1}" not in pca_df.columns
     assert "pca_fit" in pca_df.columns
     assert pca_df["pca_fit"].all()
     assert pca_evr.ndim == 1
@@ -290,7 +290,7 @@ def test_pca_fit_exclude_samples(fixture, api: AnophelesPca):
     # Check sizes.
     assert len(pca_df) == n_samples
     for i in range(n_components):
-        assert f"PC{i+1}" in pca_df.columns, (
+        assert f"PC{i + 1}" in pca_df.columns, (
             "n_components",
             n_components,
             "n_samples",
@@ -300,7 +300,7 @@ def test_pca_fit_exclude_samples(fixture, api: AnophelesPca):
             "n_snps",
             n_snps,
         )
-    assert f"PC{n_components+1}" not in pca_df.columns
+    assert f"PC{n_components + 1}" not in pca_df.columns
     assert "pca_fit" in pca_df.columns
     assert pca_evr.ndim == 1
     assert pca_evr.shape[0] == n_components
