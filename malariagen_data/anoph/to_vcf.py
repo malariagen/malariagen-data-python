@@ -3,7 +3,6 @@ from typing import Optional
 import allel  # type: ignore
 import numpy as np
 import os
-import dask.array as da  # type: ignore
 
 from ..util import _dask_compress_dataset
 from .snp_data import AnophelesSnpData
