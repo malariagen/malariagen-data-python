@@ -99,9 +99,7 @@ class AnophelesLdPruning(
             sample_indices=sample_indices,
         )
         prepared_region = self._prep_region_cache_param(region=region)
-        prepared_site_mask = self._prep_optional_site_mask_param(
-            site_mask=site_mask
-        )
+        prepared_site_mask = self._prep_optional_site_mask_param(site_mask=site_mask)
 
         # Delete original parameters to prevent accidental use.
         del sample_sets
@@ -135,9 +133,7 @@ class AnophelesLdPruning(
             results = self.results_cache_get(name=name, params=params)
 
         except CacheMiss:
-            results = self._ld_prune(
-                inline_array=inline_array, chunks=chunks, **params
-            )
+            results = self._ld_prune(inline_array=inline_array, chunks=chunks, **params)
             self.results_cache_set(name=name, params=params, results=results)
 
         # Unpack the cached pruning mask.
@@ -162,9 +158,7 @@ class AnophelesLdPruning(
         )
 
         # Apply the LD pruning mask.
-        ds_pruned = _dask_compress_dataset(
-            ds, indexer=loc_pruned, dim="variants"
-        )
+        ds_pruned = _dask_compress_dataset(ds, indexer=loc_pruned, dim="variants")
 
         return ds_pruned
 
@@ -220,9 +214,7 @@ class AnophelesLdPruning(
         # Iterative LD pruning using Rogers-Huff r².
         loc_unlinked = np.ones(gn_var.shape[0], dtype=bool)
 
-        with self._spinner(
-            f"LD pruning (r²={r2_threshold}, window={window_size})"
-        ):
+        with self._spinner(f"LD pruning (r²={r2_threshold}, window={window_size})"):
             for i in range(n_iter):
                 # Compute LD on current set of unlinked SNPs.
                 gn_current = gn_var[loc_unlinked]

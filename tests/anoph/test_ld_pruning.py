@@ -7,7 +7,6 @@ from malariagen_data import ag3 as _ag3
 
 from malariagen_data.anoph.ld_pruning import AnophelesLdPruning
 
-import numpy as np
 import xarray as xr
 from numpy.testing import assert_array_equal
 
