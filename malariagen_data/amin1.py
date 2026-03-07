@@ -22,6 +22,10 @@ TAXON_COLORS = {
     "dirus": TAXON_PALETTE[0],
 }
 
+XPEHH_GWSS_CACHE_NAME = "amin1_xpehh_gwss_v1"
+IHS_GWSS_CACHE_NAME = "amin1_ihs_gwss_v1"
+ROH_HMM_CACHE_NAME = "amin1_roh_hmm_v1"
+
 
 class Amin1(AnophelesDataResource):
     """Provides access to data from Amin1.0 releases.

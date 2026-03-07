@@ -22,6 +22,10 @@ TAXON_COLORS = {
     "dirus": TAXON_PALETTE[0],
 }
 
+XPEHH_GWSS_CACHE_NAME = "adir1_xpehh_gwss_v1"
+IHS_GWSS_CACHE_NAME = "adir1_ihs_gwss_v1"
+ROH_HMM_CACHE_NAME = "adir1_roh_hmm_v1"
+
 
 class Adir1(AnophelesDataResource):
     """Provides access to data from Adir1.0 releases.
