@@ -586,7 +586,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
                 nobs[:, cohort_index] = np.repeat(cohort_n_called, 2)
             else:
                 assert nobs_mode == "fixed"
-                nobs[:, cohort_index] = cohort.size * 2
+                nobs[:, cohort_index] = cohort.size
 
         debug("compute frequency")
         with np.errstate(divide="ignore", invalid="ignore"):
