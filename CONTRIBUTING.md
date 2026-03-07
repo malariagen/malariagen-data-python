@@ -16,6 +16,9 @@ You'll need:
 - [Poetry](https://python-poetry.org/) for dependency management
 - [Git](https://git-scm.com/) for version control
 
+> **Note:** Python 3.10.x is the CI-tested version. Using a different 
+> version may cause unexpected test failures.
+
 ### Initial setup
 
 1. **Fork and clone the repository**
@@ -39,11 +42,12 @@ You'll need:
    pipx install poetry
    ```
 
-4. **Install the project and its dependencies**
-
-   ```bash
-   poetry install
-   ```
+  4. **Install the project and its dependencies**
+```bash
+   poetry install --extras dev
+```
+   > **Note:** Use `--extras dev` to install all development 
+   > dependencies including test requirements such as `pytest-cases`.
 
    **Recommended**: Use `poetry run` to run commands inside the virtual environment:
 
@@ -150,6 +154,9 @@ ruff format .
 - **Fast tests**: Unit tests should use simulated data when possible (see `tests/anoph/`)
 - **Integration tests**: Tests requiring GCS data access are slower and run separately
 
+> **Tip:** If you are contributing to the NL interface or any new feature,
+   > add corresponding unit tests in `tests/anoph/` using simulated data 
+   > to keep tests fast and independent of GCS access.
 Run type checking with:
 
 ```bash
