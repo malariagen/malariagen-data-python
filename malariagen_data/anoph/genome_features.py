@@ -161,6 +161,22 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
     def genome_feature_children(
         self, parent: str, attributes: base_params.gff_attributes = base_params.DEFAULT
     ) -> pd.DataFrame:
+      """
+      Return child genome features for a given parent feature.
+
+      Parameters
+      ----------
+      parent : str
+          Identifier of the parent genome feature.
+      attributes : gff_attributes, optional
+          Attributes to include when querying genome features.
+
+      Returns
+      -------
+      pandas.DataFrame
+          DataFrame containing child features of the specified parent.
+      """
+
         # Normalise attributes and ensure Parent is included.
         attributes_normed = self._prep_gff_attributes(attributes)
         if "Parent" not in attributes_normed:
