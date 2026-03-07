@@ -161,6 +161,39 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
     def genome_feature_children(
         self, parent: str, attributes: base_params.gff_attributes = base_params.DEFAULT
     ) -> pd.DataFrame:
+        """Retrieve child features of a given genome feature.
+
+        Parameters
+        ----------
+        parent : str
+            Identifier of the parent genome feature, e.g. a gene ID
+            such as 'AGAP004707' or a transcript ID such as
+            'AGAP004707-RD'.
+        attributes : str or sequence of str, optional
+            GFF attribute keys to unpack into dataframe columns.
+            Provide "*" to unpack all attributes. Default is 'default'.
+
+        Returns
+        -------
+        pandas.DataFrame
+            A dataframe of child genome features such as transcripts,
+            exons, CDSs and UTRs belonging to the given parent feature.
+
+        Examples
+        --------
+        Get all child features of a transcript:
+
+            >>> df = ag3.genome_feature_children("AGAP004707-RD")
+            >>> df.head()
+
+        """
+        # Normalise attributes and ensure Parent is included.
+        attributes_normed = self._prep_gff_attributes(attributes)
+```
+
+Commit with:
+```
+docs: add docstring to genome_feature_children (#1070)
         # Normalise attributes and ensure Parent is included.
         attributes_normed = self._prep_gff_attributes(attributes)
         if "Parent" not in attributes_normed:
