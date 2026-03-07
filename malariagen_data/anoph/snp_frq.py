@@ -803,6 +803,53 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> pd.DataFrame:
+        """Count alleles per sample for SNPs in a given transcript.
+
+        Parameters
+        ----------
+        transcript : str
+            Gene transcript identifier, e.g. 'AGAP004707-RD'.
+        snp_query : str, optional
+            A pandas query string to filter SNPs to include.
+            Default selects non-synonymous coding, start lost,
+            stop lost and stop gained variants.
+        sample_sets : str or sequence of str, optional
+            List of sample sets and/or releases. Can also be a
+            single sample set or release.
+        sample_query : str, optional
+            A pandas query string to filter samples to include.
+        sample_query_options : dict, optional
+            Additional arguments passed to pandas query() or eval().
+        site_mask : str, optional
+            Which site filters mask to apply.
+        chunks : int, str or tuple, optional
+            Chunk size for dask computation.
+        inline_array : bool, optional
+            Passed through to dask from_array().
+
+        Returns
+        -------
+        pandas.DataFrame
+            A dataframe of allele counts per sample for each SNP
+            in the given transcript.
+
+        Examples
+        --------
+        Count alleles for a transcript in Kenya samples:
+
+            >>> df = ag3.snp_genotype_allele_counts(
+            ...     transcript="AGAP004707-RD",
+            ...     sample_sets="AG1000G-KE"
+            ... )
+            >>> df.head()
+
+        """
+        ds_snp = self.snp_calls(
+```
+
+Commit with:
+```
+docs: add docstring to snp_genotype_allele_counts (#1070)
         ds_snp = self.snp_calls(
             region=transcript,
             sample_query=sample_query,
