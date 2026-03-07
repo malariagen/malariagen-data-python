@@ -8,6 +8,7 @@ from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.admixture import AnophelesAdmixture
 
 import os
+import bed_reader
 
 
 @pytest.fixture
@@ -81,7 +82,6 @@ def test_prepare_admixture_basic(fixture, api: AnophelesAdmixture, tmp_path):
     # Check result keys.
     assert "plink_path" in results
     assert "n_samples" in results
-    assert "n_snps_before_ld" in results
     assert "n_snps_after_ld" in results
     assert "n_snps_final" in results
     assert results["from_cache"] is False
@@ -93,9 +93,13 @@ def test_prepare_admixture_basic(fixture, api: AnophelesAdmixture, tmp_path):
     assert os.path.exists(f"{plink_path}.fam")
 
     # Check that LD pruning reduced SNPs.
-    assert results["n_snps_after_ld"] <= results["n_snps_before_ld"]
     assert results["n_snps_final"] <= results["n_snps_after_ld"]
     assert results["n_samples"] > 0
+
+    # Validate PLINK file contents.
+    bed = bed_reader.open_bed(f"{plink_path}.bed")
+    assert bed.shape[0] == results["n_samples"]
+    assert bed.shape[1] == results["n_snps_final"]
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -118,7 +122,7 @@ def test_prepare_admixture_max_snps(fixture, api: AnophelesAdmixture, tmp_path):
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_prepare_admixture_cache(fixture, api: AnophelesAdmixture, tmp_path):
-    """Test that caching works (second call uses cached result)."""
+    """Test that file-based caching works (second call uses cached result)."""
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     contig = random.choice(api.contigs)
 

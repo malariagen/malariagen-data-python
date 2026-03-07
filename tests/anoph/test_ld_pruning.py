@@ -8,6 +8,8 @@ from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.ld_pruning import AnophelesLdPruning
 
 import numpy as np
+import xarray as xr
+from numpy.testing import assert_array_equal
 
 
 @pytest.fixture
@@ -65,37 +67,66 @@ def case_af1_sim(af1_sim_fixture, af1_sim_api):
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_ld_prune_basic(fixture, api: AnophelesLdPruning):
-    """Test that ld_prune returns valid results."""
+    """Test that ld_prune returns a valid xr.Dataset with fewer variants."""
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    contig = random.choice(api.contigs)
 
-    results = api.ld_prune(
-        region=random.choice(api.contigs),
-        sample_sets=random.sample(all_sample_sets, 2),
-        site_mask=random.choice((None,) + api.site_mask_ids),
-        min_minor_ac=1,
-        max_missing_an=1,
-        random_seed=42,
+    # Get unpruned dataset for comparison.
+    ds_unpruned = api.biallelic_snp_calls(
+        region=contig,
+        sample_sets=all_sample_sets,
+        min_minor_ac=2,
     )
 
-    # Check result keys.
-    assert "gn" in results
-    assert "samples" in results
-    assert "variant_position" in results
-    assert "variant_contig" in results
-    assert "n_snps_before" in results
-    assert "n_snps_after" in results
+    # Run LD pruning.
+    ds_pruned = api.ld_prune(
+        region=contig,
+        sample_sets=all_sample_sets,
+        min_minor_ac=2,
+    )
 
-    # Check that pruning reduced the number of SNPs.
-    assert results["n_snps_after"] <= results["n_snps_before"]
+    # Result should be an xarray Dataset.
+    assert isinstance(ds_pruned, xr.Dataset)
 
-    # Check shapes are consistent.
-    assert results["gn"].shape[0] == results["n_snps_after"]
-    assert results["gn"].shape[0] == len(results["variant_position"])
-    assert results["gn"].shape[0] == len(results["variant_contig"])
-    assert results["gn"].shape[1] == len(results["samples"])
+    # Pruned variants should be <= unpruned variants.
+    assert ds_pruned.sizes["variants"] <= ds_unpruned.sizes["variants"]
 
-    # Check that genotype values are valid (-1, 0, 1, 2).
-    assert np.all(np.isin(results["gn"], [-1, 0, 1, 2]))
+    # Sample IDs should be unchanged.
+    assert_array_equal(
+        ds_pruned["sample_id"].values,
+        ds_unpruned["sample_id"].values,
+    )
+
+    # All retained positions should be a subset of the original positions.
+    pruned_positions = set(ds_pruned["variant_position"].values)
+    unpruned_positions = set(ds_unpruned["variant_position"].values)
+    assert pruned_positions.issubset(unpruned_positions)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_ld_prune_caching(fixture, api: AnophelesLdPruning):
+    """Test that caching works (second call returns identical result)."""
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    contig = random.choice(api.contigs)
+
+    # First call.
+    ds_pruned_1 = api.ld_prune(
+        region=contig,
+        sample_sets=all_sample_sets,
+        min_minor_ac=2,
+    )
+
+    # Second call should return identical result (from cache).
+    ds_pruned_2 = api.ld_prune(
+        region=contig,
+        sample_sets=all_sample_sets,
+        min_minor_ac=2,
+    )
+
+    assert_array_equal(
+        ds_pruned_1["variant_position"].values,
+        ds_pruned_2["variant_position"].values,
+    )
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -105,7 +136,7 @@ def test_ld_prune_custom_params(fixture, api: AnophelesLdPruning):
     contig = random.choice(api.contigs)
 
     # Stricter threshold should remove more SNPs.
-    results_strict = api.ld_prune(
+    ds_strict = api.ld_prune(
         region=contig,
         sample_sets=all_sample_sets[:1],
         r2_threshold=0.05,
@@ -114,7 +145,7 @@ def test_ld_prune_custom_params(fixture, api: AnophelesLdPruning):
         random_seed=42,
     )
 
-    results_relaxed = api.ld_prune(
+    ds_relaxed = api.ld_prune(
         region=contig,
         sample_sets=all_sample_sets[:1],
         r2_threshold=0.5,
@@ -124,4 +155,61 @@ def test_ld_prune_custom_params(fixture, api: AnophelesLdPruning):
     )
 
     # Stricter threshold should keep fewer or equal SNPs.
-    assert results_strict["n_snps_after"] <= results_relaxed["n_snps_after"]
+    assert ds_strict.sizes["variants"] <= ds_relaxed.sizes["variants"]
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_ld_prune_dataset_structure(fixture, api: AnophelesLdPruning):
+    """Test that the pruned dataset has the correct structure."""
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    contig = random.choice(api.contigs)
+
+    ds_pruned = api.ld_prune(
+        region=contig,
+        sample_sets=all_sample_sets,
+        min_minor_ac=1,
+    )
+
+    # Check expected coordinates.
+    assert "sample_id" in ds_pruned.coords
+    assert "variant_position" in ds_pruned.coords
+    assert "variant_contig" in ds_pruned.coords
+
+    # Check expected data variables.
+    assert "variant_allele" in ds_pruned.data_vars
+    assert "call_genotype" in ds_pruned.data_vars
+
+    # Check dimensions.
+    assert "variants" in ds_pruned.dims
+    assert "samples" in ds_pruned.dims
+    assert "ploidy" in ds_pruned.dims
+    assert "alleles" in ds_pruned.dims
+
+    # Check alleles are biallelic.
+    assert ds_pruned.sizes["alleles"] == 2
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_ld_prune_plink_compatibility(fixture, api: AnophelesLdPruning):
+    """Test that the pruned dataset has all variables required by PlinkConverter."""
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    contig = random.choice(api.contigs)
+
+    ds_pruned = api.ld_prune(
+        region=contig,
+        sample_sets=all_sample_sets,
+        min_minor_ac=1,
+    )
+
+    # Verify the pruned dataset has all variables required by PlinkConverter.
+    assert "call_genotype" in ds_pruned
+    assert "variant_allele" in ds_pruned
+    assert "variant_contig" in ds_pruned.coords
+    assert "variant_position" in ds_pruned.coords
+    assert "sample_id" in ds_pruned.coords
+
+    # Verify shapes are internally consistent.
+    n_variants = ds_pruned.sizes["variants"]
+    n_samples = ds_pruned.sizes["samples"]
+    assert ds_pruned["call_genotype"].shape == (n_variants, n_samples, 2)
+    assert ds_pruned["variant_allele"].shape == (n_variants, 2)

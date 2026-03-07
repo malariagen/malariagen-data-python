@@ -1,5 +1,6 @@
 from typing import Optional
 
+import allel  # type: ignore
 import numpy as np
 import os
 
@@ -7,7 +8,7 @@ import bed_reader
 
 from numpydoc_decorator import doc  # type: ignore
 
-from ..util import _check_types
+from ..util import _check_types, _dask_compress_dataset
 from . import base_params, pca_params, plink_params, ld_pruning_params, admixture_params
 from .ld_pruning import AnophelesLdPruning
 
@@ -31,15 +32,24 @@ class AnophelesAdmixture(
         """,
         extended_summary="""
             This function performs LD pruning, optional pre-filtering
-            (downsampling individuals or SNPs), and writes the result
+            (random downsampling of SNPs), and writes the result
             to PLINK binary format (.bed/.bim/.fam) compatible with
             the ADMIXTURE software. The output files can be used
             directly as input to the ADMIXTURE command-line tool.
+
+            The PLINK output follows the same conventions as
+            ``biallelic_snps_to_plink()``.
         """,
         returns="""
-            Base path to the PLINK output files. Append .bed, .bim,
-            or .fam to get the individual file paths. Also returns
-            a summary dict with filtering statistics.
+            A dict containing the base path to the PLINK output files
+            (append .bed, .bim, or .fam to get individual file paths),
+            along with a summary of filtering statistics.
+        """,
+        notes="""
+            This computation may take some time to run, depending on your
+            computing environment. Unless the ``overwrite`` parameter is set
+            to ``True``, results will be returned from a previous computation,
+            if available.
         """,
     )
     def prepare_admixture(
@@ -91,8 +101,8 @@ class AnophelesAdmixture(
                 from_cache=True,
             )
 
-        # Step 1: LD prune the data.
-        ld_results = self.ld_prune(
+        # Step 1: LD prune the data (returns xr.Dataset).
+        ds_pruned = self.ld_prune(
             region=region,
             n_snps=n_snps,
             thin_offset=thin_offset,
@@ -115,37 +125,46 @@ class AnophelesAdmixture(
             chunks=chunks,
         )
 
-        gn = ld_results["gn"]
-        samples = ld_results["samples"]
-        variant_position = ld_results["variant_position"]
-        variant_contig = ld_results["variant_contig"]
+        n_snps_after_ld = ds_pruned.sizes["variants"]
 
-        # Step 2: Optional SNP downsampling.
-        n_snps_after_ld = gn.shape[0]
+        # Step 2: Optional random SNP downsampling.
         if max_snps is not None and n_snps_after_ld > max_snps:
             rng = np.random.RandomState(random_seed)
             snp_indices = np.sort(
                 rng.choice(n_snps_after_ld, size=max_snps, replace=False)
             )
-            gn = gn[snp_indices]
-            variant_position = variant_position[snp_indices]
-            variant_contig = variant_contig[snp_indices]
+            loc_downsample = np.zeros(n_snps_after_ld, dtype=bool)
+            loc_downsample[snp_indices] = True
+            ds_pruned = _dask_compress_dataset(
+                ds_pruned, indexer=loc_downsample, dim="variants"
+            )
 
         # Step 3: Write PLINK binary files.
+        # Follow the same conventions as biallelic_snps_to_plink() in to_plink.py.
+
+        # Compute genotype ref counts.
+        with self._dask_progress("Computing genotype ref counts"):
+            gt_asc = ds_pruned["call_genotype"].data  # dask array
+            gn_ref = allel.GenotypeDaskArray(gt_asc).to_n_ref(fill=-127)
+            gn_ref = gn_ref.compute()
+
+        # Ensure genotypes vary.
+        loc_var = np.any(gn_ref != gn_ref[:, 0, np.newaxis], axis=1)
+
+        # Load final data.
+        ds_final = _dask_compress_dataset(ds_pruned, loc_var, dim="variants")
+
+        # Prepare data for bed_reader.
+        gn_ref_final = gn_ref[loc_var]
+        val = gn_ref_final.T
         with self._spinner("Writing PLINK files for ADMIXTURE"):
-            # Transpose for bed_reader (samples x variants).
-            val = gn.T
-
-            # Replace missing values (-1) with -127 for bed_reader.
-            val = np.where(val == -1, -127, val)
-
-            # Build chromosome labels as strings.
-            chrom = variant_contig.astype(str)
-
+            alleles = ds_final["variant_allele"].values
             properties = {
-                "iid": samples,
-                "chromosome": chrom,
-                "bp_position": variant_position,
+                "iid": ds_final["sample_id"].values,
+                "chromosome": ds_final["variant_contig"].values,
+                "bp_position": ds_final["variant_position"].values,
+                "allele_1": alleles[:, 0],
+                "allele_2": alleles[:, 1],
             }
 
             bed_reader.to_bed(
@@ -158,10 +177,9 @@ class AnophelesAdmixture(
         results = dict(
             plink_path=plink_file_path,
             from_cache=False,
-            n_samples=len(samples),
-            n_snps_before_ld=ld_results["n_snps_before"],
-            n_snps_after_ld=ld_results["n_snps_after"],
-            n_snps_final=gn.shape[0],
+            n_samples=ds_final.sizes["samples"],
+            n_snps_after_ld=n_snps_after_ld,
+            n_snps_final=ds_final.sizes["variants"],
         )
 
         return results

@@ -72,6 +72,8 @@ SNP data access
     biallelic_snp_calls
     biallelic_diplotypes
     biallelic_snps_to_plink
+    ld_prune
+    prepare_admixture
 
 Haplotype data access
 ---------------------
