@@ -73,6 +73,8 @@ SNP data access
     biallelic_snp_calls
     biallelic_diplotypes
     biallelic_snps_to_plink
+    biallelic_snps_ld_pruned
+    biallelic_snps_ld_pruned_to_plink
 
 Haplotype data access
 ---------------------
