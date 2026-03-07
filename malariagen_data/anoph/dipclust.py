@@ -194,7 +194,7 @@ class AnophelesDipClustAnalysis(
                 "figure": fig,
                 "dendro_sample_id_order": np.asarray(leaf_data["sample_id"].to_list()),
                 "n_snps": n_snps_used,
-            }
+            
 
     def diplotype_pairwise_distances(
         self,
@@ -210,6 +210,59 @@ class AnophelesDipClustAnalysis(
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> Tuple[np.ndarray, np.ndarray, int]:
+        """Compute pairwise distances between diplotype genotypes.
+
+        Parameters
+        ----------
+        region : str or Region
+            Region of the reference genome. Can be a contig name,
+            region string or identifier of a genome feature such
+            as a gene or transcript.
+        site_mask : str, optional
+            Which site filters mask to apply.
+        sample_sets : str or sequence of str, optional
+            List of sample sets and/or releases.
+        sample_query : str, optional
+            A pandas query string to filter samples to include.
+        sample_query_options : dict, optional
+            Additional arguments passed to pandas query() or eval().
+        site_class : str, optional
+            Select sites belonging to a specific class.
+        cohort_size : int, optional
+            Randomly down-sample to this value if cohort is larger.
+        distance_metric : {'cityblock', 'euclidean', 'sqeuclidean'}
+            The metric to compute distance between genotypes.
+        random_seed : int, optional
+            Random seed for reproducible down-sampling. Default 42.
+        chunks : int, str or tuple, optional
+            Chunk size for dask computation.
+        inline_array : bool, optional
+            Passed through to dask from_array().
+
+        Returns
+        -------
+        dist : numpy.ndarray
+            Pairwise distance matrix between samples.
+        samples : numpy.ndarray
+            Sample identifiers corresponding to matrix rows/columns.
+        n_snps : int
+            Number of SNPs used to compute distances.
+
+        Examples
+        --------
+        Compute pairwise distances for a gene region:
+
+            >>> dist, samples, n_snps = ag3.diplotype_pairwise_distances(
+            ...     region="AGAP004707",
+            ...     sample_sets="AG1000G-KE"
+            ... )
+
+        """
+```
+
+Commit with:
+```
+docs: add docstring to diplotype_pairwise_distances (#1070)
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
         name = "diplotype_pairwise_distances_v1"
