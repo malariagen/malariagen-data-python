@@ -11,7 +11,7 @@ from functools import wraps
 from inspect import getcallargs
 from textwrap import dedent, fill
 from typing import IO, Dict, Hashable, List, Mapping, Optional, Tuple, Union, Callable
-from urllib.parse import unquote_plus
+from urllib.parse import unquote, unquote_plus
 from numpy.testing import assert_allclose, assert_array_equal
 
 try:
@@ -493,6 +493,16 @@ def _init_filesystem(url, **kwargs):
 
     # Process the URL using fsspec.
     fs, path = url_to_fs(url, **storage_options)
+
+    # Decode URL-escaped local paths (e.g., spaces as %20) before opening files.
+    # fsspec does not consistently decode local file paths across versions.
+    protocol = fs.protocol
+    if isinstance(protocol, tuple):
+        is_local_filesystem = "file" in protocol or "local" in protocol
+    else:
+        is_local_filesystem = protocol in ("file", "local")
+    if is_local_filesystem:
+        path = unquote(path)
 
     # Path compatibility, fsspec/gcsfs behaviour varies between versions.
     while path.endswith("/"):
