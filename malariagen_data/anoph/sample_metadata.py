@@ -49,6 +49,9 @@ class AnophelesSampleMetadata(AnophelesBase):
         # default value provided in the release configuration.
         self._aim_analysis_override = aim_analysis
 
+        #cache for metadata
+        self._cache_sample_metadata = {}
+
         # N.B., the expected AIM metadata columns may vary between
         # data resources, and so column names and dtype need to be
         # passed in as parameters.
@@ -214,6 +217,25 @@ class AnophelesSampleMetadata(AnophelesBase):
     ) -> pd.DataFrame:
         prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         del sample_sets
+
+        #create cache key
+        cache_key = tuple(sorted(prepared_sample_sets))
+
+        #check cache
+        if cache_key in self._cache_sample_metadata:
+            return self._cache_sample_metadata[cache_key]
+        
+        # compute metdata
+        df = self._parse_metadata_paths(
+            path_template="{release_path}/metadata/general/{sample_set}/samples.meta.csv",
+            parse_metadata_func=self._parse_general_metadata,
+            sample_sets=prepared_sample_sets,
+        )
+
+        #store result in cache
+        self._cache_sample_metadata[cache_key] = df
+
+        return df
 
         return self._parse_metadata_paths(
             path_template="{release_path}/metadata/general/{sample_set}/samples.meta.csv",
