@@ -303,7 +303,6 @@ def test_logging_helper_set_level_updates_logger():
     ), "set_level(DEBUG) had no effect: debug message was silently dropped"
 
 
-
 def _strip_terms_of_use_from_manifest(manifest_path):
     """Rewrite a manifest TSV file without terms-of-use columns."""
     df = pd.read_csv(manifest_path, sep="\t")
