@@ -777,6 +777,356 @@ class AnophelesHapClustAnalysis(
 
         return df
 
+    def _compute_haplotype_sharing(
+        self,
+        *,
+        region,
+        analysis,
+        sample_sets,
+        sample_query,
+        sample_query_options,
+        cohort_size,
+        random_seed,
+        cohort_col,
+        chunks,
+        inline_array,
+    ):
+        ds_haps = self.haplotypes(
+            region=region,
+            analysis=analysis,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+            chunks=chunks,
+            inline_array=inline_array,
+        )
+
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+        )
+
+        samples_phased = ds_haps["sample_id"].values
+        df_samples_phased = (
+            df_samples.set_index("sample_id").loc[samples_phased].reset_index()
+        )
+        df_haps = df_samples_phased.loc[df_samples_phased.index.repeat(2)].reset_index(
+            drop=True
+        )
+
+        if cohort_col not in df_haps.columns:
+            raise ValueError(
+                f"Column '{cohort_col}' not found in sample metadata. "
+                f"Available columns: {', '.join(df_haps.columns)}"
+            )
+
+        gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
+        with self._dask_progress(desc="Load haplotypes"):
+            ht = gt.to_haplotypes().compute()
+
+        ac = ht.count_alleles(max_allele=1)
+        ht_seg = ht[ac.is_segregating()]
+
+        ht_distinct_sets = ht_seg.distinct()
+
+        cohort_labels = df_haps[cohort_col].values
+        cohorts = pd.unique(df_haps[cohort_col].dropna())
+
+        sharing_matrix = pd.DataFrame(0, index=cohorts, columns=cohorts, dtype=int)
+
+        for s in ht_distinct_sets:
+            indices = list(s)
+            cohorts_in_set = set(cohort_labels[indices])
+            cohorts_in_set.discard(None)
+            cohorts_in_set = [c for c in cohorts_in_set if pd.notna(c)]
+            for i, c1 in enumerate(cohorts_in_set):
+                for c2 in cohorts_in_set[i + 1 :]:
+                    sharing_matrix.loc[c1, c2] += 1
+                    sharing_matrix.loc[c2, c1] += 1
+
+        return sharing_matrix, cohorts
+
+    @_check_types
+    @doc(
+        summary="""
+            Plot an arc diagram showing haplotype sharing between cohorts.
+        """,
+    )
+    def plot_haplotype_sharing_arc(
+        self,
+        region: base_params.regions,
+        cohort_col: hapclust_params.cohort_col,
+        analysis: hap_params.analysis = base_params.DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        random_seed: base_params.random_seed = 42,
+        title: plotly_params.title = True,
+        width: plotly_params.fig_width = None,
+        height: plotly_params.fig_height = 500,
+        show: plotly_params.show = True,
+        renderer: plotly_params.renderer = None,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+    ) -> plotly_params.figure:
+        import plotly.graph_objects as go
+        import plotly.express as px
+
+        sharing_matrix, cohorts = self._compute_haplotype_sharing(
+            region=region,
+            analysis=analysis,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+            cohort_col=cohort_col,
+            chunks=chunks,
+            inline_array=inline_array,
+        )
+
+        n_cohorts = len(cohorts)
+        cohort_list = list(cohorts)
+        x_positions = np.linspace(0, 1, n_cohorts)
+        cohort_x = {c: x for c, x in zip(cohort_list, x_positions)}
+
+        palette = px.colors.qualitative.Dark24
+        cohort_colors = {
+            c: palette[i % len(palette)] for i, c in enumerate(cohort_list)
+        }
+
+        fig = go.Figure()
+
+        max_sharing = sharing_matrix.values.max()
+        if max_sharing == 0:
+            max_sharing = 1
+
+        for i in range(n_cohorts):
+            for j in range(i + 1, n_cohorts):
+                c1 = cohort_list[i]
+                c2 = cohort_list[j]
+                count = sharing_matrix.loc[c1, c2]
+                if count == 0:
+                    continue
+
+                x1 = cohort_x[c1]
+                x2 = cohort_x[c2]
+                arc_height = abs(x2 - x1) * 0.5
+
+                line_width = 1 + (count / max_sharing) * 9
+
+                t = np.linspace(0, np.pi, 50)
+                arc_x = x1 + (x2 - x1) * (1 - np.cos(t)) / 2
+                arc_y = arc_height * np.sin(t)
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=arc_x,
+                        y=arc_y,
+                        mode="lines",
+                        line=dict(width=line_width, color=cohort_colors[c1]),
+                        hoverinfo="text",
+                        text=f"{c1} ↔ {c2}: {count} shared",
+                        showlegend=False,
+                    )
+                )
+
+        fig.add_trace(
+            go.Scatter(
+                x=x_positions,
+                y=np.zeros(n_cohorts),
+                mode="markers+text",
+                marker=dict(size=12, color=[cohort_colors[c] for c in cohort_list]),
+                text=cohort_list,
+                textposition="bottom center",
+                textfont=dict(size=10),
+                hoverinfo="text",
+                hovertext=cohort_list,
+                showlegend=False,
+            )
+        )
+
+        if title is True:
+            title_lines = []
+            if sample_sets is not None:
+                title_lines.append(f"Sample sets: {sample_sets}")
+            if sample_query is not None:
+                title_lines.append(f"Sample query: {sample_query}")
+            title_lines.append(f"Genomic region: {region}")
+            title_lines.append(f"Cohorts grouped by: {cohort_col}")
+            title = "<br>".join(title_lines)
+
+        fig.update_layout(
+            title=title,
+            xaxis=dict(
+                showticklabels=False,
+                showgrid=False,
+                zeroline=False,
+            ),
+            yaxis=dict(
+                showticklabels=False,
+                showgrid=False,
+                zeroline=False,
+            ),
+            width=width or 800,
+            height=height,
+            plot_bgcolor="white",
+        )
+
+        if show:  # pragma: no cover
+            fig.show(renderer=renderer)
+            return None
+        else:
+            return fig
+
+    @_check_types
+    @doc(
+        summary="""
+            Plot a chord diagram showing haplotype sharing between cohorts.
+        """,
+    )
+    def plot_haplotype_sharing_chord(
+        self,
+        region: base_params.regions,
+        cohort_col: hapclust_params.cohort_col,
+        analysis: hap_params.analysis = base_params.DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        random_seed: base_params.random_seed = 42,
+        title: plotly_params.title = True,
+        width: plotly_params.fig_width = 600,
+        height: plotly_params.fig_height = 600,
+        show: plotly_params.show = True,
+        renderer: plotly_params.renderer = None,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+    ) -> plotly_params.figure:
+        import plotly.graph_objects as go
+        import plotly.express as px
+
+        sharing_matrix, cohorts = self._compute_haplotype_sharing(
+            region=region,
+            analysis=analysis,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+            cohort_col=cohort_col,
+            chunks=chunks,
+            inline_array=inline_array,
+        )
+
+        n_cohorts = len(cohorts)
+        cohort_list = list(cohorts)
+
+        angles = np.linspace(0, 2 * np.pi, n_cohorts, endpoint=False)
+        radius = 1.0
+        cohort_x = {c: radius * np.cos(a) for c, a in zip(cohort_list, angles)}
+        cohort_y = {c: radius * np.sin(a) for c, a in zip(cohort_list, angles)}
+
+        palette = px.colors.qualitative.Dark24
+        cohort_colors = {
+            c: palette[i % len(palette)] for i, c in enumerate(cohort_list)
+        }
+
+        fig = go.Figure()
+
+        max_sharing = sharing_matrix.values.max()
+        if max_sharing == 0:
+            max_sharing = 1
+
+        for i in range(n_cohorts):
+            for j in range(i + 1, n_cohorts):
+                c1 = cohort_list[i]
+                c2 = cohort_list[j]
+                count = sharing_matrix.loc[c1, c2]
+                if count == 0:
+                    continue
+
+                x1, y1 = cohort_x[c1], cohort_y[c1]
+                x2, y2 = cohort_x[c2], cohort_y[c2]
+
+                line_width = 1 + (count / max_sharing) * 9
+
+                t = np.linspace(0, 1, 50)
+                cx, cy = 0, 0
+                chord_x = (1 - t) ** 2 * x1 + 2 * (1 - t) * t * cx + t**2 * x2
+                chord_y = (1 - t) ** 2 * y1 + 2 * (1 - t) * t * cy + t**2 * y2
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=chord_x,
+                        y=chord_y,
+                        mode="lines",
+                        line=dict(width=line_width, color=cohort_colors[c1]),
+                        opacity=0.6,
+                        hoverinfo="text",
+                        text=f"{c1} ↔ {c2}: {count} shared",
+                        showlegend=False,
+                    )
+                )
+
+        label_x = [cohort_x[c] for c in cohort_list]
+        label_y = [cohort_y[c] for c in cohort_list]
+
+        fig.add_trace(
+            go.Scatter(
+                x=label_x,
+                y=label_y,
+                mode="markers+text",
+                marker=dict(size=14, color=[cohort_colors[c] for c in cohort_list]),
+                text=cohort_list,
+                textposition=[
+                    "top center" if y >= 0 else "bottom center" for y in label_y
+                ],
+                textfont=dict(size=10),
+                hoverinfo="text",
+                hovertext=cohort_list,
+                showlegend=False,
+            )
+        )
+
+        if title is True:
+            title_lines = []
+            if sample_sets is not None:
+                title_lines.append(f"Sample sets: {sample_sets}")
+            if sample_query is not None:
+                title_lines.append(f"Sample query: {sample_query}")
+            title_lines.append(f"Genomic region: {region}")
+            title_lines.append(f"Cohorts grouped by: {cohort_col}")
+            title = "<br>".join(title_lines)
+
+        fig.update_layout(
+            title=title,
+            xaxis=dict(
+                showticklabels=False,
+                showgrid=False,
+                zeroline=False,
+                scaleanchor="y",
+            ),
+            yaxis=dict(
+                showticklabels=False,
+                showgrid=False,
+                zeroline=False,
+            ),
+            width=width,
+            height=height,
+            plot_bgcolor="white",
+        )
+
+        if show:  # pragma: no cover
+            fig.show(renderer=renderer)
+            return None
+        else:
+            return fig
+
 
 def _filter_and_remap(arr, x):
     from collections import Counter
