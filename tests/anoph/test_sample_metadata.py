@@ -1465,3 +1465,48 @@ def test_cohort_data(fixture, api):
     df_cohorts = api.cohorts(cohort_name)
     # Check output.
     validate_cohort_data(df_cohorts, cohort_data_expected_columns())
+
+
+# ------------------------------------------------------------------
+# Tests for cohort_geometries()
+# ------------------------------------------------------------------
+
+
+@parametrize_with_cases("fixture,api", cases=case_ag3_sim)
+def test_cohort_geometries(fixture, api):
+    """Test that GeoJSON geometry can be loaded for a valid cohort set."""
+    geojson = api.cohort_geometries("admin1_month")
+    assert isinstance(geojson, dict)
+    assert geojson["type"] == "FeatureCollection"
+    assert "features" in geojson
+    assert len(geojson["features"]) > 0
+    for feature in geojson["features"]:
+        assert feature["type"] == "Feature"
+        assert "geometry" in feature
+        assert "properties" in feature
+        assert "coordinates" in feature["geometry"]
+
+
+@parametrize_with_cases("fixture,api", cases=case_ag3_sim)
+def test_cohort_geometries_admin1_year(fixture, api):
+    """Test that GeoJSON geometry can be loaded for admin1_year."""
+    geojson = api.cohort_geometries("admin1_year")
+    assert isinstance(geojson, dict)
+    assert geojson["type"] == "FeatureCollection"
+    assert len(geojson["features"]) > 0
+
+
+@parametrize_with_cases("fixture,api", cases=case_ag3_sim)
+def test_cohort_geometries_invalid_cohort_set(fixture, api):
+    """Test that an invalid cohort_set raises ValueError."""
+    with suppress_type_checks():
+        with pytest.raises(ValueError, match="not a valid cohort set"):
+            api.cohort_geometries("invalid_set")
+
+
+@parametrize_with_cases("fixture,api", cases=case_ag3_sim)
+def test_cohort_geometries_cached(fixture, api):
+    """Test that the second call returns the same cached object."""
+    g1 = api.cohort_geometries("admin1_month")
+    g2 = api.cohort_geometries("admin1_month")
+    assert g1 is g2
