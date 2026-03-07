@@ -1,3 +1,6 @@
+import io
+import logging
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -8,6 +11,7 @@ from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data import adir1 as _adir1
 from malariagen_data.anoph.base import AnophelesBase
+from malariagen_data.util import LoggingHelper
 
 
 @pytest.fixture
@@ -256,3 +260,139 @@ def test_lookup_study(fixture, api):
 
     with pytest.raises(ValueError):
         api.lookup_study("foobar")
+
+
+def test_logging_helper_no_handler_accumulation():
+    # Regression test: repeated LoggingHelper construction on the same logger
+    # name must not accumulate handlers (StreamHandler leak, FileHandler FD leak).
+    logger_name = "test_logging_helper_no_handler_accumulation"
+    for _ in range(10):
+        LoggingHelper(name=logger_name, out=io.StringIO())
+    logger = logging.getLogger(logger_name)
+    assert (
+        len(logger.handlers) <= 1
+    ), f"Handler leak: {len(logger.handlers)} handlers after 10 instantiations"
+
+
+def test_logging_helper_no_duplicate_output():
+    # Regression test: a message emitted after N instantiations must appear
+    # exactly once in the output stream.
+    logger_name = "test_logging_helper_no_duplicate_output"
+    out = io.StringIO()
+    for _ in range(5):
+        helper = LoggingHelper(name=logger_name, out=out)
+    helper.info("sentinel")
+    output = out.getvalue()
+    assert (
+        output.count("sentinel") == 1
+    ), f"Duplicate log output: 'sentinel' appeared {output.count('sentinel')} times"
+
+
+def _strip_terms_of_use_from_manifest(manifest_path):
+    """Rewrite a manifest TSV file without terms-of-use columns."""
+    df = pd.read_csv(manifest_path, sep="\t")
+    cols_to_drop = [c for c in df.columns if c.startswith("terms_of_use")]
+    df = df.drop(columns=cols_to_drop)
+    df.to_csv(manifest_path, index=False, sep="\t")
+
+
+def test_lookup_terms_of_use_info_missing_columns(ag3_sim_fixture):
+    import shutil
+
+    manifest_paths = [
+        ag3_sim_fixture.bucket_path / "v3" / "manifest.tsv",
+        ag3_sim_fixture.bucket_path / "v3.1" / "manifest.tsv",
+    ]
+    backups = []
+    for mp in manifest_paths:
+        bp = mp.parent / "manifest.tsv.bak"
+        shutil.copy2(mp, bp)
+        backups.append(bp)
+
+    try:
+        for mp in manifest_paths:
+            _strip_terms_of_use_from_manifest(mp)
+
+        api = AnophelesBase(
+            url=ag3_sim_fixture.url,
+            public_url=ag3_sim_fixture.url,
+            config_path=_ag3.CONFIG_PATH,
+            major_version_number=_ag3.MAJOR_VERSION_NUMBER,
+            major_version_path=_ag3.MAJOR_VERSION_PATH,
+            pre=True,
+        )
+
+        sample_set = "1177-VO-ML-LEHMANN-VMF00004"
+        with pytest.raises(ValueError, match="Terms-of-use columns missing"):
+            api.lookup_terms_of_use_info(sample_set)
+    finally:
+        for mp, bp in zip(manifest_paths, backups):
+            shutil.move(bp, mp)
+
+
+def test_sample_set_has_unrestricted_use_missing_column(ag3_sim_fixture):
+    import shutil
+
+    manifest_paths = [
+        ag3_sim_fixture.bucket_path / "v3" / "manifest.tsv",
+        ag3_sim_fixture.bucket_path / "v3.1" / "manifest.tsv",
+    ]
+    backups = []
+    for mp in manifest_paths:
+        bp = mp.parent / "manifest.tsv.bak"
+        shutil.copy2(mp, bp)
+        backups.append(bp)
+
+    try:
+        for mp in manifest_paths:
+            _strip_terms_of_use_from_manifest(mp)
+
+        api = AnophelesBase(
+            url=ag3_sim_fixture.url,
+            public_url=ag3_sim_fixture.url,
+            config_path=_ag3.CONFIG_PATH,
+            major_version_number=_ag3.MAJOR_VERSION_NUMBER,
+            major_version_path=_ag3.MAJOR_VERSION_PATH,
+            pre=True,
+        )
+
+        sample_set = "1177-VO-ML-LEHMANN-VMF00004"
+        with pytest.raises(ValueError, match="unrestricted_use.*missing"):
+            api._sample_set_has_unrestricted_use(sample_set=sample_set)
+    finally:
+        for mp, bp in zip(manifest_paths, backups):
+            shutil.move(bp, mp)
+
+
+def test_sample_sets_no_terms_of_use(ag3_sim_fixture):
+    import shutil
+
+    manifest_paths = [
+        ag3_sim_fixture.bucket_path / "v3" / "manifest.tsv",
+        ag3_sim_fixture.bucket_path / "v3.1" / "manifest.tsv",
+    ]
+    backups = []
+    for mp in manifest_paths:
+        bp = mp.parent / "manifest.tsv.bak"
+        shutil.copy2(mp, bp)
+        backups.append(bp)
+
+    try:
+        for mp in manifest_paths:
+            _strip_terms_of_use_from_manifest(mp)
+
+        api = AnophelesBase(
+            url=ag3_sim_fixture.url,
+            public_url=ag3_sim_fixture.url,
+            config_path=_ag3.CONFIG_PATH,
+            major_version_number=_ag3.MAJOR_VERSION_NUMBER,
+            major_version_path=_ag3.MAJOR_VERSION_PATH,
+            pre=True,
+        )
+
+        df = api.sample_sets(release="3.1")
+        assert isinstance(df, pd.DataFrame)
+        assert len(df) > 0
+    finally:
+        for mp, bp in zip(manifest_paths, backups):
+            shutil.move(bp, mp)

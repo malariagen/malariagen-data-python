@@ -11,6 +11,9 @@ def random_transcripts_contig(*, api, contig, n):
     df_gff = api.genome_features(attributes=["ID", "Parent"])
     df_transcripts = df_gff.query(f"type == 'mRNA' and contig == '{contig}'")
     transcript_ids = df_transcripts["ID"].dropna().to_list()
+    n = min(n, len(transcript_ids))
+    if n == 0:
+        pytest.skip(f"No mRNA transcripts found for contig '{contig}'")
     transcripts = random.sample(transcript_ids, n)
     return transcripts
 

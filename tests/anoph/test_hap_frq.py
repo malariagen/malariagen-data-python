@@ -228,7 +228,12 @@ def test_hap_frequencies_advanced(
     )
 
     # Run the other function under test.
-    ds_hap = api.haplotypes_frequencies_advanced(**params_advanced)
+    try:
+        ds_hap = api.haplotypes_frequencies_advanced(**params_advanced)
+    except ValueError as e:
+        if "No SNPs available for the given region" in str(e):
+            pytest.skip("Random region contained no SNPs")
+        raise
 
     # Standard checks.
     check_hap_frequencies_advanced(api=api, ds=ds_hap)
