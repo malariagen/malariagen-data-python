@@ -372,6 +372,43 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         areas: frq_params.areas = None,
         **kwargs,
     ) -> plotly_params.figure:
+        """Plot a time series of variant frequencies.
+
+        Parameters
+        ----------
+        ds : xr.Dataset
+            Dataset of frequencies, as returned by ``snp_allele_frequencies()``,
+            ``aa_allele_frequencies()``, or ``haplotypes_frequencies()``.
+        height : int, optional
+            Height of the figure in pixels.
+        width : int, optional
+            Width of the figure in pixels.
+        title : bool or str, optional
+            If True, the title is taken from the dataset attributes. If a
+            string, that string is used as the title.
+        legend_sizing : {"constant", "trace"}, optional
+            Controls legend marker sizing.
+        show : bool, optional
+            If True, the figure is shown.
+        renderer : str, optional
+            Plotly renderer to use.
+        taxa : str or list of str, optional
+            Restrict the plot to the given taxon or taxa.
+        areas : str or list of str, optional
+            Restrict the plot to the given area or areas.
+
+        Returns
+        -------
+        plotly.graph_objects.Figure
+
+        Notes
+        -----
+        Where confidence interval data are available in the dataset
+        (``event_frequency_ci_low`` and ``event_frequency_ci_upper``),
+        error bars represent the 95% confidence interval around the
+        frequency point estimate, calculated using the Wilson score 
+        interval method. If CI data are absent, no error bars are displayed.
+        """
         # Handle title.
         if title is True:
             title = ds.attrs.get("title", None)
