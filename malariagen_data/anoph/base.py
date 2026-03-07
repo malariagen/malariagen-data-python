@@ -562,6 +562,13 @@ class AnophelesBase:
         release_manifest_df = self._read_sample_sets_manifest(
             single_release=sample_set_release
         )
+
+        if "unrestricted_use" not in release_manifest_df.columns:
+            raise ValueError(
+                f"Column 'unrestricted_use' missing from manifest for sample set '{sample_set}'. "
+                "This indicates a data integrity issue in the release manifest."
+            )
+
         sample_set_records_srs = release_manifest_df.loc[
             release_manifest_df["sample_set"] == sample_set, "unrestricted_use"
         ]
@@ -824,12 +831,19 @@ class AnophelesBase:
     def lookup_terms_of_use_info(self, sample_set: base_params.sample_set) -> dict:
         if self._cache_sample_set_to_terms_of_use_info is None:
             df_sample_sets = self._available_sample_sets().set_index("sample_set")
+            expected_cols = [
+                "terms_of_use_expiry_date",
+                "terms_of_use_url",
+                "unrestricted_use",
+            ]
+            missing_cols = [c for c in expected_cols if c not in df_sample_sets.columns]
+            if missing_cols:
+                raise ValueError(
+                    f"Terms-of-use columns missing from manifest: {missing_cols}. "
+                    "This indicates a data integrity issue in the release manifest."
+                )
             self._cache_sample_set_to_terms_of_use_info = df_sample_sets[
-                [
-                    "terms_of_use_expiry_date",
-                    "terms_of_use_url",
-                    "unrestricted_use",
-                ]
+                expected_cols
             ].to_dict(orient="index")
         try:
             return self._cache_sample_set_to_terms_of_use_info[sample_set]
