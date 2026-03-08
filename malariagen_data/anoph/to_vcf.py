@@ -1,12 +1,12 @@
 from typing import Optional
 import os
-import allel  # type: ignore
 
 from .snp_data import AnophelesSnpData
 from . import base_params
 from . import plink_params
 from . import pca_params
 from numpydoc_decorator import doc  # type: ignore
+import dask.array as da
 
 
 class VcfExporter(
@@ -27,10 +27,10 @@ class VcfExporter(
         """,
         extended_summary="""
             This function writes biallelic SNPs to the VCF (Variant Call Format) file format.
-            It enables subsetting to specific regions (`region`), selecting specific sample sets,
+            It enables subsetting to specific regions (region), selecting specific sample sets,
             or lists of samples, randomly downsampling sites, and specifying filters based on
-            missing data and minimum minor allele count (see the docs for `biallelic_snp_calls`
-            for more information). The `overwrite` parameter, set to true, will enable overwrite
+            missing data and minimum minor allele count (see the docs for biallelic_snp_calls
+            for more information). The overwrite parameter, set to true, will enable overwrite
             of data with the same SNP selection parameter values.
         """,
         returns="""
@@ -38,10 +38,14 @@ class VcfExporter(
         """,
         notes="""
             This computation may take some time to run, depending on your computing
-            environment. Unless the `overwrite` parameter is set to `True`, results will be
+            environment. Unless the overwrite parameter is set to True, results will be
             returned from a previous computation, if available. The output follows the VCF 4.1
             specification and can be used directly with tools such as bcftools, GATK, and R
             packages like VariantAnnotation.
+
+            Genotype data is written chunk-by-chunk directly from Dask arrays, so the full
+            genotype matrix is never loaded into memory at once. This is important for
+            large datasets where VCF files can be very large.
         """,
     )
     def biallelic_snps_to_vcf(
@@ -77,7 +81,7 @@ class VcfExporter(
             f".{max_missing_an}.{thin_offset}.vcf"
         )
 
-        # Check to see if file exists and if overwrite is set to false, return existing file
+        # Return existing file if overwrite is False
         if os.path.exists(vcf_file_path):
             if not overwrite:
                 return vcf_file_path
@@ -99,33 +103,64 @@ class VcfExporter(
             chunks=chunks,
         )
 
-        # Extract variant info
-        with self._spinner("Preparing VCF output data"):
+        # Extract variant and sample metadata (small arrays, safe to load fully)
+        with self._spinner("Preparing VCF metadata"):
             chrom = ds_snps["variant_contig"].values
             pos = ds_snps["variant_position"].values
             alleles = ds_snps["variant_allele"].values
             ref = alleles[:, 0]
-            alt = alleles[:, 1:]
+            alt = alleles[:, 1]
             sample_ids = ds_snps["sample_id"].values
 
-        # Compute genotype array from dask
-        with self._dask_progress("Computing genotype array"):
-            gt_array = allel.GenotypeDaskArray(ds_snps["call_genotype"].data).compute()
-
-        # Build output directory if it doesn't exist
+        # Build output directory if it does not exist
         os.makedirs(output_dir, exist_ok=True)
 
-        # Write VCF file using scikit-allel's optimized writer
+        # Write VCF file using chunked iteration over Dask arrays.
+        # This avoids loading the full genotype matrix into memory at once,
+        # which is critical given the potential size of VCF files.
+        gt_dask = ds_snps["call_genotype"].data  # shape: (variants, samples, ploidy)
+        gt_chunks = da.rechunk(gt_dask, chunks=(1000, -1, -1))
+
         with self._spinner("Writing VCF file"):
             with open(vcf_file_path, "w", encoding="utf-8") as f:
-                allel.write_vcf(
-                    f,
-                    chrom=chrom,
-                    pos=pos,
-                    ref=ref,
-                    alt=alt,
-                    samples=sample_ids,
-                    calldata_2d={"GT": gt_array},
+                # Write VCF header
+                f.write("##fileformat=VCFv4.1\n")
+                f.write('##FILTER=<ID=PASS,Description="All filters passed">\n')
+                f.write(
+                    '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">\n'
                 )
+                f.write(
+                    "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t"
+                    + "\t".join(str(s) for s in sample_ids)
+                    + "\n"
+                )
+
+                # Iterate chunk by chunk - 1000 variants at a time
+                chunk_start = 0
+                for chunk in gt_chunks.blocks:
+                    gt_block = chunk.compute()
+                    chunk_size = gt_block.shape[0]
+                    for i in range(chunk_size):
+                        v = chunk_start + i
+                        gt_strings = []
+                        for s in range(gt_block.shape[1]):
+                            a0 = gt_block[i, s, 0]
+                            a1 = gt_block[i, s, 1]
+                            if a0 < 0 or a1 < 0:
+                                gt_strings.append("./.")
+                            else:
+                                gt_strings.append(f"{a0}/{a1}")
+                        ref_val = ref[v]
+                        alt_val = alt[v]
+                        if isinstance(ref_val, bytes):
+                            ref_val = ref_val.decode()
+                        if isinstance(alt_val, bytes):
+                            alt_val = alt_val.decode()
+                        f.write(
+                            f"{chrom[v]}\t{pos[v]}\t.\t{ref_val}\t{alt_val}\t.\tPASS\t.\tGT\t"
+                            + "\t".join(gt_strings)
+                            + "\n"
+                        )
+                    chunk_start += chunk_size
 
         return vcf_file_path
