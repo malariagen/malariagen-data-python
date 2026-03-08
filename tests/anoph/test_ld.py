@@ -12,11 +12,18 @@ from malariagen_data import ag3 as _ag3
 from malariagen_data import adir1 as _adir1
 
 from malariagen_data.anoph.ld import AnophelesLdAnalysis
+from malariagen_data.anoph.to_plink import PlinkConverter
+
+
+# The PLINK test needs a class that mixes both AnophelesLdAnalysis and
+# PlinkConverter, mirroring the concrete Ag3/Af1 classes.
+class _LdPlinkTestApi(AnophelesLdAnalysis, PlinkConverter):
+    pass
 
 
 @pytest.fixture
 def ag3_sim_api(ag3_sim_fixture):
-    return AnophelesLdAnalysis(
+    return _LdPlinkTestApi(
         url=ag3_sim_fixture.url,
         public_url=ag3_sim_fixture.url,
         config_path=_ag3.CONFIG_PATH,
@@ -43,7 +50,7 @@ def ag3_sim_api(ag3_sim_fixture):
 
 @pytest.fixture
 def af1_sim_api(af1_sim_fixture):
-    return AnophelesLdAnalysis(
+    return _LdPlinkTestApi(
         url=af1_sim_fixture.url,
         public_url=af1_sim_fixture.url,
         config_path=_af1.CONFIG_PATH,
@@ -61,7 +68,7 @@ def af1_sim_api(af1_sim_fixture):
 
 @pytest.fixture
 def adir1_sim_api(adir1_sim_fixture):
-    return AnophelesLdAnalysis(
+    return _LdPlinkTestApi(
         url=adir1_sim_fixture.url,
         public_url=adir1_sim_fixture.url,
         config_path=_adir1.CONFIG_PATH,
@@ -207,7 +214,7 @@ def test_biallelic_snps_ld_pruned_with_cohort_size(fixture, api: AnophelesLdAnal
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_biallelic_snps_ld_pruned_to_plink(fixture, api: AnophelesLdAnalysis, tmp_path):
+def test_biallelic_snps_ld_pruned_to_plink(fixture, api: _LdPlinkTestApi, tmp_path):
     """Test that LD-pruned data can be exported to PLINK binary format."""
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     contig = random.choice(api.contigs)
