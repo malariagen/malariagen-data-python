@@ -643,7 +643,7 @@ def test_gene_cnv_frequencies_advanced_with_variant_query(
     area_by = "admin1_iso"
     period_by = "year"
     region = random.choice(api.contigs)
-    variant_query = "cnv_type == '{variant_query_option}'"
+    variant_query = f"cnv_type == '{variant_query_option}'"
 
     check_gene_cnv_frequencies_advanced(
         api=api,
