@@ -206,6 +206,7 @@ def test_plot_roh(fixture, api: AnophelesHetAnalysis):
     # Check results.
     assert isinstance(fig, bokeh.models.GridPlot)
 
+
 @parametrize_with_cases("fixture,api", cases=".")
 def test_sample_count_het(fixture, api: AnophelesHetAnalysis):
     # Set up test parameters.
@@ -232,6 +233,7 @@ def test_sample_count_het(fixture, api: AnophelesHetAnalysis):
     assert len(df) > 0
     assert (df["heterozygosity"] >= 0).all()
     assert (df["heterozygosity"] <= 1).all()
+
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_cohort_heterozygosity(fixture, api: AnophelesHetAnalysis):
