@@ -708,23 +708,6 @@ class AnophelesSampleMetadata(AnophelesBase):
             metadata, surveillance flags, and—when available—AIM and cohort
             metadata.
         """,
-        parameters=dict(
-            sample_sets="""
-                Sample set identifier(s), e.g. ``'AG1000G-AO'``. If None, all
-                available sample sets are used.
-            """,
-            sample_query="""
-                A pandas query string to filter samples, e.g.
-                ``"country == 'Uganda' and sex_call == 'F'"``.
-            """,
-            sample_query_options="""
-                Additional keyword arguments passed to :meth:`pandas.DataFrame.query`.
-            """,
-            sample_indices="""
-                Integer indices of samples to select. Cannot be used together
-                with ``sample_query``.
-            """,
-        ),
         returns="""
             A DataFrame with one row per sample. Columns include:
 
