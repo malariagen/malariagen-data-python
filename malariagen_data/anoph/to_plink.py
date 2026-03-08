@@ -217,7 +217,7 @@ class PlinkConverter(
             return plink_file_path
 
         # Get LD-pruned biallelic SNP calls.
-        ds_pruned = self.biallelic_snps_ld_pruned(
+        ds_pruned = self.biallelic_snps_ld_pruned(  # type: ignore[attr-defined]
             region=region,
             n_snps=n_snps,
             thin_offset=thin_offset,
