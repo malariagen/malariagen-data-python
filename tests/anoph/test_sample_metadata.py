@@ -1250,6 +1250,29 @@ def test_lookup_sample(fixture, api):
     assert sorted(list(sample_rec_by_sample_loc_set.index)) == sorted_expected_fields
 
 
+@parametrize_with_cases("fixture,api", cases=".")
+def test_lookup_sample_errors(fixture, api):
+    import pytest
+
+    # Test with non-existent sample ID
+    with pytest.raises(ValueError, match=r"Sample 'FAKE123' not found"):
+        api.lookup_sample("FAKE123")
+
+    # Test with non-existent sample ID in specific sample set
+    df_samples = api.sample_metadata()
+    sample_set = df_samples["sample_set"].iloc[0]  # Get first sample set
+    with pytest.raises(ValueError, match=r"Sample 'FAKE123' not found in sample set"):
+        api.lookup_sample("FAKE123", sample_set)
+
+    # Test with out-of-bounds index
+    with pytest.raises(ValueError, match=r"Sample index -1 is out of bounds"):
+        api.lookup_sample(-1)
+
+    # Test with out-of-bounds index in specific sample set
+    with pytest.raises(ValueError, match=r"Sample index 99999 is out of bounds in sample set"):
+        api.lookup_sample(99999, sample_set)
+
+
 @parametrize_with_cases(
     "fixture,api", cases=".", filter=~ft.has_tag("amin1")
 )  # N.B. exclude amin1 as there is no sex call data.

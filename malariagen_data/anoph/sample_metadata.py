@@ -1162,10 +1162,28 @@ class AnophelesSampleMetadata(AnophelesBase):
         df_samples = self.sample_metadata(sample_sets=sample_set).set_index("sample_id")
         sample_rec = None
         if isinstance(sample, str):
-            sample_rec = df_samples.loc[sample]
+            try:
+                sample_rec = df_samples.loc[sample]
+            except KeyError:
+                available_sample_sets = (
+                    f" in sample set '{sample_set}'" if sample_set is not None else ""
+                )
+                raise ValueError(
+                    f"Sample '{sample}' not found{available_sample_sets}. "
+                    f"Available samples can be found by calling sample_metadata()."
+                )
         else:
             assert isinstance(sample, int)
-            sample_rec = df_samples.iloc[sample]
+            try:
+                sample_rec = df_samples.iloc[sample]
+            except IndexError:
+                available_sample_sets = (
+                    f" in sample set '{sample_set}'" if sample_set is not None else ""
+                )
+                raise ValueError(
+                    f"Sample index {sample} is out of bounds{available_sample_sets}. "
+                    f"Valid indices are 0 to {len(df_samples) - 1}."
+                )
         return sample_rec
 
     @_check_types
