@@ -190,6 +190,27 @@ def test_average_fst_with_min_cohort_size(fixture, api: AnophelesFstAnalysis):
         api.average_fst(**fst_params)
 
 
+@parametrize_with_cases("fixture,api", cases=".")
+def test_average_fst_region_too_small(fixture, api: AnophelesFstAnalysis):
+    """ValueError should be raised when block_length == 0 (n_jack > n_sites)."""
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    all_countries = api.sample_metadata()["country"].dropna().unique().tolist()
+    countries = random.sample(all_countries, 2)
+    cohort1_query = f"country == {countries[0]!r}"
+    cohort2_query = f"country == {countries[1]!r}"
+    fst_params = dict(
+        region=random.choice(api.contigs),
+        sample_sets=all_sample_sets,
+        cohort1_query=cohort1_query,
+        cohort2_query=cohort2_query,
+        site_mask=random.choice(api.site_mask_ids),
+        min_cohort_size=1,
+        n_jack=1_000_000,  # deliberately exceeds available sites
+    )
+    with pytest.raises(ValueError, match="Not enough sites"):
+        api.average_fst(**fst_params)
+
+
 def check_pairwise_average_fst(api: AnophelesFstAnalysis, fst_params):
     # Run main function under test.
     fst_df = api.pairwise_average_fst(**fst_params)
@@ -235,6 +256,10 @@ def check_pairwise_average_fst(api: AnophelesFstAnalysis, fst_params):
         )
         assert isinstance(fig, go.Figure)
         fig = api.plot_pairwise_average_fst(fst_df, annotation="Z score", show=False)
+        assert isinstance(fig, go.Figure)
+        fig = api.plot_pairwise_average_fst(
+            fst_df, annotation="lower triangle", show=False
+        )
         assert isinstance(fig, go.Figure)
 
 
