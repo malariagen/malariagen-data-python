@@ -254,6 +254,19 @@ def test_biallelic_snps_ld_pruned_to_plink(fixture, api: _LdPlinkTestApi, tmp_pa
     # PLINK positions should be a subset of pruned positions.
     assert set(bed.bp_position).issubset(set(ds_pruned["variant_position"].values))
 
+    # Chromosome IDs should be a subset of pruned chromosomes (coerce to str to match types).
+    assert set(bed.chromosome).issubset(
+        set(ds_pruned["variant_contig"].values.astype(str))
+    )
+
+    # Alleles exported to the .bim file should be a subset of pruned alleles.
+    assert set(bed.allele_1).issubset(
+        set(ds_pruned["variant_allele"].values[:, 0].astype(str))
+    )
+    assert set(bed.allele_2).issubset(
+        set(ds_pruned["variant_allele"].values[:, 1].astype(str))
+    )
+
     # Second call with overwrite=False should return the same path (no recompute).
     plink_path_2 = api.biallelic_snps_ld_pruned_to_plink(
         output_dir=str(tmp_path),
