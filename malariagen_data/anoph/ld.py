@@ -2,6 +2,7 @@ import warnings
 from typing import Optional
 
 import allel  # type: ignore
+import numpy as np
 import xarray as xr
 from numpydoc_decorator import doc  # type: ignore
 
@@ -205,6 +206,11 @@ class AnophelesLdAnalysis(
         # Estimate memory usage and warn the user.
         n_variants = ds.sizes["variants"]
         n_samples = ds.sizes["samples"]
+
+        # Nothing to do if there are no variants.
+        if n_variants == 0:
+            return dict(loc_unlinked=np.empty(0, dtype=bool))
+
         estimated_mb = (n_variants * n_samples) / 1_000_000
         warnings.warn(
             f"About to compute diplotype matrix for {n_variants:,} variants "
