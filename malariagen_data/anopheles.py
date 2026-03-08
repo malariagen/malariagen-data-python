@@ -729,7 +729,7 @@ class AnophelesDataResource(
     ) -> Tuple[np.ndarray, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
-        name = "roh"
+        name = self._ihs_gwss_cache_name
 
         params = dict(
             contig=contig,
@@ -1859,6 +1859,8 @@ class AnophelesDataResource(
             boxSelectionEnabled=True,
             # prevent accidentally zooming out to oblivion
             minZoom=0.1,
+            # lower scroll wheel zoom sensitivity to prevent accidental zooming when trying to navigate large graphs
+            wheelSensitivity=0.1,
         )
 
         debug("create dash app")
