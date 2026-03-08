@@ -1,4 +1,4 @@
-from typing import Any, Optional, Tuple
+from typing import Any, Optional
 
 import allel  # type: ignore
 import numpy as np
@@ -261,6 +261,7 @@ class AnophelesHapClustAnalysis(
         if return_dataset:
             import xarray as xr
             from scipy.spatial.distance import squareform
+
             dist_square = squareform(dist)
             ds = xr.Dataset(
                 data_vars={

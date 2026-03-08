@@ -1448,8 +1448,6 @@ class AnophelesSnpData(
 
         return ac
 
-
-
     @_check_types
     @doc(
         summary="""

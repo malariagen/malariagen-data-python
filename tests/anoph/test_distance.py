@@ -144,6 +144,7 @@ def check_biallelic_diplotype_pairwise_distance(*, api, data_params, metric):
         **data_params,
     )
     import xarray as xr
+
     assert isinstance(ds, xr.Dataset)
     assert "dist" in ds
     assert "sample_id" in ds.coords
