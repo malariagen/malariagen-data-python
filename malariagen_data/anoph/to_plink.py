@@ -1,14 +1,13 @@
 from typing import Optional
 
 import allel  # type: ignore
-import numpy as np
 import os
 
 import bed_reader
 import xarray as xr
 from numpydoc_decorator import doc  # type: ignore
 
-from ..util import _check_types, _dask_compress_dataset
+from ..util import _check_types
 from .snp_data import AnophelesSnpData
 from . import base_params
 from . import ld_params
@@ -40,20 +39,13 @@ class PlinkConverter(
             gn_ref = allel.GenotypeDaskArray(gt).to_n_ref(fill=-127)
             gn_ref = gn_ref.compute()
 
-        # Ensure genotypes vary across samples.
-        loc_var = np.any(gn_ref != gn_ref[:, 0, np.newaxis], axis=1)
-
-        # Compress to varying sites only.
-        ds_final = _dask_compress_dataset(ds, loc_var, dim="variants")
-
-        gn_ref_final = gn_ref[loc_var]
-        val = gn_ref_final.T
+        val = gn_ref.T
         with self._spinner("Prepare PLINK output data"):
-            alleles = ds_final["variant_allele"].values
+            alleles = ds["variant_allele"].values
             properties = {
-                "iid": ds_final["sample_id"].values,
-                "chromosome": ds_final["variant_contig"].values,
-                "bp_position": ds_final["variant_position"].values,
+                "iid": ds["sample_id"].values,
+                "chromosome": ds["variant_contig"].values,
+                "bp_position": ds["variant_position"].values,
                 "allele_1": alleles[:, 0],
                 "allele_2": alleles[:, 1],
             }

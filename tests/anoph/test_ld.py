@@ -241,9 +241,10 @@ def test_biallelic_snps_ld_pruned_to_plink(fixture, api: _LdPlinkTestApi, tmp_pa
         min_minor_ac=1,
     )
 
-    # The PLINK file may have fewer variants than the pruned dataset
-    # (non-varying sites are removed), but should never have more.
-    assert bed.shape[1] <= ds_pruned.sizes["variants"]
+    # Variant count should match exactly (no sites are dropped during
+    # PLINK export because biallelic_snp_calls already guarantees
+    # both alleles are observed, i.e. variation exists).
+    assert bed.shape[1] == ds_pruned.sizes["variants"]
 
     # Sample count should match.
     assert bed.shape[0] == ds_pruned.sizes["samples"]
@@ -251,20 +252,18 @@ def test_biallelic_snps_ld_pruned_to_plink(fixture, api: _LdPlinkTestApi, tmp_pa
     # Sample IDs should match.
     assert_array_equal(bed.iid, ds_pruned["sample_id"].values)
 
-    # PLINK positions should be a subset of pruned positions.
-    assert set(bed.bp_position).issubset(set(ds_pruned["variant_position"].values))
+    # PLINK positions should match pruned positions exactly.
+    assert set(bed.bp_position) == set(ds_pruned["variant_position"].values)
 
-    # Chromosome IDs should be a subset of pruned chromosomes (coerce to str to match types).
-    assert set(bed.chromosome).issubset(
-        set(ds_pruned["variant_contig"].values.astype(str))
-    )
+    # Chromosome IDs should match (coerce to str to match types).
+    assert set(bed.chromosome) == set(ds_pruned["variant_contig"].values.astype(str))
 
-    # Alleles exported to the .bim file should be a subset of pruned alleles.
-    assert set(bed.allele_1).issubset(
-        set(ds_pruned["variant_allele"].values[:, 0].astype(str))
+    # Major and minor alleles should match.
+    assert set(bed.allele_1) == set(
+        ds_pruned["variant_allele"].values[:, 0].astype(str)
     )
-    assert set(bed.allele_2).issubset(
-        set(ds_pruned["variant_allele"].values[:, 1].astype(str))
+    assert set(bed.allele_2) == set(
+        ds_pruned["variant_allele"].values[:, 1].astype(str)
     )
 
     # Second call with overwrite=False should return the same path (no recompute).
