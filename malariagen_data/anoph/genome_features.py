@@ -447,9 +447,9 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             # Put gene pointers (▲ or ▼) in a new column, depending on the strand.
             # Except if the gene_label is null or an empty string, which should not be shown.
             data["gene_pointer"] = data.apply(
-                lambda row: ("▼" if row["strand"] == "+" else "▲")
-                if row["gene_label"]
-                else "",
+                lambda row: (
+                    ("▼" if row["strand"] == "+" else "▲") if row["gene_label"] else ""
+                ),
                 axis=1,
             )
 
@@ -457,18 +457,18 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             neg_strand_pointer_y = orig_mid_y_range - 1.1
             pos_strand_pointer_y = orig_mid_y_range + 1.1
             data["pointer_y"] = data["strand"].apply(
-                lambda strand: pos_strand_pointer_y
-                if strand == "+"
-                else neg_strand_pointer_y
+                lambda strand: (
+                    pos_strand_pointer_y if strand == "+" else neg_strand_pointer_y
+                )
             )
 
             # Put the label above or below the gene rectangle, depending on + or - strand.
             neg_strand_label_y = orig_mid_y_range - 1.25
             pos_strand_label_y = orig_mid_y_range + 1.3
             data["label_y"] = data["strand"].apply(
-                lambda strand: pos_strand_label_y
-                if strand == "+"
-                else neg_strand_label_y
+                lambda strand: (
+                    pos_strand_label_y if strand == "+" else neg_strand_label_y
+                )
             )
 
             # Get the data as a ColumnDataSource.
