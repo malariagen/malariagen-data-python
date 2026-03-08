@@ -105,7 +105,9 @@ class VcfExporter(
 
         # Extract variant and sample metadata (small arrays, safe to load fully)
         with self._spinner("Preparing VCF metadata"):
-            chrom = ds_snps["variant_contig"].values
+            # variant_contig contains integer indices, convert to contig name strings
+            contig_indices = ds_snps["variant_contig"].values
+            chrom = [self.contigs[i] for i in contig_indices]
             pos = ds_snps["variant_position"].values
             alleles = ds_snps["variant_allele"].values
             ref = alleles[:, 0]
