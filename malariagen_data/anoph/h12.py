@@ -601,7 +601,6 @@ class AnophelesH12Analysis(
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.optional_figure:
-
         cohort_queries = self._setup_cohort_queries(
             cohorts=cohorts,
             sample_sets=sample_sets,
@@ -837,7 +836,6 @@ class AnophelesH12Analysis(
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.optional_figure:
-
         cohort_queries = self._setup_cohort_queries(
             cohorts=cohorts,
             sample_sets=sample_sets,
