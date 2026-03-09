@@ -263,15 +263,21 @@ def test_g123_gwss_with_bad_sites(fixture, api: AnophelesG123Analysis):
 def test_g123_gwss_default_sites_unphased(ag3_sim_fixture, ag3_sim_api_unphased):
     """Verify g123_gwss works with default sites when no phasing analysis exists."""
     api = ag3_sim_api_unphased
+    assert api._default_phasing_analysis is None
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    x, g123 = api.g123_gwss(
+    g123_params = dict(
         contig=api.contigs[0],
         sample_sets=[all_sample_sets[0]],
         window_size=100,
         min_cohort_size=10,
     )
-    assert isinstance(x, np.ndarray)
-    assert isinstance(g123, np.ndarray)
+    # Check default sites behaves correctly.
+    check_g123_gwss(api=api, g123_params=g123_params)
+    # Verify default sites matches explicit sites="segregating".
+    x_default, g123_default = api.g123_gwss(**g123_params)
+    x_segr, g123_segr = api.g123_gwss(**g123_params, sites="segregating")
+    assert np.array_equal(x_default, x_segr)
+    assert np.array_equal(g123_default, g123_segr)
 
 
 @parametrize_with_cases("fixture,api", cases=".")

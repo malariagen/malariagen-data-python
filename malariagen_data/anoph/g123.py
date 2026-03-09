@@ -292,6 +292,12 @@ class AnophelesG123Analysis(
                 f"Invalid value for `sites` parameter, must be one of {valid_sites}."
             )
 
+        valid_sites = self.phasing_analysis_ids + ("all", "segregating")
+        if sites not in valid_sites:
+            raise ValueError(
+                f"Invalid value for `sites` parameter, must be one of {valid_sites}."
+            )
+        
         params = dict(
             contig=contig,
             sites=sites,
