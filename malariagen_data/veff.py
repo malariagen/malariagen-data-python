@@ -3,6 +3,7 @@ import operator
 
 import pandas as pd
 from Bio.Seq import Seq  # type: ignore
+from .amino_acid_distance import grantham_score, sneath_dist
 
 VariantEffect = collections.namedtuple(
     "VariantEffect",
@@ -91,10 +92,12 @@ class Annotator(object):
 
         # check the reference allele matches the reference sequence
         ref_seq = self.get_ref_seq(chrom, ref_start, ref_stop).lower()
-        assert ref_seq == ref.lower(), (
-            "reference allele does not match reference sequence, "
-            f"expected {ref_seq!r}, found {ref.lower()!r}"
-        )
+        if ref_seq != ref.lower():
+            raise ValueError(
+                f"Reference allele does not match reference sequence at "
+                f"{chrom}:{ref_start}-{ref_stop}. Expected {ref_seq!r}, "
+                f"found {ref.lower()!r}."
+            )
 
         return ref_start, ref_stop
 
@@ -132,6 +135,8 @@ class Annotator(object):
         ref_aa_values = []
         alt_aa_values = []
         aa_change_values = []
+        grantham_values = []
+        sneath_values = []
 
         feature_contig = feature.contig
         feature_start = feature.start
@@ -167,7 +172,12 @@ class Annotator(object):
             )
 
             # reference allele falls within current transcript
-            assert feature_start <= ref_start <= ref_stop <= feature_stop
+            if not (feature_start <= ref_start <= ref_stop <= feature_stop):
+                raise ValueError(
+                    f"Variant coordinates ({ref_start}-{ref_stop}) fall outside "
+                    f"transcript boundaries ({feature_start}-{feature_stop}) "
+                    f"on {chrom}."
+                )
 
             effect = _get_within_transcript_effect(
                 ann=self,
@@ -178,6 +188,21 @@ class Annotator(object):
                 introns=introns,
             )
 
+            # compute grantham and sneath scores
+            # Assume no score (None) for introns and stop codons
+            g_score = None
+            s_score = None
+
+            # Check if both exist and are standard uppercase letters (no '*' or None)
+            if (
+                isinstance(effect.ref_aa, str)
+                and effect.ref_aa.isalpha()
+                and isinstance(effect.alt_aa, str)
+                and effect.alt_aa.isalpha()
+            ):
+                g_score = grantham_score(effect.ref_aa, effect.alt_aa)
+                s_score = sneath_dist(effect.ref_aa, effect.alt_aa)
+
             effect_values.append(effect.effect)
             impact_values.append(effect.impact)
             ref_codon_values.append(effect.ref_codon)
@@ -186,6 +211,8 @@ class Annotator(object):
             ref_aa_values.append(effect.ref_aa)
             alt_aa_values.append(effect.alt_aa)
             aa_change_values.append(effect.aa_change)
+            grantham_values.append(g_score)
+            sneath_values.append(s_score)
 
         variants["transcript"] = transcript
         variants["effect"] = effect_values
@@ -196,6 +223,8 @@ class Annotator(object):
         variants["ref_aa"] = ref_aa_values
         variants["alt_aa"] = alt_aa_values
         variants["aa_change"] = aa_change_values
+        variants["grantham_score"] = grantham_values
+        variants["sneath_score"] = sneath_values
 
         return variants
 
@@ -254,7 +283,11 @@ def _get_cds_effect(ann, base_effect, cds, cdss):
     cds_stop = cds.end
 
     # reference allele falls within current transcript
-    assert cds_start <= ref_start <= ref_stop <= cds_stop
+    if not (cds_start <= ref_start <= ref_stop <= cds_stop):
+        raise ValueError(
+            f"Variant coordinates ({ref_start}-{ref_stop}) fall outside "
+            f"CDS boundaries ({cds_start}-{cds_stop})."
+        )
     return _get_within_cds_effect(ann, base_effect, cds, cdss)
 
 
