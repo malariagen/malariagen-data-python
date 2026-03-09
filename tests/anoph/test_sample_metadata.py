@@ -842,6 +842,12 @@ def test_sample_metadata_with_query(ag3_sim_api):
     assert (df["country"] == "Burkina Faso").all()
 
 
+def test_sample_metadata_empty_query_warning(ag3_sim_api):
+    with pytest.warns(UserWarning, match="No samples were found for the query"):
+        df = ag3_sim_api.sample_metadata(sample_query="country == 'burkina faso'")
+    assert len(df) == 0
+
+
 def test_sample_metadata_with_indices(ag3_sim_api):
     df_all = ag3_sim_api.sample_metadata()
     query = "country == 'Burkina Faso'"

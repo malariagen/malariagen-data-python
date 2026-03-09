@@ -779,6 +779,8 @@ class AnophelesSampleMetadata(AnophelesBase):
         # Apply the sample_query, if there is one.
         # Note: this might have been internally modified, e.g. `is_surveillance == True`.
         if prepared_sample_query is not None:
+            pre_query_size = len(df_samples)
+
             # Assume a pandas query string.
             sample_query_options = sample_query_options or {}
             # Use the python engine in order to support extension array dtypes, e.g. Float64, Int64, boolean.
@@ -786,6 +788,17 @@ class AnophelesSampleMetadata(AnophelesBase):
                 prepared_sample_query, **sample_query_options, engine="python"
             )
             df_samples = df_samples.reset_index(drop=True)
+
+            if pre_query_size > 0 and len(df_samples) == 0:
+                import warnings
+
+                warnings.warn(
+                    f"No samples were found for the query {prepared_sample_query!r}. "
+                    "Note that string matches are case-sensitive. For example, "
+                    "if you are querying by country, ensure correct capitalization "
+                    "(e.g., 'Burkina Faso' instead of 'burkina faso').",
+                    UserWarning,
+                )
 
         # Apply the sample_indices, if there are any.
         # Note: this might need to apply to the result of an internal sample_query, e.g. `is_surveillance == True`.
