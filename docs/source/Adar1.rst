@@ -12,7 +12,7 @@ To set up the API, use the following code::
 All the functions below can then be accessed as methods on the ``adar1`` object. E.g., to call the
 ``sample_metadata()`` function, do::
 
-    df_samples = adir1.sample_metadata()
+    df_samples = adar1.sample_metadata()
 
 For more information about the data and terms of use, please see the
 `MalariaGEN website <https://www.malariagen.net/data>`_ or contact support@malariagen.net.
