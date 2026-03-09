@@ -9,6 +9,7 @@ from .pf7 import Pf7
 from .pf8 import Pf8
 from .pv4 import Pv4
 from .util import SiteClass
+from .taxon_id import identify_taxon
 
 try:
     import importlib.metadata as importlib_metadata
