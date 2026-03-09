@@ -110,6 +110,14 @@ def test_vcf_exporter(fixture, api: VcfExporter, tmp_path):
     ds_positions = sorted(ds["variant_position"].values.tolist())
     assert vcf_positions == ds_positions
 
+    # Allele values are clean strings, not byte-string representations.
+    for line in data_lines:
+        fields = line.split("\t")
+        ref, alt = fields[3], fields[4]
+        assert "b'" not in ref and "b'" not in alt, (
+            f"byte-string repr in REF/ALT: REF={ref!r} ALT={alt!r}"
+        )
+
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_vcf_exporter_overwrite(fixture, api: VcfExporter, tmp_path):

@@ -119,12 +119,12 @@ class VcfExporter(
                         alleles = allele_chunk[j]
                         ref = (
                             alleles[0].decode()
-                            if isinstance(alleles[0], bytes)
+                            if hasattr(alleles[0], "decode")
                             else str(alleles[0])
                         )
                         alt_alleles = []
                         for a in alleles[1:]:
-                            s = a.decode() if isinstance(a, bytes) else str(a)
+                            s = a.decode() if hasattr(a, "decode") else str(a)
                             if s:
                                 alt_alleles.append(s)
                         alt = ",".join(alt_alleles) if alt_alleles else "."
