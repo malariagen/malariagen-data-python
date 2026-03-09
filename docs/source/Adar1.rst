@@ -1,4 +1,4 @@
-Adir1
+Adar1
 =====
 
 This page provides a curated list of functions and properties available in the ``malariagen_data`` API
