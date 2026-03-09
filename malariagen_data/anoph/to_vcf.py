@@ -1,10 +1,8 @@
 from typing import Optional
 
-import allel  # type: ignore
 import numpy as np
 import os
 
-from ..util import _dask_compress_dataset
 from .snp_data import AnophelesSnpData
 from . import base_params
 from . import plink_params
@@ -97,31 +95,18 @@ class VcfConverter(
             chunks=chunks,
         )
 
-        # Compute gt ref counts
-        with self._dask_progress("Computing genotype ref counts"):
-            gt_asc = ds_snps["call_genotype"].data  # dask array
-            gn_ref = allel.GenotypeDaskArray(gt_asc).to_n_ref(fill=-127)
-            gn_ref = gn_ref.compute()
-
-        # Ensure genotypes vary (ignoring missing data -127)
-        # We only keep sites where at least one sample has the alternate allele (gn_ref > 0)
-        loc_var = np.any(gn_ref > 0, axis=1)
-
-        # Load final data
-        ds_snps_final = _dask_compress_dataset(ds_snps, loc_var, dim="variants")
-
         with self._spinner("Prepare output data"):
-            genotypes = ds_snps_final["call_genotype"].values
+            genotypes = ds_snps["call_genotype"].values
 
             # Map integer contig indices to their string names (e.g., 0 -> '2L')
-            chrom_indices = ds_snps_final["variant_contig"].values
+            chrom_indices = ds_snps["variant_contig"].values
             chrom = np.array(self.contigs)[chrom_indices]
 
-            pos = ds_snps_final["variant_position"].values
+            pos = ds_snps["variant_position"].values
 
             # Decode byte strings to unicode strings
-            alleles = ds_snps_final["variant_allele"].values.astype("U")
-            samples = ds_snps_final["sample_id"].values
+            alleles = ds_snps["variant_allele"].values.astype("U")
+            samples = ds_snps["sample_id"].values
 
             ref = alleles[:, 0]
             alt = alleles[:, 1]
