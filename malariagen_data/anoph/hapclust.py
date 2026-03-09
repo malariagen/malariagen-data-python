@@ -799,7 +799,7 @@ class AnophelesHapClustAnalysis(
         2. Assigning two cohort labels per diploid sample (one for each haplotype).
         3. Filtering down to segregating sites to speed up distinction.
         4. Grouping all identical haplotypes together using `ht.distinct()`.
-        5. Counting the number of shared identical groups between every pair of cohorts and returning sharing matrix. 
+        5. Counting the number of shared identical groups between every pair of cohorts and returning sharing matrix.
         """
         # Load phased genotypes for the specified region
         ds_haps = self.haplotypes(
@@ -933,7 +933,7 @@ class AnophelesHapClustAnalysis(
                 arc_height = abs(x2 - x1) * 0.5
                 # Scale arc thickness linearly based on sharing count
                 line_width = 1 + (count / max_sharing) * 9
-                # Generate points for the arc   
+                # Generate points for the arc
                 t = np.linspace(0, np.pi, 50)
                 arc_x = x1 + (x2 - x1) * (1 - np.cos(t)) / 2
                 arc_y = arc_height * np.sin(t)
@@ -1069,7 +1069,7 @@ class AnophelesHapClustAnalysis(
                 x2, y2 = cohort_x[c2], cohort_y[c2]
 
                 line_width = 1 + (count / max_sharing) * 9
-        # Draw a quadratic Bezier curve passing through the center (0,0)
+                # Draw a quadratic Bezier curve passing through the center (0,0)
                 # t from 0 to 1 traces the curve from cohort 1 to cohort 2
                 t = np.linspace(0, 1, 50)
                 cx, cy = 0, 0
