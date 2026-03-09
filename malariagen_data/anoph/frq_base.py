@@ -396,39 +396,50 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         # Extract variant labels.
         variant_labels = ds["variant_label"].values
 
+        # Check if CI variables are available.
+        has_ci = "event_frequency_ci_low" in ds
+
         # Build a long-form dataframe from the dataset.
         dfs = []
         for cohort in df_cohorts.itertuples():
             ds_cohort = ds.isel(cohorts=cohort.Index)
-            df = pd.DataFrame(
-                {
-                    "taxon": cohort.taxon,
-                    "area": cohort.area,
-                    "date": cohort.period_start,
-                    "period": str(
-                        cohort.period
-                    ),  # use string representation for hover label
-                    "sample_size": cohort.size,
-                    "variant": variant_labels,
-                    "count": ds_cohort["event_count"].values,
-                    "nobs": ds_cohort["event_nobs"].values,
-                    "frequency": ds_cohort["event_frequency"].values,
-                    "frequency_ci_low": ds_cohort["event_frequency_ci_low"].values,
-                    "frequency_ci_upp": ds_cohort["event_frequency_ci_upp"].values,
-                }
-            )
+            cohort_data = {
+                "taxon": cohort.taxon,
+                "area": cohort.area,
+                "date": cohort.period_start,
+                "period": str(
+                    cohort.period
+                ),  # use string representation for hover label
+                "sample_size": cohort.size,
+                "variant": variant_labels,
+                "count": ds_cohort["event_count"].values,
+                "nobs": ds_cohort["event_nobs"].values,
+                "frequency": ds_cohort["event_frequency"].values,
+            }
+            if has_ci:
+                cohort_data["frequency_ci_low"] = ds_cohort[
+                    "event_frequency_ci_low"
+                ].values
+                cohort_data["frequency_ci_upp"] = ds_cohort[
+                    "event_frequency_ci_upp"
+                ].values
+            df = pd.DataFrame(cohort_data)
             dfs.append(df)
         df_events = pd.concat(dfs, axis=0).reset_index(drop=True)
 
         # Remove events with no observations.
         df_events = df_events.query("nobs > 0").copy()
 
-        # Calculate error bars.
-        frq = df_events["frequency"]
-        frq_ci_low = df_events["frequency_ci_low"]
-        frq_ci_upp = df_events["frequency_ci_upp"]
-        df_events["frequency_error"] = frq_ci_upp - frq
-        df_events["frequency_error_minus"] = frq - frq_ci_low
+        # Calculate error bars if CI data is available.
+        error_y_args = {}
+        if has_ci:
+            frq = df_events["frequency"]
+            frq_ci_low = df_events["frequency_ci_low"]
+            frq_ci_upp = df_events["frequency_ci_upp"]
+            df_events["frequency_error"] = frq_ci_upp - frq
+            df_events["frequency_error_minus"] = frq - frq_ci_low
+            error_y_args["error_y"] = "frequency_error"
+            error_y_args["error_y_minus"] = "frequency_error_minus"
 
         # Make a plot.
         fig = px.line(
@@ -437,8 +448,7 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
             facet_row="area",
             x="date",
             y="frequency",
-            error_y="frequency_error",
-            error_y_minus="frequency_error_minus",
+            **error_y_args,
             color="variant",
             markers=True,
             hover_name="variant",
@@ -518,19 +528,19 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
             variant_label = variant
 
         # Convert to a dataframe for convenience.
-        df_markers = ds_variant[
-            [
-                "cohort_taxon",
-                "cohort_area",
-                "cohort_period",
-                "cohort_lat_mean",
-                "cohort_lon_mean",
-                "cohort_size",
-                "event_frequency",
-                "event_frequency_ci_low",
-                "event_frequency_ci_upp",
-            ]
-        ].to_dataframe()
+        cols = [
+            "cohort_taxon",
+            "cohort_area",
+            "cohort_period",
+            "cohort_lat_mean",
+            "cohort_lon_mean",
+            "cohort_size",
+            "event_frequency",
+        ]
+        has_ci = "event_frequency_ci_low" in ds
+        if has_ci:
+            cols += ["event_frequency_ci_low", "event_frequency_ci_upp"]
+        df_markers = ds_variant[cols].to_dataframe()
 
         # Select data matching taxon and period parameters.
         df_markers = df_markers.loc[
@@ -560,8 +570,11 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
                 Area: {x.cohort_area} <br/>
                 Period: {x.cohort_period} <br/>
                 Sample size: {x.cohort_size} <br/>
-                Frequency: {x.event_frequency:.0%}
-                (95% CI: {x.event_frequency_ci_low:.0%} - {x.event_frequency_ci_upp:.0%})
+                Frequency: {x.event_frequency:.0%}"""
+            if has_ci:
+                popup_html += f"""
+                (95% CI: {x.event_frequency_ci_low:.0%} - {x.event_frequency_ci_upp:.0%})"""
+            popup_html += """
             """
             marker.popup = ipyleaflet.Popup(
                 child=ipywidgets.HTML(popup_html),
@@ -609,13 +622,27 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         variants = ds["variant_label"].values
         taxa = ds["cohort_taxon"].to_pandas().dropna().unique()  # type: ignore
         periods = ds["cohort_period"].to_pandas().dropna().unique()  # type: ignore
+
+        if len(variants) == 0:
+            raise ValueError("No variants available in dataset.")
+        if len(taxa) == 0:
+            raise ValueError("No taxons available in dataset.")
+        if len(periods) == 0:
+            raise ValueError("No periods available in dataset.")
+
         controls = ipywidgets.interactive(
             self.plot_frequencies_map_markers,
             m=ipywidgets.fixed(freq_map),
             ds=ipywidgets.fixed(ds),
-            variant=ipywidgets.Dropdown(options=variants, description="Variant: "),
-            taxon=ipywidgets.Dropdown(options=taxa, description="Taxon: "),
-            period=ipywidgets.Dropdown(options=periods, description="Period: "),
+            variant=ipywidgets.Dropdown(
+                options=variants, value=variants[0], description="Variant: "
+            ),
+            taxon=ipywidgets.Dropdown(
+                options=taxa, value=taxa[0], description="Taxon: "
+            ),
+            period=ipywidgets.Dropdown(
+                options=periods, value=periods[0], description="Period: "
+            ),
             clear=ipywidgets.fixed(True),
         )
 

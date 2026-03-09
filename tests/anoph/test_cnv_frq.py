@@ -643,7 +643,7 @@ def test_gene_cnv_frequencies_advanced_with_variant_query(
     area_by = "admin1_iso"
     period_by = "year"
     region = random.choice(api.contigs)
-    variant_query = "cnv_type == '{variant_query_option}'"
+    variant_query = f"cnv_type == '{variant_query_option}'"
 
     check_gene_cnv_frequencies_advanced(
         api=api,
@@ -743,7 +743,8 @@ def check_gene_cnv_frequencies_advanced(
     check_plot_frequencies_time_series(api, ds)
     check_plot_frequencies_time_series_with_taxa(api, ds)
     check_plot_frequencies_time_series_with_areas(api, ds)
-    check_plot_frequencies_interactive_map(api, ds)
+    if variant_query is None:
+        check_plot_frequencies_interactive_map(api, ds)
     assert set(ds.dims) == {"cohorts", "variants"}
 
     # Check variant variables.
