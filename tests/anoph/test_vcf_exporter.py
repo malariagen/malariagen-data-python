@@ -114,9 +114,9 @@ def test_vcf_exporter(fixture, api: VcfExporter, tmp_path):
     for line in data_lines:
         fields = line.split("\t")
         ref, alt = fields[3], fields[4]
-        assert "b'" not in ref and "b'" not in alt, (
-            f"byte-string repr in REF/ALT: REF={ref!r} ALT={alt!r}"
-        )
+        assert (
+            "b'" not in ref and "b'" not in alt
+        ), f"byte-string repr in REF/ALT: REF={ref!r} ALT={alt!r}"
 
 
 @parametrize_with_cases("fixture,api", cases=".")
