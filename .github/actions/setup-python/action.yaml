@@ -1,0 +1,22 @@
+name: 'Setup python and poetry'
+inputs:
+  python-version:
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Install poetry
+      shell: bash
+      run: pipx install poetry
+
+    - name: Setup python
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: poetry
+
+    - name: Install packages
+      shell: bash
+      run: |
+        poetry env use ${{ inputs.python-version }}
+        poetry install --extras dev

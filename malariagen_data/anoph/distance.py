@@ -217,6 +217,9 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         n_snps = gn.shape[0]
 
         # Prepare data for pairwise distance calculation.
+        # Mask missing calls (-127) before computing distances.
+        gn = gn.astype(float)
+        gn[gn == -127] = np.nan
         X = np.ascontiguousarray(gn.T)
 
         # Look up distance function.
@@ -362,24 +365,43 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         from scipy.spatial.distance import squareform  # type: ignore
 
         # Compute pairwise distances.
-        dist, samples, n_snps = self.biallelic_diplotype_pairwise_distances(
-            region=region,
-            n_snps=n_snps,
-            metric=metric,
-            sample_sets=sample_sets,
-            sample_indices=sample_indices,
-            site_mask=site_mask,
-            site_class=site_class,
-            inline_array=inline_array,
-            chunks=chunks,
-            cohort_size=cohort_size,
-            min_cohort_size=min_cohort_size,
-            max_cohort_size=max_cohort_size,
-            random_seed=random_seed,
-            max_missing_an=max_missing_an,
-            min_minor_ac=min_minor_ac,
-            thin_offset=thin_offset,
-        )
+        try:
+            dist, samples, n_snps_used = self.biallelic_diplotype_pairwise_distances(
+                region=region,
+                n_snps=n_snps,
+                metric=metric,
+                sample_sets=sample_sets,
+                sample_indices=sample_indices,
+                site_mask=site_mask,
+                site_class=site_class,
+                inline_array=inline_array,
+                chunks=chunks,
+                cohort_size=cohort_size,
+                min_cohort_size=min_cohort_size,
+                max_cohort_size=max_cohort_size,
+                random_seed=random_seed,
+                max_missing_an=max_missing_an,
+                min_minor_ac=min_minor_ac,
+                thin_offset=thin_offset,
+            )
+
+        except ValueError as e:
+            raise ValueError(
+                f"Unable to construct neighbour-joining tree. {e} "
+                f"This could be because the selected region does not "
+                f"contain enough polymorphic SNPs for the given sample "
+                f"sets and query parameters."
+            ) from e
+
+        # Validate enough samples for a tree.
+        n_samples = len(samples)
+        if n_samples < 3:
+            raise ValueError(
+                f"Not enough samples to construct a neighbour-joining tree. "
+                f"A minimum of 3 samples is required, but only {n_samples} "
+                f"were found for the given region and sample sets."
+            )
+
         D = squareform(dist)
 
         # anjl supports passing in a progress bar function to get progress on the

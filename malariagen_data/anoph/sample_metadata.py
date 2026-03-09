@@ -33,6 +33,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         aim_analysis: Optional[str] = None,
         aim_metadata_dtype: Optional[Mapping[str, Any]] = None,
         taxon_colors: Optional[Mapping[str, str]] = None,
+        aim_species_colors: Optional[Mapping[str, str]] = None,
         **kwargs,
     ):
         # N.B., this class is designed to work cooperatively, and
@@ -72,6 +73,8 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         # Set up taxon colors.
         self._taxon_colors = taxon_colors
+
+        self._aim_species_colors = aim_species_colors
 
         # Set up extra metadata.
         self._extra_metadata: List = []
@@ -1304,6 +1307,11 @@ class AnophelesSampleMetadata(AnophelesBase):
             # Special case, default taxon colors and order.
             color_discrete_map = self._taxon_colors
 
+        # Special handling for aim_species colors.
+        if color == "aim_species" and color_discrete_map is None:
+            # Special case, default aim_species colors and order.
+            color_discrete_map = self._aim_species_colors
+
         if isinstance(color, str):
             if "cohort_" + color in data.columns:
                 # Convenience to allow things like "admin1_year" instead of "cohort_admin1_year".
@@ -1569,11 +1577,11 @@ class AnophelesSampleMetadata(AnophelesBase):
         # Sort by `color` column by default, which can be overridden via category_orders.
         df_locations = df_samples[location_columns].drop_duplicates().sort_values(color)
 
-        fig = px.scatter_mapbox(
+        fig = px.scatter_map(
             df_locations,
             lat="latitude",
             lon="longitude",
-            mapbox_style="open-street-map",
+            map_style="open-street-map",
             zoom=zoom,
             color=color,
             category_orders=category_orders,

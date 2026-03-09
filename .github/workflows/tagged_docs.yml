@@ -24,19 +24,13 @@ jobs:
         with:
           ref: ${{ env.VERSION_TAG }}
 
-      - name: Set up Python 🐍
-        uses: actions/setup-python@v5
+      - name: Setup python 🐍
+        uses: ./.github/actions/setup-python
         with:
           python-version: '3.12'
 
-      - name: Install poetry
-        run: pipx install poetry==1.8.3
-
       - name: Eyeball native environment 👀
         run: python --version ; pip --version ; poetry --version ; pwd ; ls -la
-
-      - name: Install package dependencies 📜
-        run: poetry install
 
       - name: Build HTML 🏗️
         run: poetry run sphinx-build -b html docs/source docs/build/html
