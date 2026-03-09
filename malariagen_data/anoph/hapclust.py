@@ -791,6 +791,17 @@ class AnophelesHapClustAnalysis(
         chunks,
         inline_array,
     ):
+        """
+        Computes the number of identical haplotypes shared between cohorts
+
+        This process involves:
+        1. Loading  haplotypes for a genomic region.
+        2. Assigning two cohort labels per diploid sample (one for each haplotype).
+        3. Filtering down to segregating sites to speed up distinction.
+        4. Grouping all identical haplotypes together using `ht.distinct()`.
+        5. Counting the number of shared identical groups between every pair of cohorts and returning sharing matrix. 
+        """
+        # Load phased genotypes for the specified region
         ds_haps = self.haplotypes(
             region=region,
             analysis=analysis,
@@ -802,17 +813,19 @@ class AnophelesHapClustAnalysis(
             chunks=chunks,
             inline_array=inline_array,
         )
-
+        # Load metadata to map samples to cohorts
         df_samples = self.sample_metadata(
             sample_sets=sample_sets,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
         )
-
+        # Ensure metadata is in exactly the same order as samples in ds_haps
         samples_phased = ds_haps["sample_id"].values
         df_samples_phased = (
             df_samples.set_index("sample_id").loc[samples_phased].reset_index()
         )
+        # Each diploid sample has 2 haplotypes. Duplicate each metadata row
+        # so cohort labels align 1:1 with the flattened haplotype array.
         df_haps = df_samples_phased.loc[df_samples_phased.index.repeat(2)].reset_index(
             drop=True
         )
@@ -822,19 +835,19 @@ class AnophelesHapClustAnalysis(
                 f"Column '{cohort_col}' not found in sample metadata. "
                 f"Available columns: {', '.join(df_haps.columns)}"
             )
-
+        # Convert paired genotypes to a flat array: (n_variants, 2 * n_samples)
         gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
         with self._dask_progress(desc="Load haplotypes"):
             ht = gt.to_haplotypes().compute()
-
+        # Remove non-segregating sites (where all haplotypes are identical)
         ac = ht.count_alleles(max_allele=1)
         ht_seg = ht[ac.is_segregating()]
-
+        # Find sets of perfectly identical haplotypes
         ht_distinct_sets = ht_seg.distinct()
 
         cohort_labels = df_haps[cohort_col].values
         cohorts = pd.unique(df_haps[cohort_col].dropna())
-
+        # Build N x N sharing matrix
         sharing_matrix = pd.DataFrame(0, index=cohorts, columns=cohorts, dtype=int)
 
         for s in ht_distinct_sets:
@@ -842,6 +855,7 @@ class AnophelesHapClustAnalysis(
             cohorts_in_set = set(cohort_labels[indices])
             cohorts_in_set.discard(None)
             cohorts_in_set = [c for c in cohorts_in_set if pd.notna(c)]
+            # Increment the symmetric matrix for every unique pair of cohorts in this group
             for i, c1 in enumerate(cohorts_in_set):
                 for c2 in cohorts_in_set[i + 1 :]:
                     sharing_matrix.loc[c1, c2] += 1
@@ -891,6 +905,7 @@ class AnophelesHapClustAnalysis(
 
         n_cohorts = len(cohorts)
         cohort_list = list(cohorts)
+        # Position cohorts evenly along a horizontal axis from x=0 to x=1
         x_positions = np.linspace(0, 1, n_cohorts)
         cohort_x = {c: x for c, x in zip(cohort_list, x_positions)}
 
@@ -904,7 +919,7 @@ class AnophelesHapClustAnalysis(
         max_sharing = sharing_matrix.values.max()
         if max_sharing == 0:
             max_sharing = 1
-
+        # Iterate over all unique pairs of cohorts
         for i in range(n_cohorts):
             for j in range(i + 1, n_cohorts):
                 c1 = cohort_list[i]
@@ -916,9 +931,9 @@ class AnophelesHapClustAnalysis(
                 x1 = cohort_x[c1]
                 x2 = cohort_x[c2]
                 arc_height = abs(x2 - x1) * 0.5
-
+                # Scale arc thickness linearly based on sharing count
                 line_width = 1 + (count / max_sharing) * 9
-
+                # Generate points for the arc   
                 t = np.linspace(0, np.pi, 50)
                 arc_x = x1 + (x2 - x1) * (1 - np.cos(t)) / 2
                 arc_y = arc_height * np.sin(t)
@@ -1025,7 +1040,7 @@ class AnophelesHapClustAnalysis(
 
         n_cohorts = len(cohorts)
         cohort_list = list(cohorts)
-
+        # Position cohorts evenly around a circular layout with radius 1.0
         angles = np.linspace(0, 2 * np.pi, n_cohorts, endpoint=False)
         radius = 1.0
         cohort_x = {c: radius * np.cos(a) for c, a in zip(cohort_list, angles)}
@@ -1041,7 +1056,7 @@ class AnophelesHapClustAnalysis(
         max_sharing = sharing_matrix.values.max()
         if max_sharing == 0:
             max_sharing = 1
-
+        # Iterate over all unique pairs of cohorts
         for i in range(n_cohorts):
             for j in range(i + 1, n_cohorts):
                 c1 = cohort_list[i]
@@ -1054,7 +1069,8 @@ class AnophelesHapClustAnalysis(
                 x2, y2 = cohort_x[c2], cohort_y[c2]
 
                 line_width = 1 + (count / max_sharing) * 9
-
+        # Draw a quadratic Bezier curve passing through the center (0,0)
+                # t from 0 to 1 traces the curve from cohort 1 to cohort 2
                 t = np.linspace(0, 1, 50)
                 cx, cy = 0, 0
                 chord_x = (1 - t) ** 2 * x1 + 2 * (1 - t) * t * cx + t**2 * x2
