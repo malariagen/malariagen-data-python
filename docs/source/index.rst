@@ -18,7 +18,7 @@ Internal implementation classes are omitted for clarity.
        malariagen_data --> AnophelesDataResource
        malariagen_data --> PlasmodiumDataResource
        AnophelesDataResource --> Ag3
-       AnophelesDataResource --> AfGroup["Af1 · Amin1 · Adir1 (see Ag3)"]
+       AnophelesDataResource --> AfGroup["Af1 · Amin1 · Adir1 </br> (see Ag3)"]
        Ag3 --> Metadata["Metadata"]
        Ag3 --> SNP["SNP Data"]
        Ag3 --> Hap["Haplotype Data"]
@@ -27,8 +27,8 @@ Internal implementation classes are omitted for clarity.
        Ag3 --> Frequency["Frequency Analysis"]
        Ag3 --> Plotting["Plotting"]
        PlasmodiumDataResource --> Pf7
-       PlasmodiumDataResource --> Pf8["Pf8 (see Pf7)"]
-       PlasmodiumDataResource --> Pv4["Pv4 (see Pf7)"]
+       PlasmodiumDataResource --> Pf8
+       PlasmodiumDataResource --> Pv4
 
 API documentation
 -----------------
