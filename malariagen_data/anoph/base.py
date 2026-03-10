@@ -563,10 +563,11 @@ class AnophelesBase:
             single_release=sample_set_release
         )
 
+        # Check if unrestricted_use column exists
         if "unrestricted_use" not in release_manifest_df.columns:
             raise ValueError(
-                f"Column 'unrestricted_use' missing from manifest for sample set '{sample_set}'. "
-                "This indicates a data integrity issue in the release manifest."
+                f"The 'unrestricted_use' column is missing from the sample sets manifest "
+                f"for release {sample_set_release}. This data may not be available."
             )
 
         sample_set_records_srs = release_manifest_df.loc[
@@ -831,26 +832,40 @@ class AnophelesBase:
     def lookup_terms_of_use_info(self, sample_set: base_params.sample_set) -> dict:
         if self._cache_sample_set_to_terms_of_use_info is None:
             df_sample_sets = self._available_sample_sets().set_index("sample_set")
-            expected_cols = [
+
+            # Check if terms-of-use columns exist
+            required_columns = [
                 "terms_of_use_expiry_date",
                 "terms_of_use_url",
                 "unrestricted_use",
             ]
-            missing_cols = [c for c in expected_cols if c not in df_sample_sets.columns]
-            if missing_cols:
-                raise ValueError(
-                    f"Terms-of-use columns missing from manifest: {missing_cols}. "
-                    "This indicates a data integrity issue in the release manifest."
-                )
-            self._cache_sample_set_to_terms_of_use_info = df_sample_sets[
-                expected_cols
-            ].to_dict(orient="index")
-        try:
-            return self._cache_sample_set_to_terms_of_use_info[sample_set]
-        except KeyError as e:
-            raise ValueError(
-                f"No terms-of-use info found for sample set {sample_set!r}"
-            ) from e
+            available_columns = [
+                col for col in required_columns if col in df_sample_sets.columns
+            ]
+
+            if len(available_columns) == 0:
+                # No terms-of-use columns available at all
+                self._cache_sample_set_to_terms_of_use_info = {}
+            else:
+                self._cache_sample_set_to_terms_of_use_info = df_sample_sets[
+                    available_columns
+                ].to_dict(orient="index")
+
+            try:
+                return self._cache_sample_set_to_terms_of_use_info[sample_set]
+            except KeyError as e:
+                # Check if it's because columns are missing entirely vs sample_set not found
+                if len(self._cache_sample_set_to_terms_of_use_info) == 0:
+                    raise ValueError(
+                        "Terms-of-use columns missing from the sample sets manifest. "
+                        "The required columns (terms_of_use_expiry_date, terms_of_use_url, "
+                        "unrestricted_use) are not available in the data."
+                    ) from e
+                else:
+                    raise ValueError(
+                        f"No terms-of-use info found for sample set {sample_set!r}. "
+                        f"This sample set may not have terms-of-use data available."
+                    ) from e
 
     def _prep_sample_sets_param(
         self, *, sample_sets: Optional[base_params.sample_sets]
