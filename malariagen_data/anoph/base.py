@@ -833,7 +833,6 @@ class AnophelesBase:
         if self._cache_sample_set_to_terms_of_use_info is None:
             df_sample_sets = self._available_sample_sets().set_index("sample_set")
 
-            # Check if terms-of-use columns exist
             required_columns = [
                 "terms_of_use_expiry_date",
                 "terms_of_use_url",
@@ -844,28 +843,27 @@ class AnophelesBase:
             ]
 
             if len(available_columns) == 0:
-                # No terms-of-use columns available at all
                 self._cache_sample_set_to_terms_of_use_info = {}
             else:
                 self._cache_sample_set_to_terms_of_use_info = df_sample_sets[
                     available_columns
                 ].to_dict(orient="index")
 
-            try:
-                return self._cache_sample_set_to_terms_of_use_info[sample_set]
-            except KeyError as e:
-                # Check if it's because columns are missing entirely vs sample_set not found
-                if len(self._cache_sample_set_to_terms_of_use_info) == 0:
-                    raise ValueError(
-                        "Terms-of-use columns missing from the sample sets manifest. "
-                        "The required columns (terms_of_use_expiry_date, terms_of_use_url, "
-                        "unrestricted_use) are not available in the data."
-                    ) from e
-                else:
-                    raise ValueError(
-                        f"No terms-of-use info found for sample set {sample_set!r}. "
-                        f"This sample set may not have terms-of-use data available."
-                    ) from e
+        # ← try/except is NOW OUTSIDE the if block (correct indentation)
+        try:
+            return self._cache_sample_set_to_terms_of_use_info[sample_set]
+        except KeyError as e:
+            if len(self._cache_sample_set_to_terms_of_use_info) == 0:
+                raise ValueError(
+                    "Terms-of-use columns missing from the sample sets manifest. "
+                    "The required columns (terms_of_use_expiry_date, terms_of_use_url, "
+                    "unrestricted_use) are not available in the data."
+                ) from e
+            else:
+                raise ValueError(
+                    f"No terms-of-use info found for sample set {sample_set!r}. "
+                    f"This sample set may not have terms-of-use data available."
+                ) from e
 
     def _prep_sample_sets_param(
         self, *, sample_sets: Optional[base_params.sample_sets]
