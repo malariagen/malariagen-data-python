@@ -114,3 +114,8 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = ["bokeh", "bokeh.*"]
 follow_imports = "skip"
+
+[dependency-groups]
+dev = [
+    "pytest-cases (>=3.10.1,<4.0.0)"
+]
