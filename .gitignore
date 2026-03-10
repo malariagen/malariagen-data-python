@@ -27,3 +27,6 @@ docs/source/generated
 # gcloud cli
 google-cloud-cli-*
 google-cloud-sdk
+*.save
+*.save
+*.save
