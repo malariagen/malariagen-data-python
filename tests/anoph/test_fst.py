@@ -226,9 +226,14 @@ def check_pairwise_average_fst(api: AnophelesFstAnalysis, fst_params):
     # Check cohort pairs are correct.
     sample_sets = fst_params["sample_sets"]
     sample_query = fst_params.get("sample_query")
+    sample_query_options = fst_params.get("sample_query_options")
     cohorts = fst_params["cohorts"]
     min_cohort_size = fst_params["min_cohort_size"]
-    df_samples = api.sample_metadata(sample_sets=sample_sets, sample_query=sample_query)
+    df_samples = api.sample_metadata(
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        sample_query_options=sample_query_options,
+    )
     if isinstance(cohorts, str):
         if "cohort_" + cohorts in df_samples:
             cohort_column = "cohort_" + cohorts
@@ -344,6 +349,33 @@ def test_pairwise_average_fst_with_sample_query(fixture, api: AnophelesFstAnalys
         site_mask=site_mask,
         min_cohort_size=1,
         n_jack=random.randint(10, 200),
+    )
+
+    # Run checks.
+    check_pairwise_average_fst(api=api, fst_params=fst_params)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_pairwise_average_fst_with_sample_query_local_dict(
+    fixture, api: AnophelesFstAnalysis
+):
+    # Set up test parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    df_samples = api.sample_metadata(sample_sets=all_sample_sets)
+    country_counts = df_samples["country"].value_counts()
+    countries_list = sorted(country_counts[country_counts >= 2].index.to_list()[:2])
+    assert len(countries_list) == 2
+
+    fst_params = dict(
+        region=random.choice(api.contigs),
+        cohorts="country",
+        sample_sets=all_sample_sets,
+        sample_query="country in @countries_list",
+        sample_query_options={"local_dict": {"countries_list": countries_list}},
+        site_mask=random.choice(api.site_mask_ids),
+        cohort_size=2,
+        min_cohort_size=2,
+        n_jack=random.randint(10, 50),
     )
 
     # Run checks.

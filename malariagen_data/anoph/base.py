@@ -948,6 +948,18 @@ class AnophelesBase:
 
         return prepped_sample_query
 
+    def _prep_sample_query_options(
+        self,
+        *,
+        sample_query_options: Optional[base_params.sample_query_options],
+    ) -> dict:
+        """Normalise pandas query options while keeping python engine as default."""
+
+        prepped_sample_query_options = dict(sample_query_options or {})
+        prepped_sample_query_options.setdefault("engine", "python")
+
+        return prepped_sample_query_options
+
     def _filter_sample_dataset(
         self,
         *,
@@ -963,9 +975,10 @@ class AnophelesBase:
         # Determine which samples match the sample query.
         if sample_query != "":
             # Use the python engine in order to support extension array dtypes, e.g. Float64, Int64, boolean.
-            loc_samples = df_samples.eval(
-                sample_query, **sample_query_options, engine="python"
+            sample_query_options = self._prep_sample_query_options(
+                sample_query_options=sample_query_options
             )
+            loc_samples = df_samples.eval(sample_query, **sample_query_options)
         else:
             loc_samples = pd.Series(True, index=df_samples.index)
 

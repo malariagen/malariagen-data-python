@@ -360,6 +360,31 @@ def test_h12_gwss_multi_param_forwarding(fixture, api: AnophelesH12Analysis):
     assert isinstance(fig, bokeh.models.GridPlot)
 
 
+@parametrize_with_cases("fixture,api", cases=".")
+def test_h12_gwss_multi_with_sample_query_local_dict(
+    fixture, api: AnophelesH12Analysis
+):
+    """Verify local_dict-backed sample queries work in multi-cohort H12 plots."""
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    df_samples = api.sample_metadata(sample_sets=all_sample_sets)
+    country_counts = df_samples["country"].value_counts()
+    countries_list = sorted(country_counts[country_counts >= 2].index.to_list()[:2])
+    assert len(countries_list) == 2
+
+    h12_params = dict(
+        contig=random.choice(api.contigs),
+        cohorts="country",
+        sample_sets=all_sample_sets,
+        window_size=200,
+        cohort_size=2,
+        min_cohort_size=2,
+        sample_query="country in @countries_list",
+        sample_query_options={"local_dict": {"countries_list": countries_list}},
+    )
+
+    check_h12_gwss_multi(api=api, h12_params=h12_params)
+
+
 def test_garud_h12_empty_window():
     import numpy as np
     from malariagen_data.anoph.h12 import _garud_h12
