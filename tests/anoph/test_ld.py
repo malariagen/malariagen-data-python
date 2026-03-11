@@ -170,3 +170,44 @@ def test_ld_pruned_plink_compatibility(fixture, api: AnophelesLdAnalysis):
     n_samples = ds_pruned.sizes["samples"]
     assert ds_pruned["call_genotype"].shape == (n_variants, n_samples, 2)
     assert ds_pruned["variant_allele"].shape == (n_variants, 2)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_ld_pruning_threshold_sensitivity(fixture, api: AnophelesLdAnalysis):
+    region = random.choice(api.contigs)
+    site_mask = random.choice(api.site_mask_ids)
+    ds_full = api.biallelic_snp_calls(
+        region=region,
+        site_mask=site_mask,
+        min_minor_ac=1,
+        max_missing_an=0,
+    )
+    n_available = ds_full.sizes["variants"]
+    if n_available < 10:
+        pytest.skip("Not enough variants for LD pruning test")
+
+    n_snps = min(n_available, 200)
+
+    try:
+        ds_strict = api.biallelic_snp_calls_ld_pruned(
+            region=region,
+            n_snps=n_snps,
+            site_mask=site_mask,
+            min_minor_ac=1,
+            max_missing_an=0,
+            ld_threshold=0.1,
+        )
+    except ValueError:
+        pytest.skip("Too few variants survive strict LD pruning")
+
+    ds_lenient = api.biallelic_snp_calls_ld_pruned(
+        region=region,
+        n_snps=n_snps,
+        site_mask=site_mask,
+        min_minor_ac=1,
+        max_missing_an=0,
+        ld_threshold=0.5,
+    )
+
+    # A stricter threshold should retain fewer or equal variants.
+    assert ds_strict.sizes["variants"] <= ds_lenient.sizes["variants"]

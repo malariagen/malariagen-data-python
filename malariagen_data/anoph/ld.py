@@ -1,5 +1,7 @@
 from typing import Optional
 
+import numpy as np
+
 import allel  # type: ignore
 import xarray as xr
 from numpydoc_decorator import doc  # type: ignore
@@ -30,6 +32,15 @@ class AnophelesLdAnalysis(
             This function obtains biallelic SNP calls, then performs LD pruning
             using scikit-allel's `locate_unlinked` function. The resulting dataset
             can be used as input to ADMIXTURE workflows or exported to PLINK format.
+
+            LD pruning is controlled by three parameters:
+
+            - `ld_window_size`: number of SNPs in the sliding window used to
+              compute pairwise r-squared.
+            - `ld_window_step`: number of SNPs to advance the window each
+              iteration.
+            - `ld_threshold`: maximum r-squared value; SNP pairs above this
+              are considered linked and one will be removed.
 
             Note that `n_snps` is required to control memory usage. Without
             pre-thinning, LD pruning could attempt to materialise millions of
@@ -68,6 +79,14 @@ class AnophelesLdAnalysis(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
+        # Validate LD parameters.
+        if ld_window_size <= 0:
+            raise ValueError(f"ld_window_size must be > 0, got {ld_window_size}")
+        if ld_window_step <= 0:
+            raise ValueError(f"ld_window_step must be > 0, got {ld_window_step}")
+        if not (0 < ld_threshold <= 1):
+            raise ValueError(f"ld_threshold must be in (0, 1], got {ld_threshold}")
+
         # Obtain biallelic SNP calls with thinning applied first.
         ds_snps = self.biallelic_snp_calls(
             region=region,
@@ -97,6 +116,13 @@ class AnophelesLdAnalysis(
                 size=ld_window_size,
                 step=ld_window_step,
                 threshold=ld_threshold,
+            )
+
+        # Guard against empty result.
+        if not np.any(loc_unlinked):
+            raise ValueError(
+                "LD pruning removed all variants. Consider using a less "
+                "stringent ld_threshold or providing more variants via n_snps."
             )
 
         # Apply the pruning mask.
