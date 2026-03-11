@@ -787,6 +787,17 @@ class AnophelesSampleMetadata(AnophelesBase):
             )
             df_samples = df_samples.reset_index(drop=True)
 
+            if len(df_samples) == 0:
+                import warnings
+                warnings.warn(
+                    f"No samples found for query {prepared_sample_query!r}. "
+                    "Note that string matching is case-sensitive. "
+                    "For example, use 'Uganda' not 'uganda'.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+
+
         # Apply the sample_indices, if there are any.
         # Note: this might need to apply to the result of an internal sample_query, e.g. `is_surveillance == True`.
         if sample_indices is not None:
