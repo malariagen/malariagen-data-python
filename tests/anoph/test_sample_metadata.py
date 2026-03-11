@@ -1465,3 +1465,10 @@ def test_cohort_data(fixture, api):
     df_cohorts = api.cohorts(cohort_name)
     # Check output.
     validate_cohort_data(df_cohorts, cohort_data_expected_columns())
+
+
+@parametrize_with_cases('fixture,api', cases='.')
+def test_sample_metadata_case_sensitive_warning(fixture, api: AnophelesSampleMetadata):
+    with pytest.warns(UserWarning, match='case-sensitive'):
+        df = api.sample_metadata(sample_query="country == 'uganda'")
+    assert len(df) == 0
