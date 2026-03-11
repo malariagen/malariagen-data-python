@@ -780,11 +780,11 @@ class AnophelesSampleMetadata(AnophelesBase):
         # Note: this might have been internally modified, e.g. `is_surveillance == True`.
         if prepared_sample_query is not None:
             # Assume a pandas query string.
-            sample_query_options = sample_query_options or {}
-            # Use the python engine in order to support extension array dtypes, e.g. Float64, Int64, boolean.
-            df_samples = df_samples.query(
-                prepared_sample_query, **sample_query_options, engine="python"
+            sample_query_options = self._prep_sample_query_options(
+                sample_query_options=sample_query_options
             )
+            # Use the python engine in order to support extension array dtypes, e.g. Float64, Int64, boolean.
+            df_samples = df_samples.query(prepared_sample_query, **sample_query_options)
             df_samples = df_samples.reset_index(drop=True)
 
         # Apply the sample_indices, if there are any.
@@ -1115,14 +1115,16 @@ class AnophelesSampleMetadata(AnophelesBase):
             df_samples = self.sample_metadata(sample_sets=prepared_sample_sets)
 
             # Default the sample_query_options to an empty dict.
-            sample_query_options = sample_query_options or {}
+            sample_query_options = self._prep_sample_query_options(
+                sample_query_options=sample_query_options
+            )
 
             # Use the python engine in order to support extension array dtypes, e.g. Float64, Int64, boolean.
             # Get the Pandas Series as a NumPy array of Boolean values.
             # Note: if `prepared_sample_query` is an internal query, this will select all samples,
             # since `sample_metadata` should have already applied the internal query.
             loc_samples = df_samples.eval(
-                prepared_sample_query, **sample_query_options, engine="python"
+                prepared_sample_query, **sample_query_options
             ).values
 
             # Convert the sample indices to a list.
@@ -1459,7 +1461,9 @@ class AnophelesSampleMetadata(AnophelesBase):
         cohort_queries_checked = dict()
         for cohort_label, cohort_query in cohort_queries.items():
             df_cohort_samples = self.sample_metadata(
-                sample_sets=sample_sets, sample_query=cohort_query
+                sample_sets=sample_sets,
+                sample_query=cohort_query,
+                sample_query_options=sample_query_options,
             )
             n_samples = len(df_cohort_samples)
             if min_cohort_size is not None:
