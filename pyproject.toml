@@ -117,5 +117,20 @@ follow_imports = "skip"
 
 [dependency-groups]
 dev = [
-    "pytest-cases (>=3.10.1,<4.0.0)"
+    "pytest-cases",
+    "pytest",
+    "pytest-mock",
+    "pytest-xdist",
+    "pytest-cov",
+    "notebook",
+    "jupyterlab",
+    "pre-commit",
+    "ruff",
+    "snakeviz",
+    "mypy",
+    "memory-profiler",
+    "sphinx",
+    "pydata-sphinx-theme",
+    "sphinx_design",
+    "pandas-stubs"
 ]
