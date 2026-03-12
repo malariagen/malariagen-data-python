@@ -702,6 +702,17 @@ class AnophelesSampleMetadata(AnophelesBase):
     @doc(
         summary="Access sample metadata for one or more sample sets.",
         returns="A dataframe of sample metadata, one row per sample.",
+        notes="""
+            Some samples in the dataset are lab crosses — mosquitoes bred in
+            the laboratory that have no real collection date. These samples
+            use ``year=-1`` and ``month=-1`` as sentinel values. They may
+            cause unexpected results in date-based analyses (e.g.,
+            ``pd.to_datetime`` will fail on negative year values).
+
+            To exclude lab cross samples, use::
+
+                df = api.sample_metadata(sample_query="year >= 0")
+        """,
     )
     def sample_metadata(
         self,
