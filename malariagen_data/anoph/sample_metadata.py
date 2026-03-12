@@ -1,4 +1,5 @@
 import io
+import re
 from itertools import cycle
 from typing import (
     Any,
@@ -781,11 +782,47 @@ class AnophelesSampleMetadata(AnophelesBase):
         if prepared_sample_query is not None:
             # Assume a pandas query string.
             sample_query_options = sample_query_options or {}
+
+            # Save a reference to the pre-query DataFrame so we can detect
+            # zero-result queries and provide a helpful warning.
+            df_before_query = df_samples
+
             # Use the python engine in order to support extension array dtypes, e.g. Float64, Int64, boolean.
             df_samples = df_samples.query(
                 prepared_sample_query, **sample_query_options, engine="python"
             )
             df_samples = df_samples.reset_index(drop=True)
+
+            # Warn if query returned zero results on a non-empty dataset.
+            # This helps users catch case-sensitivity issues in string queries,
+            # e.g. "country == 'uganda'" instead of "country == 'Uganda'".
+            if len(df_samples) == 0 and len(df_before_query) > 0:
+                # Extract column names from comparison expressions in the query.
+                # Match patterns like: column == 'value' or column == "value"
+                referenced_cols = re.findall(
+                    r"\b(\w+)\s*[=!<>]+\s*['\"]" , prepared_sample_query
+                )
+
+                hint_lines = [
+                    f"sample_metadata() returned 0 samples for the given "
+                    f"query: {prepared_sample_query!r}.",
+                    "Note: string comparisons in sample_query are "
+                    "case-sensitive.",
+                ]
+                # For each referenced string column, list valid values.
+                for col in dict.fromkeys(referenced_cols):  # deduplicate
+                    if (
+                        col in df_before_query.columns
+                        and df_before_query[col].dtype == object
+                    ):
+                        valid_vals = sorted(
+                            df_before_query[col].dropna().unique().tolist()
+                        )
+                        hint_lines.append(
+                            f"Valid values for column {col!r}: {valid_vals}"
+                        )
+
+                warnings.warn("\n".join(hint_lines), UserWarning, stacklevel=2)
 
         # Apply the sample_indices, if there are any.
         # Note: this might need to apply to the result of an internal sample_query, e.g. `is_surveillance == True`.

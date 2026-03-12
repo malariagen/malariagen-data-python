@@ -1465,3 +1465,48 @@ def test_cohort_data(fixture, api):
     df_cohorts = api.cohorts(cohort_name)
     # Check output.
     validate_cohort_data(df_cohorts, cohort_data_expected_columns())
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_sample_metadata_warns_on_case_mismatch(fixture, api: AnophelesSampleMetadata):
+    """Test that a UserWarning is raised when a case-mismatched query returns 0 results.
+
+    Regression test for https://github.com/malariagen/malariagen-data-python/issues/1083
+    """
+    # Get a valid country name from the metadata so we can construct
+    # a deliberately wrong-cased query.
+    df_all = api.sample_metadata()
+    if "country" not in df_all.columns or df_all["country"].dropna().empty:
+        pytest.skip("No 'country' column with data in this fixture.")
+
+    # Pick an actual country value and change its case.
+    real_country = df_all["country"].dropna().iloc[0]
+    wrong_case_country = real_country.lower()
+    # If lowercasing didn't actually change the string, use upper instead.
+    if wrong_case_country == real_country:
+        wrong_case_country = real_country.upper()
+
+    # The wrong-cased query should emit a UserWarning mentioning "case-sensitive".
+    with pytest.warns(UserWarning, match="case-sensitive"):
+        df = api.sample_metadata(sample_query=f"country == '{wrong_case_country}'")
+    assert len(df) == 0
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_sample_metadata_no_warning_on_valid_query(
+    fixture, api: AnophelesSampleMetadata
+):
+    """Test that no spurious warning is emitted when a valid query returns results."""
+    df_all = api.sample_metadata()
+    if "country" not in df_all.columns or df_all["country"].dropna().empty:
+        pytest.skip("No 'country' column with data in this fixture.")
+
+    real_country = df_all["country"].dropna().iloc[0]
+
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", UserWarning)
+        df = api.sample_metadata(sample_query=f"country == '{real_country}'")
+    assert len(df) > 0
+

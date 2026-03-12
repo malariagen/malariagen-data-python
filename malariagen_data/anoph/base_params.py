@@ -69,7 +69,11 @@ sample_query: TypeAlias = Annotated[
     str,
     """
     A pandas query string to be evaluated against the sample metadata, to
-    select samples to be included in the returned data.
+    select samples to be included in the returned data. E.g.,
+    "country == 'Uganda'". Note: string comparisons are case-sensitive —
+    column values must match the exact casing stored in the metadata
+    (e.g., "Uganda" not "uganda"). A warning will be emitted if the query
+    returns zero results.
     """,
 ]
 
