@@ -702,6 +702,36 @@ class AnophelesSampleMetadata(AnophelesBase):
     @doc(
         summary="Access sample metadata for one or more sample sets.",
         returns="A dataframe of sample metadata, one row per sample.",
+        notes="""
+        **Sentinel values for lab crosses**
+
+        Some samples in the dataset are lab crosses — laboratory-bred specimens
+        that do not have a real collection date. These samples use sentinel
+        values of ``-1`` for the ``year`` and ``month`` columns to indicate
+        that no collection date is available, rather than leaving the fields
+        null.
+
+        This convention has two practical consequences for users:
+
+        1. **Date conversion will fail silently or raise an error.** Passing
+           the ``year`` column directly to :func:`pandas.to_datetime` (e.g.,
+           ``pd.to_datetime(df["year"].astype(str) + "-01-01")``) will raise
+           a ``ValueError`` with no indication that ``-1`` values are the
+           cause.
+
+        2. **Plots along a time axis will be distorted.** The ``-1`` values
+           will appear at the far left of any x-axis that treats ``year`` as
+           numeric, producing an artefact that is easy to miss.
+
+        To exclude lab crosses before working with date fields, filter on
+        ``year >= 0``::
+
+            df = ag3.sample_metadata()
+            df_field = df.query("year >= 0")
+
+        Alternatively, restrict to specific field sample sets via the
+        ``sample_sets`` parameter.
+        """,
     )
     def sample_metadata(
         self,
