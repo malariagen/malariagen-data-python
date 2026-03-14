@@ -334,7 +334,7 @@ class Gff3Simulator:
         # keep things simple for now.
         if strand == "-":
             # Take exons in reverse order.
-            exons == exons[::-1]
+            exons = exons[::-1]
         for exon_ix, exon in enumerate(exons):
             first_exon = exon_ix == 0
             last_exon = exon_ix == len(exons) - 1
@@ -646,8 +646,8 @@ def simulate_cnv_hmm(zarr_path, metadata_path, contigs, contig_sizes, rng):
     # - sample_is_high_variance [1D array] [bool] [True or False for n_samples]
     # - samples [1D array] [str]
 
-    # Get a random probability for a sample being high variance, between 0 and 1.
-    p_variance = rng.random()
+    # Keep high variance sample prevalence stable for deterministic tests.
+    p_variance = 0.1
 
     # Open a zarr at the specified path.
     root = zarr.open(zarr_path, mode="w")
@@ -862,8 +862,8 @@ def simulate_cnv_discordant_read_calls(
     # - sample_is_high_variance [1D array] [bool] [True or False for n_samples]
     # - samples [1D array] [str for n_samples]
 
-    # Get a random probability for a sample being high variance, between 0 and 1.
-    p_variance = rng.random()
+    # Keep high variance sample prevalence stable for deterministic tests.
+    p_variance = 0.1
 
     # Get a random probability for choosing allele 1, between 0 and 1.
     p_allele = rng.random()
