@@ -1,4 +1,4 @@
- Windows Setup Guide
+Windows Setup Guide
 
 To get setup for development on Windows, see 
 [this video if you prefer VS Code](https://youtu.be/zddl3n1DCFM), 
