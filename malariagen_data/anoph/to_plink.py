@@ -1,4 +1,6 @@
-from typing import Optional
+import hashlib
+import json
+from typing import Any, Optional, Sequence
 
 import allel  # type: ignore
 import numpy as np
@@ -11,6 +13,36 @@ from . import base_params
 from . import plink_params
 from . import pca_params
 from numpydoc_decorator import doc  # type: ignore
+
+
+def _compute_plink_selection_hash(
+    region: Any,
+    n_snps: int,
+    min_minor_ac: Any,
+    max_missing_an: Any,
+    thin_offset: int,
+    site_mask: Optional[str],
+    sample_sets: Any,
+    sample_query: Optional[str],
+    sample_query_options: Optional[dict],
+    sample_indices: Optional[Sequence[int]],
+    random_seed: int,
+) -> str:
+    signature = {
+        "region": region,
+        "n_snps": n_snps,
+        "min_minor_ac": min_minor_ac,
+        "max_missing_an": max_missing_an,
+        "thin_offset": thin_offset,
+        "site_mask": site_mask,
+        "sample_sets": sorted(sample_sets) if sample_sets is not None else None,
+        "sample_query": sample_query,
+        "sample_query_options": sample_query_options or {},
+        "sample_indices": list(sample_indices) if sample_indices is not None else None,
+        "random_seed": random_seed,
+    }
+    payload = json.dumps(signature, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode()).hexdigest()[:10]
 
 
 class PlinkConverter(
@@ -76,7 +108,20 @@ class PlinkConverter(
         )
 
         # Define output files
-        plink_file_path = f"{output_dir}/{region}.{n_snps}.{min_minor_ac}.{max_missing_an}.{thin_offset}"
+        digest = _compute_plink_selection_hash(
+            region=region,
+            n_snps=n_snps,
+            min_minor_ac=min_minor_ac,
+            max_missing_an=max_missing_an,
+            thin_offset=thin_offset,
+            site_mask=site_mask,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            sample_indices=sample_indices,
+            random_seed=random_seed,
+        )
+        plink_file_path = f"{output_dir}/{region}.{n_snps}.{min_minor_ac}.{max_missing_an}.{thin_offset}.{digest}"
 
         bed_file_path = f"{plink_file_path}.bed"
 
