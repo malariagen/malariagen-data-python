@@ -5,7 +5,7 @@ import numpy as np
 import os
 import bed_reader
 
-from ..util import _dask_compress_dataset
+from ..util import _dask_compress_dataset, _hash_params
 from .snp_data import AnophelesSnpData
 from . import base_params
 from . import plink_params
@@ -75,8 +75,25 @@ class PlinkConverter(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
+        # Include a compact hash for selection parameters that affect output
+        # content but are not suitable to place directly in the filename.
+        params_hash, _ = _hash_params(
+            dict(
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                sample_query_options=sample_query_options,
+                sample_indices=sample_indices,
+                site_mask=site_mask,
+                random_seed=random_seed,
+            )
+        )
+        params_hash_short = params_hash[:8]
+
         # Define output files
-        plink_file_path = f"{output_dir}/{region}.{n_snps}.{min_minor_ac}.{max_missing_an}.{thin_offset}"
+        plink_file_path = (
+            f"{output_dir}/{region}.{n_snps}.{min_minor_ac}.{max_missing_an}"
+            f".{thin_offset}.{params_hash_short}"
+        )
 
         bed_file_path = f"{plink_file_path}.bed"
 
