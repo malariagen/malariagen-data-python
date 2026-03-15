@@ -373,7 +373,7 @@
 <h1>malariagen_data.amin1.Amin1.cohorts<a class="headerlink" href="#malariagen-data-amin1-amin1-cohorts" title="Link to this heading">#</a></h1>
 <dl class="py method">
 <dt class="sig sig-object py" id="malariagen_data.amin1.Amin1.cohorts">
-<span class="sig-prename descclassname"><span class="pre">Amin1.</span></span><span class="sig-name descname"><span class="pre">cohorts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cohort_set</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#malariagen_data.amin1.Amin1.cohorts" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">Amin1.</span></span><span class="sig-name descname"><span class="pre">cohorts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cohort_set</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#malariagen_data.amin1.Amin1.cohorts" title="Link to this definition">#</a></dt>
 <dd><p>Read data for a specific cohort set, including cohort size, country
 code, taxon, administrative units name, ISO code, geoBoundaries shape ID
 and representative latitude and longitude points.</p>
@@ -383,6 +383,9 @@ and representative latitude and longitude points.</p>
 <dt>cohort_set<span class="classifier">str or Mapping[str, str]</span></dt><dd><p>A cohort set name. Accepted values are: “admin1_month”,
 “admin1_quarter”, “admin1_year”, “admin2_month”, “admin2_quarter”,
 “admin2_year”.</p>
+</dd>
+<dt>query<span class="classifier">str or None, optional</span></dt><dd><p>An optional pandas query string to filter the resulting dataframe,
+e.g., “country == ‘Burkina Faso’”.</p>
 </dd>
 </dl>
 </section>
