@@ -821,7 +821,9 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         schema = {}
         for col in df_samples.columns:
-            if pd.api.types.is_string_dtype(df_samples[col]) or pd.api.types.is_object_dtype(df_samples[col]):
+            if pd.api.types.is_string_dtype(
+                df_samples[col]
+            ) or pd.api.types.is_object_dtype(df_samples[col]):
                 unique_vals = df_samples[col].dropna().unique().tolist()
                 if len(unique_vals) <= 100:
                     schema[col] = {"type": "categorical", "values": unique_vals}
@@ -832,9 +834,9 @@ class AnophelesSampleMetadata(AnophelesBase):
                 max_val = df_samples[col].max()
                 if pd.notna(min_val) and pd.notna(max_val):
                     schema[col] = {
-                        "type": "numeric", 
-                        "min": min_val.item() if hasattr(min_val, "item") else min_val, 
-                        "max": max_val.item() if hasattr(max_val, "item") else max_val
+                        "type": "numeric",
+                        "min": min_val.item() if hasattr(min_val, "item") else min_val,
+                        "max": max_val.item() if hasattr(max_val, "item") else max_val,
                     }
                 else:
                     schema[col] = {"type": "numeric"}
