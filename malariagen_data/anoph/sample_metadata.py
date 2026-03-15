@@ -1,4 +1,5 @@
 import io
+import json
 from itertools import cycle
 from typing import (
     Any,
@@ -81,6 +82,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         # Initialize cache attributes.
         self._cache_sample_metadata: Dict = dict()
+        self._cache_cohort_geometries: Dict = dict()
 
     def _metadata_paths(
         self,
@@ -1621,6 +1623,59 @@ class AnophelesSampleMetadata(AnophelesBase):
         df_cohorts.columns = [c.lower() for c in df_cohorts.columns]  # type: ignore
 
         return df_cohorts
+
+    @_check_types
+    @doc(
+        summary="""
+            Read GeoJSON geometry data for a specific cohort set,
+            providing boundary geometries for each cohort.
+        """,
+        parameters=dict(
+            cohort_set="""
+                A cohort set name. Accepted values are:
+                "admin1_month", "admin1_quarter", "admin1_year",
+                "admin2_month", "admin2_quarter", "admin2_year".
+            """,
+        ),
+        returns="""
+            A dict containing the parsed GeoJSON FeatureCollection,
+            with boundary geometries for each cohort in the set.
+        """,
+    )
+    def cohort_geometries(
+        self,
+        cohort_set: base_params.cohorts,
+    ) -> dict:
+        valid_cohort_sets = {
+            "admin1_month",
+            "admin1_quarter",
+            "admin1_year",
+            "admin2_month",
+            "admin2_quarter",
+            "admin2_year",
+        }
+        if cohort_set not in valid_cohort_sets:
+            raise ValueError(
+                f"{cohort_set!r} is not a valid cohort set. "
+                f"Accepted values are: {sorted(valid_cohort_sets)}."
+            )
+
+        cohorts_analysis = self._cohorts_analysis
+
+        # Cache to avoid repeated reads.
+        cache_key = (cohorts_analysis, cohort_set)
+        try:
+            geojson_data = self._cache_cohort_geometries[cache_key]
+        except KeyError:
+            major_version_path = self._major_version_path
+            path = f"{major_version_path[:2]}_cohorts/cohorts_{cohorts_analysis}/cohorts_{cohort_set}.geojson"
+
+            with self.open_file(path) as f:
+                geojson_data = json.load(f)
+
+            self._cache_cohort_geometries[cache_key] = geojson_data
+
+        return geojson_data
 
     @_check_types
     @doc(
