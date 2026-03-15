@@ -709,30 +709,90 @@ class AnophelesSampleMetadata(AnophelesBase):
             metadata.
         """,
         returns="""
-            A DataFrame with one row per sample. Columns include:
+            A pandas DataFrame with one row per sample. Columns are grouped
+            by metadata source:
 
-            - **sample_id** (*str*) - Unique sample identifier.
-            - **partner_sample_id** (*str*) - Sample ID assigned by the contributing partner.
-            - **contributor** (*str*) - Name of the contributing institution or individual.
-            - **country** (*str*) - Country where the sample was collected.
-            - **location** (*str*) - Specific collection location (e.g. village or site name).
-            - **year** (*int*) - Year of collection.
-            - **month** (*int*) - Month of collection, if available.
-            - **latitude** (*float*) - GPS latitude of the collection site.
-            - **longitude** (*float*) - GPS longitude of the collection site.
-            - **sex_call** (*str*) - Sex determination call; ``'F'`` for female, ``'M'`` for male.
-            - **taxon** (*str*) - Species or taxon assignment.
-            - **mean_cov** (*float*) - Mean sequencing coverage across the genome.
-            - **median_cov** (*float*) - Median sequencing coverage.
-            - **frac_reads_mapped** (*float*) - Fraction of reads mapped to the reference genome.
-            - **contam_pct** (*float*) - Estimated contamination percentage.
-            - **pass_qc** (*bool*) - Whether the sample passed quality control filters.
-            - **cohort_admin1_year** (*str*) - Cohort label combining admin level 1 region and year (if available).
-            - **cohort_admin2_year** (*str*) - Cohort label combining admin level 2 region and year (if available).
-            - **aim_species** (*str*) - Species assignment from ancestry-informative markers (if available).
+            **General metadata** (present for all sample sets):
 
-            The returned DataFrame is a copy and can be safely modified
-            without affecting internal caches.
+            - ``sample_id`` - Unique identifier for the sample.
+            - ``partner_sample_id`` - Sample ID used by the contributing partner.
+            - ``contributor`` - Name of the contributing institution or individual.
+            - ``country`` - Country where the sample was collected.
+            - ``location`` - Specific collection site (e.g., village or site name).
+            - ``year`` - Year of collection.
+            - ``month`` - Month of collection.
+            - ``quarter`` - Quarter of the year derived from month (1–4; -1 if missing).
+            - ``latitude`` - GPS latitude of the collection site.
+            - ``longitude`` - GPS longitude of the collection site.
+            - ``sex_call`` - Sex determination call; ``'F'`` for female, ``'M'`` for male.
+            - ``sample_set`` - Sample set containing the sample.
+            - ``release`` - Data release containing the sample.
+            - ``study_id`` - Identifier of the study the sample set belongs to.
+            - ``study_url`` - URL of the study the sample set belongs to.
+            - ``terms_of_use_expiry_date`` - Expiry date of terms of use for the sample.
+            - ``terms_of_use_url`` - URL of the terms of use for the sample.
+            - ``unrestricted_use`` - Whether the sample can be used without restrictions.
+
+            **Sequence QC metadata**:
+
+            - ``mean_cov`` - Mean sequencing coverage across the genome.
+            - ``median_cov`` - Median sequencing coverage across the genome.
+            - ``modal_cov`` - Modal (most frequent) sequencing coverage.
+            - ``mean_cov_2L`` - Mean coverage on chromosome arm 2L.
+            - ``median_cov_2L`` - Median coverage on chromosome arm 2L.
+            - ``mode_cov_2L`` - Modal coverage on chromosome arm 2L.
+            - ``mean_cov_2R`` - Mean coverage on chromosome arm 2R.
+            - ``median_cov_2R`` - Median coverage on chromosome arm 2R.
+            - ``mode_cov_2R`` - Modal coverage on chromosome arm 2R.
+            - ``mean_cov_3L`` - Mean coverage on chromosome arm 3L.
+            - ``median_cov_3L`` - Median coverage on chromosome arm 3L.
+            - ``mode_cov_3L`` - Modal coverage on chromosome arm 3L.
+            - ``mean_cov_3R`` - Mean coverage on chromosome arm 3R.=
+            - ``median_cov_3R`` - Median coverage on chromosome arm 3R.
+            - ``mode_cov_3R`` - Modal coverage on chromosome arm 3R.
+            - ``mean_cov_X`` - Mean coverage on chromosome X.
+            - ``median_cov_X`` - Median coverage on chromosome X.
+            - ``mode_cov_X`` - Modal coverage on chromosome X.
+            - ``frac_gen_cov`` - Fraction of the genome covered.
+            - ``divergence`` - Sequence divergence from the reference.
+            - ``contam_pct`` - Estimated contamination percentage.
+            - ``contam_LLR`` - Log-likelihood ratio for contamination estimate.
+
+            **Surveillance flags**:
+
+            - ``is_surveillance`` - Whether the sample can be used for surveillance.
+
+            **AIM (Ancestry-Informative Marker) metadata** (if available):
+
+            - ``aim_species_fraction_arab`` - Fraction of gambcolu vs. arabiensis AIMs
+              indicating arabiensis.
+            - ``aim_species_fraction_colu`` - Fraction of gambiae vs. coluzzii AIMs
+              indicating coluzzii.
+            - ``aim_species_fraction_colu_no2l`` - Fraction of gambiae vs. coluzzii AIMs
+              indicating coluzzii, excluding chromosome arm 2L.
+            - ``aim_species_gambcolu_arabiensis`` - Taxon assigned by gambcolu vs.
+              arabiensis AIMs.
+            - ``aim_species_gambiae_coluzzii`` - Taxon assigned by gambiae vs.
+              coluzzii AIMs.
+            - ``aim_species`` - Final species assignment combining both AIM analyses.
+
+            **Cohort metadata** (if available):
+
+            - ``country_iso`` - ISO code of the country of collection.
+            - ``admin1_name`` - Name of the first-level administrative region.
+            - ``admin1_iso`` - ISO code of the first-level administrative region.
+            - ``admin2_name`` - Name of the second-level administrative region.
+            - ``taxon`` - Taxon assigned by combining AIM and cohort analyses.
+            - ``cohort_admin1_year`` - Cohort grouping by admin level 1 and year.
+            - ``cohort_admin1_month`` - Cohort grouping by admin level 1 and month.
+            - ``cohort_admin1_quarter`` - Cohort grouping by admin level 1 and quarter.
+            - ``cohort_admin2_year`` - Cohort grouping by admin level 2 and year.
+            - ``cohort_admin2_month`` - Cohort grouping by admin level 2 and month.
+            - ``cohort_admin2_quarter`` - Cohort grouping by admin level 2 and quarter.
+
+            The exact columns present depend on the sample sets requested and
+            which analyses are available. The returned DataFrame is a copy and
+            can be safely modified without affecting internal caches.
         """,
     )
     def sample_metadata(
