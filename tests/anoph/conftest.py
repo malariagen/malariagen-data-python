@@ -1426,6 +1426,29 @@ class Ag3Simulator(AnophelesSimulator):
                 for line in src.readlines()[:5]:
                     print(line, file=dst)
 
+            # Copy cohort GeoJSON fixtures.
+            geojson_files = [
+                "cohorts_admin1_month.geojson",
+                "cohorts_admin1_year.geojson",
+            ]
+            for geojson_file in geojson_files:
+                src_path = (
+                    self.fixture_dir
+                    / "vo_agam_release_master_us_central1"
+                    / "v3_cohorts"
+                    / "cohorts_20230516"
+                    / geojson_file
+                )
+                if src_path.exists():
+                    dst_path = (
+                        self.bucket_path
+                        / "v3_cohorts"
+                        / "cohorts_20230516"
+                        / geojson_file
+                    )
+                    dst_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(src_path, dst_path)
+
         # Create data catalog by sampling from some real metadata files.
         src_path = (
             self.fixture_dir

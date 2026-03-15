@@ -1,0 +1,29 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "cohort_id": "AO-LUA_colu_2009",
+        "admin1_name": "Luanda",
+        "admin1_iso": "AO-LUA"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[13.0, -10.0], [14.0, -10.0], [14.0, -9.0], [13.0, -9.0], [13.0, -10.0]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "cohort_id": "BF-01_arab_2008",
+        "admin1_name": "Boucle du Mouhoun",
+        "admin1_iso": "BF-01"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[-4.5, 12.0], [-3.5, 12.0], [-3.5, 13.0], [-4.5, 13.0], [-4.5, 12.0]]]
+      }
+    }
+  ]
+}
