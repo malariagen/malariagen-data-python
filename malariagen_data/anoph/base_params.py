@@ -1,4 +1,6 @@
 """General parameters common to many functions in the public API."""
+import zarr
+import numpy as np
 
 from typing import Final, List, Mapping, Optional, Sequence, Tuple, Union
 
@@ -307,4 +309,18 @@ snp_query: TypeAlias = Annotated[
     A pandas query string to be evaluated against the SNP data,
     to select SNPs to be included
     """,
+]
+
+zarr_group: TypeAlias = Annotated[
+    zarr.hierarchy.Group,
+    """
+    A Zarr hierarchy group object used for caching loaded arrays
+    """
+]
+
+numpy_ndarray: TypeAlias = Annotated[
+    np.ndarray,
+    """
+    A numpy multi-dimensional array
+    """
 ]
