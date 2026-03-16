@@ -723,7 +723,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             - ``location`` - Specific collection site (e.g., village or site name).
             - ``year`` - Year of collection.
             - ``month`` - Month of collection.
-            - ``quarter`` - Quarter of the year derived from month (1–4; -1 if missing).
+            - ``quarter`` - Quarter of the year derived from month (1–4).
             - ``latitude`` - GPS latitude of the collection site.
             - ``longitude`` - GPS longitude of the collection site.
             - ``sex_call`` - Sex determination call; ``'F'`` for female, ``'M'`` for male.
