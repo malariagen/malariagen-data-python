@@ -862,14 +862,40 @@ def _value_error(
 
 
 def _hash_params(params):
-    """Helper function to hash function parameters."""
+    """Hash function parameters to a compact identifier for caching.
+
+    Parameters
+    ----------
+    params : dict
+        Dictionary of function parameters to hash.
+
+    Returns
+    -------
+    h : str
+        MD5 hex digest of the serialised parameters.
+    s : str
+        JSON string representation of the parameters.
+    """
     s = json.dumps(params, sort_keys=True, indent=4)
     h = hashlib.md5(s.encode()).hexdigest()
     return h, s
 
 
 def _jitter(a, fraction):
-    """Jitter data in `a` using the fraction `f`."""
+    """Jitter data by adding random noise scaled to the data range.
+
+    Parameters
+    ----------
+    a : ndarray
+        Array of values to jitter.
+    fraction : float
+        Fraction of the data range to use as the noise scale.
+
+    Returns
+    -------
+    ndarray
+        Jittered array with same shape as input.
+    """
     r = a.max() - a.min()
     return a + fraction * np.random.uniform(-r, r, a.shape)
 
@@ -1581,8 +1607,22 @@ def _hash_columns(x):
 
 
 def _haplotype_frequencies(h):
-    """Compute haplotype frequencies, returning a dictionary that maps
-    haplotype hash values to frequencies."""
+    """Compute haplotype frequencies from a haplotype array.
+
+    Parameters
+    ----------
+    h : array-like
+        2D array of haplotypes with shape (n_variants, n_samples).
+
+    Returns
+    -------
+    freqs : dict
+        Mapping of haplotype hash to frequency.
+    counts : dict
+        Mapping of haplotype hash to count.
+    nobs : dict
+        Mapping of haplotype hash to total number of observations.
+    """
     n = h.shape[1]
     hashes = _hash_columns(np.asarray(h))
     count = Counter(hashes)
