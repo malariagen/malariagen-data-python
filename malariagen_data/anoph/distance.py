@@ -1,5 +1,5 @@
 # Standard library imports.
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 import math
 
 # Third-party library imports.
@@ -86,7 +86,12 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         summary="""
             Compute pairwise distances between samples using biallelic SNP genotypes.
         """,
-        returns=("dist", "samples", "n_snps_used"),
+        returns="""
+            If `return_dataset` is False (default), return a tuple
+            `(dist, samples, n_snps_used)`. If `return_dataset` is True,
+            return an xarray Dataset with `dist`, `sample_id`, and
+            `n_snps_used` as variables/coordinates.
+        """,
     )
     def biallelic_diplotype_pairwise_distances(
         self,
@@ -108,22 +113,14 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         random_seed: base_params.random_seed = 42,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
-    ) -> Tuple[
-        distance_params.dist, distance_params.samples, distance_params.n_snps_used
-    ]:
-        # Change this name if you ever change the behaviour of this function, to
-        # invalidate any previously cached data.
+        return_dataset: base_params.return_dataset = False,
+    ) -> Any:
         name = "biallelic_diplotype_pairwise_distances"
 
-        # Check that either sample_query xor sample_indices are provided.
         base_params._validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
-        ## Normalize params for consistent hash value.
-
-        # Note: `_prep_sample_selection_cache_params` converts `sample_query` and `sample_query_options` into `sample_indices`.
-        # So `sample_query` and `sample_query_options` should not be used beyond this point. (`sample_indices` should be used instead.)
         (
             sample_sets_prepped,
             sample_indices_prepped,
@@ -158,7 +155,6 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
             max_missing_an=max_missing_an,
         )
 
-        # Try to retrieve results from the cache.
         try:
             results = self.results_cache_get(name=name, params=params)
 
@@ -168,10 +164,25 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
             )
             self.results_cache_set(name=name, params=params, results=results)
 
-        # Unpack results.
         dist: np.ndarray = results["dist"]
         samples: np.ndarray = results["samples"]
-        n_snps_used: int = int(results["n_snps"][()])  # ensure scalar
+        n_snps_used: int = int(results["n_snps"][()])
+
+        if return_dataset:
+            import xarray as xr
+            from scipy.spatial.distance import squareform
+
+            dist_square = squareform(dist)
+            ds = xr.Dataset(
+                data_vars={
+                    "dist": (("sample_x", "sample_y"), dist_square),
+                },
+                coords={
+                    "sample_id": ("sample_x", samples),
+                },
+                attrs={"n_snps_used": n_snps_used},
+            )
+            return ds
 
         return dist, samples, n_snps_used
 
@@ -195,7 +206,7 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         max_missing_an,
     ):
         # Compute diplotypes.
-        gn, samples = self.biallelic_diplotypes(
+        ds = self.biallelic_diplotypes(
             region=region,
             sample_sets=sample_sets,
             sample_indices=sample_indices,
@@ -211,7 +222,10 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
             min_minor_ac=min_minor_ac,
             n_snps=n_snps,
             thin_offset=thin_offset,
+            return_dataset=True,
         )
+        gn = ds["call_diplotype"].values
+        samples = ds["sample_id"].values.astype("U")
 
         # Record number of SNPs used.
         n_snps = gn.shape[0]

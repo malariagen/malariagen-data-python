@@ -1089,6 +1089,19 @@ def check_snp_allele_counts(
     )
     assert_array_equal(ac, ac2)
 
+    # Check dataset return mode.
+    ds_ac = api.snp_allele_counts(
+        region=region,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        sample_query_options=sample_query_options,
+        site_mask=site_mask,
+        return_dataset=True,
+    )
+    assert isinstance(ds_ac, xr.Dataset)
+    assert "variant_allele_count" in ds_ac
+    assert_array_equal(ds_ac["variant_allele_count"].values, ac)
+
 
 @parametrize_with_cases(
     "fixture,api", cases=".", filter=~ft.has_tag("single-sampleset")
@@ -1395,6 +1408,22 @@ def check_biallelic_snp_calls_and_diplotypes(
     assert samples.ndim == 1
     assert samples.shape[0] == gn.shape[1]
     assert samples.tolist() == expected_samples
+
+    # Check dataset return mode.
+    ds_gn = api.biallelic_diplotypes(
+        region=region,
+        sample_sets=sample_sets,
+        site_mask=site_mask,
+        site_class=site_class,
+        min_minor_ac=min_minor_ac,
+        max_missing_an=max_missing_an,
+        n_snps=n_snps,
+        return_dataset=True,
+    )
+    assert isinstance(ds_gn, xr.Dataset)
+    assert "call_diplotype" in ds_gn
+    assert_array_equal(ds_gn["call_diplotype"].values, gn)
+    assert ds_gn["sample_id"].values.tolist() == expected_samples
 
     return ds
 
