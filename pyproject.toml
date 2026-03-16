@@ -71,7 +71,7 @@ anjl = ">=1.2.0"
 # needed for plink output
 bed_reader = "*"
 
-# dev extras
+[tool.poetry.group.dev.dependencies]
 pytest = "*"
 pytest-mock = "*"
 pytest-xdist = "*"
@@ -89,9 +89,6 @@ sphinx = "*"
 pydata-sphinx-theme = "*"
 sphinx_design = "*"
 pandas-stubs = "*"
-
-[tool.poetry.extras]
-dev = ["pytest", "pytest-xdist", "pytest-cases", "pytest-cov", "notebook", "jupyterlab", "pre-commit", "ruff", "snakeviz", "mypy", "memory-profiler", "sphinx", "pydata-sphinx-theme", "sphinx_design", "pandas-stubs"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]

@@ -52,7 +52,7 @@ Both of these can be installed using your distribution's package manager or [Hom
 
    ```bash
    poetry env use 3.12
-   poetry install --extras dev
+   poetry install --with dev
    ```
 
    **Recommended**: Use `poetry run` to run commands inside the virtual environment:
