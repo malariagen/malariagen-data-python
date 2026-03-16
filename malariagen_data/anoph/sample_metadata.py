@@ -847,7 +847,7 @@ class AnophelesSampleMetadata(AnophelesBase):
                 schema[col] = {"type": "boolean", "values": [True, False]}
             else:
                 schema[col] = {"type": "other"}
-                
+
         return schema
 
     @_check_types
