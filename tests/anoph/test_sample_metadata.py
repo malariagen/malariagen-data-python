@@ -842,6 +842,28 @@ def test_sample_metadata_with_query(ag3_sim_api):
     assert (df["country"] == "Burkina Faso").all()
 
 
+def test_sample_metadata_with_query_options(ag3_sim_api):
+    df_all = ag3_sim_api.sample_metadata()
+    countries_list = sorted(df_all["country"].dropna().unique().tolist()[:2])
+    df = ag3_sim_api.sample_metadata(
+        sample_query="country in @countries_list",
+        sample_query_options={
+            "engine": "python",
+            "local_dict": {"countries_list": countries_list},
+        },
+    )
+    validate_metadata(
+        df,
+        sample_metadata_expected_columns(
+            has_aims=True,
+            has_cohorts_by_quarter=True,
+            has_sequence_qc=True,
+            ordered_contigs=sorted(ag3_sim_api.config["CONTIGS"]),
+        ),
+    )
+    assert sorted(df["country"].dropna().unique().tolist()) == countries_list
+
+
 def test_sample_metadata_with_indices(ag3_sim_api):
     df_all = ag3_sim_api.sample_metadata()
     query = "country == 'Burkina Faso'"
