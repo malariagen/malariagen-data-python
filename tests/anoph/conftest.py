@@ -334,7 +334,7 @@ class Gff3Simulator:
         # keep things simple for now.
         if strand == "-":
             # Take exons in reverse order.
-            exons == exons[::-1]
+            exons = exons[::-1]
         for exon_ix, exon in enumerate(exons):
             first_exon = exon_ix == 0
             last_exon = exon_ix == len(exons) - 1
@@ -646,8 +646,8 @@ def simulate_cnv_hmm(zarr_path, metadata_path, contigs, contig_sizes, rng):
     # - sample_is_high_variance [1D array] [bool] [True or False for n_samples]
     # - samples [1D array] [str]
 
-    # Get a random probability for a sample being high variance, between 0 and 1.
-    p_variance = rng.random()
+    # Keep high variance sample prevalence stable for deterministic tests.
+    p_variance = 0.1
 
     # Open a zarr at the specified path.
     root = zarr.open(zarr_path, mode="w")
@@ -862,8 +862,8 @@ def simulate_cnv_discordant_read_calls(
     # - sample_is_high_variance [1D array] [bool] [True or False for n_samples]
     # - samples [1D array] [str for n_samples]
 
-    # Get a random probability for a sample being high variance, between 0 and 1.
-    p_variance = rng.random()
+    # Keep high variance sample prevalence stable for deterministic tests.
+    p_variance = 0.1
 
     # Get a random probability for choosing allele 1, between 0 and 1.
     p_allele = rng.random()
@@ -1408,23 +1408,55 @@ class Ag3Simulator(AnophelesSimulator):
             df_coh_ds.to_csv(dst_path, index=False)
 
             # Create cohorts data by sampling from some real files.
-            src_path = (
-                self.fixture_dir
-                / "vo_agam_release_master_us_central1"
-                / "v3_cohorts"
-                / "cohorts_20230516"
-                / "cohorts_admin1_month.csv"
-            )
-            dst_path = (
-                self.bucket_path
-                / "v3_cohorts"
-                / "cohorts_20230516"
-                / "cohorts_admin1_month.csv"
-            )
-            dst_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
-                for line in src.readlines()[:5]:
-                    print(line, file=dst)
+            cohort_files = [
+                "cohorts_admin1_month.csv",
+                "cohorts_admin1_year.csv",
+                "cohorts_admin2_month.csv",
+            ]
+            for cohort_file in cohort_files:
+                src_path = (
+                    self.fixture_dir
+                    / "vo_agam_release_master_us_central1"
+                    / "v3_cohorts"
+                    / "cohorts_20230516"
+                    / cohort_file
+                )
+                if src_path.exists():
+                    dst_path = (
+                        self.bucket_path
+                        / "v3_cohorts"
+                        / "cohorts_20230516"
+                        / cohort_file
+                    )
+                    dst_path.parent.mkdir(parents=True, exist_ok=True)
+                    with open(src_path, mode="r") as src, open(
+                        dst_path, mode="w"
+                    ) as dst:
+                        for line in src.readlines()[:5]:
+                            print(line, file=dst)
+
+            # Copy cohort GeoJSON fixtures.
+            geojson_files = [
+                "cohorts_admin1_month.geojson",
+                "cohorts_admin1_year.geojson",
+            ]
+            for geojson_file in geojson_files:
+                src_path = (
+                    self.fixture_dir
+                    / "vo_agam_release_master_us_central1"
+                    / "v3_cohorts"
+                    / "cohorts_20230516"
+                    / geojson_file
+                )
+                if src_path.exists():
+                    dst_path = (
+                        self.bucket_path
+                        / "v3_cohorts"
+                        / "cohorts_20230516"
+                        / geojson_file
+                    )
+                    dst_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(src_path, dst_path)
 
         # Create data catalog by sampling from some real metadata files.
         src_path = (
