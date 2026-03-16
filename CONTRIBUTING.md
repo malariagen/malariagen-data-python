@@ -17,6 +17,11 @@ You'll need:
 
 Both of these can be installed using your distribution's package manager or [Homebrew](https://brew.sh/) on Mac.
 
+> **Windows note**
+>
+> On Windows, avoid cloning the repository into a folder path containing spaces (e.g., `C:\Users\me\One Last Try\...`).
+> Paths with spaces can lead to hard-to-debug quoting/escaping issues in some tools.
+
 ### Initial setup
 
 1. **Fork and clone the repository**
@@ -52,15 +57,30 @@ Both of these can be installed using your distribution's package manager or [Hom
 
    ```bash
    poetry env use 3.12
-   poetry install --extras dev
+   poetry install -E dev
+   ```
+
+   This should install development/test dependencies (including `pytest-cases`).
+   If you see errors like `ModuleNotFoundError: No module named 'pytest_cases'` when running tests, verify it is installed:
+
+   ```bash
+   poetry show pytest-cases
+   # or
+   poetry run python -c "import pytest_cases; print(pytest_cases.__version__)"
    ```
 
    **Recommended**: Use `poetry run` to run commands inside the virtual environment:
 
    ```bash
-   poetry run pytest
+   poetry run pytest --ignore=tests/integration
    poetry run python script.py
    ```
+
+   > **Integration tests**
+   >
+   > Some tests read data from Google Cloud Storage and require Google Application Default Credentials (ADC).
+   > If you do not have access configured, skip integration tests as shown above.
+   > See the "Run tests locally" section below for how to request access and configure ADC.
 
    **Optional**: If you prefer an interactive shell session, install the shell plugin first:
 
@@ -74,10 +94,17 @@ Both of these can be installed using your distribution's package manager or [Hom
    poetry shell
    ```
 
+   Note: depending on your shell and OS, your prompt may not visibly change after `poetry shell`.
+   To confirm you're using Poetry's environment, run:
+
+   ```bash
+   python -c "import sys; print(sys.executable)"
+   ```
+
    After activation, commands run directly inside the virtual environment:
 
    ```bash
-   pytest
+   pytest --ignore=tests/integration
    python script.py
    ```
 
