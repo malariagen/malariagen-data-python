@@ -356,8 +356,6 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
             effect = base_effect._replace(effect="STOP_GAINED", impact="HIGH")
 
         else:
-            # TODO NON_SYNONYMOUS_START and NON_SYNONYMOUS_STOP
-
             # variant causes a codon that produces a different amino acid
             # e.g.: Tgg/Cgg, W/R
             effect = base_effect._replace(
@@ -426,10 +424,8 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
             effect = base_effect._replace(effect="CODON_CHANGE", impact="MODERATE")
 
         else:
-            # TODO in-frame complex variation (MNP + INDEL)
-            effect = base_effect._replace(
-                effect="TODO in-frame complex variation (MNP + INDEL)", impact="UNKNOWN"
-            )
+            # FIX 1: In-frame complex variation (simultaneous MNP + INDEL).
+            effect = base_effect._replace(effect="COMPLEX_CHANGE", impact="MODERATE")
 
     return effect
 
@@ -575,10 +571,10 @@ def _get_within_intron_effect(base_effect, intron):
     alt = base_effect.alt
     intron_start, intron_stop = intron
     strand = base_effect.strand
+
     if strand == "+":
         intron_5prime_dist = ref_start - (intron_start - 1)
         intron_3prime_dist = ref_stop - (intron_stop + 1)
-
     else:
         intron_5prime_dist = (intron_stop + 1) - ref_stop
         intron_3prime_dist = (intron_start - 1) - ref_start
@@ -601,7 +597,7 @@ def _get_within_intron_effect(base_effect, intron):
             effect = base_effect._replace(effect="INTRONIC", impact="MODIFIER")
 
     else:
-        # INDELs and MNPs — use the closest edge of the variant to the splice site
+        # INDELs and MNPs
         if strand == "+":
             dist_5prime = ref_start - (intron_start - 1)
             dist_3prime = -(ref_stop - (intron_stop + 1))
