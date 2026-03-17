@@ -790,6 +790,7 @@ class AnophelesHapClustAnalysis(
         cohort_col,
         chunks,
         inline_array,
+        metric="unique",
     ):
         """
         Computes the number of identical haplotypes shared between cohorts
@@ -852,14 +853,26 @@ class AnophelesHapClustAnalysis(
 
         for s in ht_distinct_sets:
             indices = list(s)
-            cohorts_in_set = set(cohort_labels[indices])
-            cohorts_in_set.discard(None)
-            cohorts_in_set = [c for c in cohorts_in_set if pd.notna(c)]
-            # Increment the symmetric matrix for every unique pair of cohorts in this group
-            for i, c1 in enumerate(cohorts_in_set):
-                for c2 in cohorts_in_set[i + 1 :]:
-                    sharing_matrix.loc[c1, c2] += 1
-                    sharing_matrix.loc[c2, c1] += 1
+            labels_in_group = cohort_labels[indices]
+
+            if metric == "unique":
+                cohorts_in_set = set(labels_in_group)
+                cohorts_in_set.discard(None)
+                cohorts_in_set = [c for c in cohorts_in_set if pd.notna(c)]
+                for i, c1 in enumerate(cohorts_in_set):
+                    for c2 in cohorts_in_set[i + 1 :]:
+                        sharing_matrix.loc[c1, c2] += 1
+                        sharing_matrix.loc[c2, c1] += 1
+            else:
+                from collections import Counter
+
+                counts = Counter(labels_in_group)
+                unique_cohorts = [c for c in counts.keys() if pd.notna(c)]
+                for i, c1 in enumerate(unique_cohorts):
+                    for c2 in unique_cohorts[i + 1 :]:
+                        shared = counts[c1] * counts[c2]
+                        sharing_matrix.loc[c1, c2] += shared
+                        sharing_matrix.loc[c2, c1] += shared
 
         return sharing_matrix, cohorts
 
@@ -886,6 +899,7 @@ class AnophelesHapClustAnalysis(
         renderer: plotly_params.renderer = None,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
+        metric: str = "unique",
     ) -> plotly_params.figure:
         import plotly.graph_objects as go
         import plotly.express as px
@@ -901,6 +915,7 @@ class AnophelesHapClustAnalysis(
             cohort_col=cohort_col,
             chunks=chunks,
             inline_array=inline_array,
+            metric=metric,
         )
 
         n_cohorts = len(cohorts)
@@ -1021,6 +1036,7 @@ class AnophelesHapClustAnalysis(
         renderer: plotly_params.renderer = None,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
+        metric: str = "unique",
     ) -> plotly_params.figure:
         import plotly.graph_objects as go
         import plotly.express as px
@@ -1036,6 +1052,7 @@ class AnophelesHapClustAnalysis(
             cohort_col=cohort_col,
             chunks=chunks,
             inline_array=inline_array,
+            metric=metric,
         )
 
         n_cohorts = len(cohorts)
