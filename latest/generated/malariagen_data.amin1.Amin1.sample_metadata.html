@@ -405,6 +405,18 @@ both.</p>
 </dd>
 </dl>
 </section>
+<section id="notes">
+<h2>Notes<a class="headerlink" href="#notes" title="Link to this heading">#</a></h2>
+<p>Some samples in the dataset are lab crosses — mosquitoes bred in the
+laboratory that have no real collection date. These samples use
+<code class="docutils literal notranslate"><span class="pre">year=-1</span></code> and <code class="docutils literal notranslate"><span class="pre">month=-1</span></code> as sentinel values. They may cause
+unexpected results in date-based analyses (e.g., <code class="docutils literal notranslate"><span class="pre">pd.to_datetime</span></code>
+will fail on negative year values).</p>
+<p>To exclude lab cross samples, use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df</span> <span class="o">=</span> <span class="n">api</span><span class="o">.</span><span class="n">sample_metadata</span><span class="p">(</span><span class="n">sample_query</span><span class="o">=</span><span class="s2">&quot;year &gt;= 0&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
 </dd></dl>
 
 </section>
