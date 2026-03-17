@@ -1509,8 +1509,11 @@ def test_cohort_data(fixture, api):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_sample_metadata_warns_on_case_mismatch(fixture, api: AnophelesSampleMetadata):
-    """Test that a UserWarning is raised when a case-mismatched query returns 0 results.
+def test_sample_metadata_warns_on_zero_results_with_suggestions(
+    fixture, api: AnophelesSampleMetadata
+):
+    """Test that a UserWarning with fuzzy suggestions is raised when a query
+    returns 0 results due to a typo or case mismatch.
 
     Regression test for https://github.com/malariagen/malariagen-data-python/issues/1083
     """
@@ -1527,8 +1530,8 @@ def test_sample_metadata_warns_on_case_mismatch(fixture, api: AnophelesSampleMet
     if wrong_case_country == real_country:
         wrong_case_country = real_country.upper()
 
-    # The wrong-cased query should emit a UserWarning mentioning "case-sensitive".
-    with pytest.warns(UserWarning, match="case-sensitive"):
+    # The wrong-cased query should emit a UserWarning with fuzzy suggestions.
+    with pytest.warns(UserWarning, match="Did you mean"):
         df = api.sample_metadata(sample_query=f"country == '{wrong_case_country}'")
     assert len(df) == 0
 

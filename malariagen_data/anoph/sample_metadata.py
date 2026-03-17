@@ -1,3 +1,4 @@
+import difflib
 import io
 import json
 import re
@@ -797,42 +798,49 @@ class AnophelesSampleMetadata(AnophelesBase):
             df_samples = df_samples.reset_index(drop=True)
 
             # Warn if query returned zero results on a non-empty dataset.
-            # This helps users catch case-sensitivity issues in string queries,
-            # e.g. "country == 'uganda'" instead of "country == 'Uganda'".
+            # Provide fuzzy-match suggestions so users can spot typos,
+            # case mismatches, or partial-value issues.
             if len(df_samples) == 0 and len(df_before_query) > 0:
-                # Extract column names from comparison expressions in the query.
-                # Match patterns like: column == 'value' or column == "value"
-                referenced_cols = re.findall(
-                    r"\b(\w+)\s*[=!<>]+\s*['\"]", prepared_sample_query
-                )
-
                 hint_lines = [
-                    f"sample_metadata() returned 0 samples for the given query: {prepared_sample_query!r}.",
+                    f"sample_metadata() returned 0 samples for query: {prepared_sample_query!r}.",
                 ]
 
-                # Only add the case-sensitivity hint when the query
-                # contains quoted string literals (not numeric-only).
-                if re.search(r"['\"].+?['\"]", prepared_sample_query):
-                    hint_lines.append(
-                        "Note: string comparisons in sample_query are case-sensitive."
-                    )
+                # Extract column == 'value' pairs from the query.
+                col_val_pairs = re.findall(
+                    r"\b(\w+)\s*==\s*['\"]([^'\"]+)['\"]",
+                    prepared_sample_query,
+                )
 
-                # For each referenced string column, list valid values.
-                for col in dict.fromkeys(referenced_cols):  # deduplicate
-                    if (
-                        col in df_before_query.columns
-                        and df_before_query[col].dtype == object
-                    ):
-                        valid_vals = sorted(
-                            df_before_query[col].dropna().unique().tolist()
+                for col_name, queried_val in col_val_pairs:
+                    # If the column name is not recognised, suggest
+                    # close column names.
+                    if col_name not in df_before_query.columns:
+                        close_cols = difflib.get_close_matches(
+                            col_name,
+                            df_before_query.columns.tolist(),
+                            n=3,
+                            cutoff=0.6,
                         )
-                        if len(valid_vals) > 20:
+                        if close_cols:
                             hint_lines.append(
-                                f"Valid values for column {col!r} (showing 20 of {len(valid_vals)}): {valid_vals[:20]}"
+                                f"Column {col_name!r} not found. "
+                                f"Did you mean: {close_cols}?"
                             )
-                        else:
+                        continue
+
+                    # For string columns, suggest close values.
+                    if df_before_query[col_name].dtype == object:
+                        valid_vals = (
+                            df_before_query[col_name].dropna().unique().tolist()
+                        )
+                        close_vals = difflib.get_close_matches(
+                            queried_val, valid_vals, n=5, cutoff=0.6
+                        )
+                        if close_vals:
                             hint_lines.append(
-                                f"Valid values for column {col!r}: {valid_vals}"
+                                f"Value {queried_val!r} not found in "
+                                f"column {col_name!r}. "
+                                f"Did you mean: {close_vals}?"
                             )
 
                 warnings.warn("\n".join(hint_lines), UserWarning, stacklevel=2)
