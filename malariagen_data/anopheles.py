@@ -202,27 +202,6 @@ class AnophelesDataResource(
         self, *, cohort_label, ac, n_jack, confidence_level
     ):
 
-        """Compute diversity statistics for a cohort using block jackknife resampling.
-
-        Parameters
-        ----------
-        cohort_label : str
-            Label identifying the cohort under study.
-        ac : array-like
-            Allele counts array of shape (n_sites, n_alleles).
-        n_jack : int
-            Number of jackknife blocks to use for resampling.
-        confidence_level : float
-            Confidence level for interval estimation (e.g., 0.95).
-
-        Returns
-        -------
-        dict
-            Dictionary containing the following keys for each statistic
-            (theta_pi, theta_w, tajima_d): the raw value, jackknife estimate,
-            bias, standard error, confidence interval error, lower and upper
-            confidence interval bounds. Also contains the cohort label.
-        """
         debug = self._log.debug
 
         debug("set up for diversity calculations")
