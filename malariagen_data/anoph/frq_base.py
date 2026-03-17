@@ -29,6 +29,13 @@ def _prep_samples_for_cohort_grouping(
         # Users can explicitly override with True/False.
         filter_unassigned = taxon_by == "taxon"
 
+    # Validate taxon_by.
+    if taxon_by not in df_samples.columns:
+        raise ValueError(
+            f"Invalid value for `taxon_by`: {taxon_by!r}. "
+            f"Must be the name of an existing column in the sample metadata."
+        )
+
     if filter_unassigned:
         # Remove samples with "intermediate" or "unassigned" taxon values,
         # as we only want cohorts with clean taxon calls.
