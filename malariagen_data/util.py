@@ -877,7 +877,7 @@ def _value_error(
     value,
     expectation,
 ):
-"""Raise a ValueError for an invalid parameter value.
+    """Raise a ValueError for an invalid parameter value.
 
     Parameters
     ----------
