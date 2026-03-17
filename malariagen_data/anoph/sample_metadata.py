@@ -803,15 +803,20 @@ class AnophelesSampleMetadata(AnophelesBase):
                 # Extract column names from comparison expressions in the query.
                 # Match patterns like: column == 'value' or column == "value"
                 referenced_cols = re.findall(
-                    r"\b(\w+)\s*[=!<>]+\s*['\"]" , prepared_sample_query
+                    r"\b(\w+)\s*[=!<>]+\s*['\"]", prepared_sample_query
                 )
 
                 hint_lines = [
-                    f"sample_metadata() returned 0 samples for the given "
-                    f"query: {prepared_sample_query!r}.",
-                    "Note: string comparisons in sample_query are "
-                    "case-sensitive.",
+                    f"sample_metadata() returned 0 samples for the given query: {prepared_sample_query!r}.",
                 ]
+
+                # Only add the case-sensitivity hint when the query
+                # contains quoted string literals (not numeric-only).
+                if re.search(r"['\"].+?['\"]", prepared_sample_query):
+                    hint_lines.append(
+                        "Note: string comparisons in sample_query are case-sensitive."
+                    )
+
                 # For each referenced string column, list valid values.
                 for col in dict.fromkeys(referenced_cols):  # deduplicate
                     if (
@@ -821,9 +826,14 @@ class AnophelesSampleMetadata(AnophelesBase):
                         valid_vals = sorted(
                             df_before_query[col].dropna().unique().tolist()
                         )
-                        hint_lines.append(
-                            f"Valid values for column {col!r}: {valid_vals}"
-                        )
+                        if len(valid_vals) > 20:
+                            hint_lines.append(
+                                f"Valid values for column {col!r} (showing 20 of {len(valid_vals)}): {valid_vals[:20]}"
+                            )
+                        else:
+                            hint_lines.append(
+                                f"Valid values for column {col!r}: {valid_vals}"
+                            )
 
                 warnings.warn("\n".join(hint_lines), UserWarning, stacklevel=2)
 
