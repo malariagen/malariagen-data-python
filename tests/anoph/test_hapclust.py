@@ -101,22 +101,26 @@ def test_plot_haplotype_clustering(fixture, api: AnophelesHapClustAnalysis):
 @parametrize_with_cases("fixture,api", cases=".")
 def test_plot_haplotype_sharing_arc(fixture, api: AnophelesHapClustAnalysis):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    fig = api.plot_haplotype_sharing_arc(
-        region=fixture.random_region_str(region_size=5000),
-        cohort_col="country",
-        sample_sets=[random.choice(all_sample_sets)],
-        show=False,
-    )
-    assert fig is not None
+    for metric in ["unique", "absolute"]:
+        fig = api.plot_haplotype_sharing_arc(
+            region=fixture.random_region_str(region_size=5000),
+            cohort_col="country",
+            sample_sets=[random.choice(all_sample_sets)],
+            metric=metric,
+            show=False,
+        )
+        assert fig is not None
 
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_plot_haplotype_sharing_chord(fixture, api: AnophelesHapClustAnalysis):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    fig = api.plot_haplotype_sharing_chord(
-        region=fixture.random_region_str(region_size=5000),
-        cohort_col="country",
-        sample_sets=[random.choice(all_sample_sets)],
-        show=False,
-    )
-    assert fig is not None
+    for metric in ["unique", "absolute"]:
+        fig = api.plot_haplotype_sharing_chord(
+            region=fixture.random_region_str(region_size=5000),
+            cohort_col="country",
+            sample_sets=[random.choice(all_sample_sets)],
+            metric=metric,
+            show=False,
+        )
+        assert fig is not None

@@ -881,6 +881,14 @@ class AnophelesHapClustAnalysis(
         summary="""
             Plot an arc diagram showing haplotype sharing between cohorts.
         """,
+        parameters=dict(
+            metric="""
+                The metric to use for measuring haplotype sharing. If 'unique'
+                (default), counts the number of highly identical distinct shared
+                haplotypes. If 'absolute', counts the absolute number of original
+                haplotypes shared between the cohorts.
+            """,
+        ),
     )
     def plot_haplotype_sharing_arc(
         self,
@@ -1018,6 +1026,14 @@ class AnophelesHapClustAnalysis(
         summary="""
             Plot a chord diagram showing haplotype sharing between cohorts.
         """,
+        parameters=dict(
+            metric="""
+                The metric to use for measuring haplotype sharing. If 'unique'
+                (default), counts the number of highly identical distinct shared
+                haplotypes. If 'absolute', counts the absolute number of original
+                haplotypes shared between the cohorts.
+            """,
+        ),
     )
     def plot_haplotype_sharing_chord(
         self,
