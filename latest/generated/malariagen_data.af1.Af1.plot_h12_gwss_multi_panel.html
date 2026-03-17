@@ -396,7 +396,10 @@ cohort is greater. Raise an error if the number of samples is less
 than this value.</p>
 </dd>
 <dt>sample_query<span class="classifier">str or None, optional</span></dt><dd><p>A pandas query string to be evaluated against the sample metadata, to
-select samples to be included in the returned data.</p>
+select samples to be included in the returned data. E.g., “country ==
+‘Uganda’”. If the query returns zero results, a warning will be
+emitted with fuzzy-match suggestions for possible typos or case
+mismatches.</p>
 </dd>
 <dt>analysis<span class="classifier">str, optional, default: ‘default’</span></dt><dd><p>Which haplotype phasing analysis to use. See the
 <cite>phasing_analysis_ids</cite> property for available values.</p>

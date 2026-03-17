@@ -391,7 +391,10 @@ in the entire Ag3.0 (gambiae complex) or Af1.0 (funestus) cohort.</p>
 available values.</p>
 </dd>
 <dt>sample_query<span class="classifier">str or None, optional</span></dt><dd><p>A pandas query string to be evaluated against the sample metadata, to
-select samples to be included in the returned data.</p>
+select samples to be included in the returned data. E.g., “country ==
+‘Uganda’”. If the query returns zero results, a warning will be
+emitted with fuzzy-match suggestions for possible typos or case
+mismatches.</p>
 </dd>
 <dt>sample_query_options<span class="classifier">dict or None, optional</span></dt><dd><p>A dictionary of arguments that will be passed through to pandas
 query() or eval(), e.g. parser, engine, local_dict, global_dict,
