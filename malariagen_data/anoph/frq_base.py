@@ -78,6 +78,13 @@ def _prep_samples_for_cohort_grouping(
         # Apply the matching period_by function to create a new "period" column.
         df_samples["period"] = df_samples.apply(period_by_func, axis="columns")
 
+    # Validate area_by.
+    if area_by not in df_samples.columns:
+        raise ValueError(
+            f"Invalid value for `area_by`: {area_by!r}. "
+            f"Must be the name of an existing column in the sample metadata."
+        )
+
     # Copy the specified area_by column to a new "area" column.
     df_samples["area"] = df_samples[area_by]
 
