@@ -1,5 +1,7 @@
+import difflib
 import io
 import json
+import re
 from itertools import cycle
 from typing import (
     Any,
@@ -82,6 +84,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         # Initialize cache attributes.
         self._cache_sample_metadata: Dict = dict()
+        self._cache_cohorts: Dict = dict()
         self._cache_cohort_geometries: Dict = dict()
 
     def _metadata_paths(
@@ -704,6 +707,17 @@ class AnophelesSampleMetadata(AnophelesBase):
     @doc(
         summary="Access sample metadata for one or more sample sets.",
         returns="A dataframe of sample metadata, one row per sample.",
+        notes="""
+            Some samples in the dataset are lab crosses — mosquitoes bred in
+            the laboratory that have no real collection date. These samples
+            use ``year=-1`` and ``month=-1`` as sentinel values. They may
+            cause unexpected results in date-based analyses (e.g.,
+            ``pd.to_datetime`` will fail on negative year values).
+
+            To exclude lab cross samples, use::
+
+                df = api.sample_metadata(sample_query="year >= 0")
+        """,
     )
     def sample_metadata(
         self,
@@ -783,11 +797,64 @@ class AnophelesSampleMetadata(AnophelesBase):
         if prepared_sample_query is not None:
             # Assume a pandas query string.
             sample_query_options = sample_query_options or {}
+
+            # Save a reference to the pre-query DataFrame so we can detect
+            # zero-result queries and provide a helpful warning.
+            df_before_query = df_samples
+
             # Use the python engine in order to support extension array dtypes, e.g. Float64, Int64, boolean.
             df_samples = df_samples.query(
                 prepared_sample_query, **sample_query_options, engine="python"
             )
             df_samples = df_samples.reset_index(drop=True)
+
+            # Warn if query returned zero results on a non-empty dataset.
+            # Provide fuzzy-match suggestions so users can spot typos,
+            # case mismatches, or partial-value issues.
+            if len(df_samples) == 0 and len(df_before_query) > 0:
+                hint_lines = [
+                    f"sample_metadata() returned 0 samples for query: {prepared_sample_query!r}.",
+                ]
+
+                # Extract column == 'value' pairs from the query.
+                col_val_pairs = re.findall(
+                    r"\b(\w+)\s*==\s*['\"]([^'\"]+)['\"]",
+                    prepared_sample_query,
+                )
+
+                for col_name, queried_val in col_val_pairs:
+                    # If the column name is not recognised, suggest
+                    # close column names.
+                    if col_name not in df_before_query.columns:
+                        close_cols = difflib.get_close_matches(
+                            col_name,
+                            df_before_query.columns.tolist(),
+                            n=3,
+                            cutoff=0.6,
+                        )
+                        if close_cols:
+                            hint_lines.append(
+                                f"Column {col_name!r} not found. "
+                                f"Did you mean: {close_cols}?"
+                            )
+                        continue
+
+                    # For string columns, suggest close values.
+                    if df_before_query[col_name].dtype == object:
+                        valid_vals = (
+                            df_before_query[col_name].dropna().unique().tolist()
+                        )
+                        close_vals = difflib.get_close_matches(
+                            queried_val, valid_vals, n=5, cutoff=0.6
+                        )
+                        if close_vals:
+                            hint_lines.append(
+                                f"Value {queried_val!r} not found in "
+                                f"column {col_name!r}. "
+                                f"Did you mean: {close_vals}?"
+                            )
+
+                warnings.warn("\n".join(hint_lines), UserWarning, stacklevel=2)
 
         # Apply the sample_indices, if there are any.
         # Note: this might need to apply to the result of an internal sample_query, e.g. `is_surveillance == True`.
@@ -1487,7 +1554,11 @@ class AnophelesSampleMetadata(AnophelesBase):
                 A cohort set name. Accepted values are:
                 "admin1_month", "admin1_quarter", "admin1_year",
                 "admin2_month", "admin2_quarter", "admin2_year".
-            """
+            """,
+            query="""
+                An optional pandas query string to filter the resulting
+                dataframe, e.g., "country == 'Burkina Faso'".
+            """,
         ),
         returns="""A dataframe of cohort data, one row per cohort. There are up to 18 columns:
         `cohort_id` is the identifier of the cohort,
@@ -1514,20 +1585,45 @@ class AnophelesSampleMetadata(AnophelesBase):
     def cohorts(
         self,
         cohort_set: base_params.cohorts,
+        query: Optional[str] = None,
     ) -> pd.DataFrame:
-        major_version_path = self._major_version_path
+        valid_cohort_sets = {
+            "admin1_month",
+            "admin1_quarter",
+            "admin1_year",
+            "admin2_month",
+            "admin2_quarter",
+            "admin2_year",
+        }
+        if cohort_set not in valid_cohort_sets:
+            raise ValueError(
+                f"{cohort_set!r} is not a valid cohort set. "
+                f"Accepted values are: {sorted(valid_cohort_sets)}."
+            )
+
         cohorts_analysis = self._cohorts_analysis
 
-        path = f"{major_version_path[:2]}_cohorts/cohorts_{cohorts_analysis}/cohorts_{cohort_set}.csv"
+        # Cache to avoid repeated reads.
+        cache_key = (cohorts_analysis, cohort_set)
+        try:
+            df_cohorts = self._cache_cohorts[cache_key]
+        except KeyError:
+            major_version_path = self._major_version_path
+            path = f"{major_version_path[:2]}_cohorts/cohorts_{cohorts_analysis}/cohorts_{cohort_set}.csv"
 
-        # Read the manifest into a pandas dataframe.
-        with self.open_file(path) as f:
-            df_cohorts = pd.read_csv(f, sep=",", na_values="")
+            with self.open_file(path) as f:
+                df_cohorts = pd.read_csv(f, sep=",", na_values="")
 
-        # Ensure all column names are lower case.
-        df_cohorts.columns = [c.lower() for c in df_cohorts.columns]  # type: ignore
+            # Ensure all column names are lower case.
+            df_cohorts.columns = [c.lower() for c in df_cohorts.columns]  # type: ignore
 
-        return df_cohorts
+            self._cache_cohorts[cache_key] = df_cohorts
+
+        if query is not None:
+            df_cohorts = df_cohorts.query(query)
+            df_cohorts = df_cohorts.reset_index(drop=True)
+
+        return df_cohorts.copy()
 
     @_check_types
     @doc(
