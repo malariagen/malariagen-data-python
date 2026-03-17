@@ -1,5 +1,7 @@
+import difflib
 import io
 import json
+import re
 from itertools import cycle
 from typing import (
     Any,
@@ -795,11 +797,64 @@ class AnophelesSampleMetadata(AnophelesBase):
         if prepared_sample_query is not None:
             # Assume a pandas query string.
             sample_query_options = sample_query_options or {}
+
+            # Save a reference to the pre-query DataFrame so we can detect
+            # zero-result queries and provide a helpful warning.
+            df_before_query = df_samples
+
             # Use the python engine in order to support extension array dtypes, e.g. Float64, Int64, boolean.
             df_samples = df_samples.query(
                 prepared_sample_query, **sample_query_options, engine="python"
             )
             df_samples = df_samples.reset_index(drop=True)
+
+            # Warn if query returned zero results on a non-empty dataset.
+            # Provide fuzzy-match suggestions so users can spot typos,
+            # case mismatches, or partial-value issues.
+            if len(df_samples) == 0 and len(df_before_query) > 0:
+                hint_lines = [
+                    f"sample_metadata() returned 0 samples for query: {prepared_sample_query!r}.",
+                ]
+
+                # Extract column == 'value' pairs from the query.
+                col_val_pairs = re.findall(
+                    r"\b(\w+)\s*==\s*['\"]([^'\"]+)['\"]",
+                    prepared_sample_query,
+                )
+
+                for col_name, queried_val in col_val_pairs:
+                    # If the column name is not recognised, suggest
+                    # close column names.
+                    if col_name not in df_before_query.columns:
+                        close_cols = difflib.get_close_matches(
+                            col_name,
+                            df_before_query.columns.tolist(),
+                            n=3,
+                            cutoff=0.6,
+                        )
+                        if close_cols:
+                            hint_lines.append(
+                                f"Column {col_name!r} not found. "
+                                f"Did you mean: {close_cols}?"
+                            )
+                        continue
+
+                    # For string columns, suggest close values.
+                    if df_before_query[col_name].dtype == object:
+                        valid_vals = (
+                            df_before_query[col_name].dropna().unique().tolist()
+                        )
+                        close_vals = difflib.get_close_matches(
+                            queried_val, valid_vals, n=5, cutoff=0.6
+                        )
+                        if close_vals:
+                            hint_lines.append(
+                                f"Value {queried_val!r} not found in "
+                                f"column {col_name!r}. "
+                                f"Did you mean: {close_vals}?"
+                            )
+
+                warnings.warn("\n".join(hint_lines), UserWarning, stacklevel=2)
 
         # Apply the sample_indices, if there are any.
         # Note: this might need to apply to the result of an internal sample_query, e.g. `is_surveillance == True`.
