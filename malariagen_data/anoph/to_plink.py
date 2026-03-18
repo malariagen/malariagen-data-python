@@ -4,6 +4,8 @@ import allel  # type: ignore
 import numpy as np
 import os
 import bed_reader
+import hashlib
+import json
 
 from ..util import _dask_compress_dataset
 from .snp_data import AnophelesSnpData
@@ -76,7 +78,19 @@ class PlinkConverter(
         )
 
         # Define output files
-        plink_file_path = f"{output_dir}/{region}.{n_snps}.{min_minor_ac}.{max_missing_an}.{thin_offset}"
+        sample_params = {
+            "sample_sets": sample_sets,
+            "sample_query": sample_query,
+            "sample_query_options": sample_query_options,
+            "sample_indices": sample_indices,
+            "site_mask": site_mask,
+            "random_seed": random_seed,
+        }
+        params_hash = hashlib.md5(
+            json.dumps(sample_params, sort_keys=True, default=str).encode()
+        ).hexdigest()[:8]
+
+        plink_file_path = f"{output_dir}/{region}.{n_snps}.{min_minor_ac}.{max_missing_an}.{thin_offset}.{params_hash}"
 
         bed_file_path = f"{plink_file_path}.bed"
 
