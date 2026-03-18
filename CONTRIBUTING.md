@@ -12,7 +12,7 @@ This package provides Python tools for accessing and analyzing genomic data from
 
 You'll need:
 
-- [pipx](https://python-poetry.org/) for installing Python tools
+- [pipx](https://pipx.pypa.io/) for installing Python tools
 - [git](https://git-scm.com/) for version control
 
 Both of these can be installed using your distribution's package manager or [Homebrew](https://brew.sh/) on Mac.
