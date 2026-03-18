@@ -1,5 +1,7 @@
 import itertools
 import random
+from collections import Counter
+
 import pytest
 from pytest_cases import parametrize_with_cases
 import numpy as np
@@ -211,6 +213,28 @@ def test_average_fst_region_too_small(fixture, api: AnophelesFstAnalysis):
         api.average_fst(**fst_params)
 
 
+def setup_pairwise_average_fst_country_params(
+    api: AnophelesFstAnalysis, *, min_cohort_size: int = 2
+):
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    df_samples = api.sample_metadata(sample_sets=all_sample_sets)
+    country_counts = df_samples["country"].value_counts()
+    countries = sorted(
+        country_counts[country_counts >= min_cohort_size].index.to_list()[:3]
+    )
+    assert len(countries) == 3
+    cohorts = {country: f"country == {country!r}" for country in countries}
+    fst_params = dict(
+        region=api.contigs[0],
+        cohorts=cohorts,
+        sample_sets=all_sample_sets,
+        site_mask=api.site_mask_ids[0],
+        min_cohort_size=min_cohort_size,
+        n_jack=10,
+    )
+    return cohorts, fst_params
+
+
 def check_pairwise_average_fst(api: AnophelesFstAnalysis, fst_params):
     # Run main function under test.
     fst_df = api.pairwise_average_fst(**fst_params)
@@ -348,6 +372,50 @@ def test_pairwise_average_fst_with_sample_query(fixture, api: AnophelesFstAnalys
 
     # Run checks.
     check_pairwise_average_fst(api=api, fst_params=fst_params)
+
+
+def test_pairwise_average_fst_matches_average_fst_for_each_pair(ag3_sim_api):
+    api = ag3_sim_api
+    cohorts, fst_params = setup_pairwise_average_fst_country_params(api)
+
+    fst_df = api.pairwise_average_fst(**fst_params)
+
+    expected = {}
+    for cohort1_id, cohort2_id in itertools.combinations(cohorts.keys(), 2):
+        expected[(cohort1_id, cohort2_id)] = api.average_fst(
+            region=fst_params["region"],
+            cohort1_query=cohorts[cohort1_id],
+            cohort2_query=cohorts[cohort2_id],
+            sample_sets=fst_params["sample_sets"],
+            min_cohort_size=fst_params["min_cohort_size"],
+            n_jack=fst_params["n_jack"],
+            site_mask=fst_params["site_mask"],
+        )
+
+    for cohort1_id, cohort2_id, fst, se in fst_df.itertuples(index=False):
+        expected_fst, expected_se = expected[(cohort1_id, cohort2_id)]
+        assert fst == pytest.approx(expected_fst)
+        assert se == pytest.approx(expected_se)
+
+
+def test_pairwise_average_fst_reuses_cohort_allele_counts(ag3_sim_api, monkeypatch):
+    api = ag3_sim_api
+    cohorts, fst_params = setup_pairwise_average_fst_country_params(api)
+
+    calls = []
+    original_snp_allele_counts = api.snp_allele_counts
+
+    def counting_snp_allele_counts(*args, **kwargs):
+        calls.append(kwargs["sample_query"])
+        return original_snp_allele_counts(*args, **kwargs)
+
+    monkeypatch.setattr(api, "snp_allele_counts", counting_snp_allele_counts)
+
+    fst_df = api.pairwise_average_fst(**fst_params)
+
+    assert len(fst_df) == 3
+    assert len(calls) == len(cohorts)
+    assert Counter(calls) == Counter(cohorts.values())
 
 
 @parametrize_with_cases("fixture,api", cases=".")

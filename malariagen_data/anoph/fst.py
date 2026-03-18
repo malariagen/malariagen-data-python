@@ -26,6 +26,37 @@ class AnophelesFstAnalysis(
         # to the superclass constructor.
         super().__init__(**kwargs)
 
+    def _average_fst_from_allele_counts(
+        self,
+        *,
+        ac1: np.ndarray,
+        ac2: np.ndarray,
+        n_jack: int,
+    ) -> Tuple[float, float]:
+        # Calculate block length for jackknife.
+        n_sites = ac1.shape[0]
+        block_length = n_sites // n_jack
+
+        if block_length < 1:
+            raise ValueError(
+                f"Not enough sites ({n_sites}) for {n_jack} jackknife blocks. "
+                "Choose a larger region or reduce n_jack."
+            )
+
+        # Calculate average Fst.
+        fst, se, _, _ = allel.blockwise_hudson_fst(ac1, ac2, blen=block_length)
+
+        # Normalise to Python scalar types.
+        fst = float(fst)
+        se = float(se)
+
+        # Fst estimate can sometimes be slightly negative, but clip at
+        # zero.
+        if fst < 0:
+            fst = 0.0
+
+        return fst, se
+
     def _fst_gwss(
         self,
         *,
@@ -403,29 +434,7 @@ class AnophelesFstAnalysis(
             random_seed=random_seed,
         )
 
-        # Calculate block length for jackknife.
-        n_sites = ac1.shape[0]
-        block_length = n_sites // n_jack
-
-        if block_length < 1:
-            raise ValueError(
-                f"Not enough sites ({n_sites}) for {n_jack} jackknife blocks. "
-                "Choose a larger region or reduce n_jack."
-            )
-
-        # Calculate average Fst.
-        fst, se, _, _ = allel.blockwise_hudson_fst(ac1, ac2, blen=block_length)
-
-        # Normalise to Python scalar types.
-        fst = float(fst)
-        se = float(se)
-
-        # Fst estimate can sometimes be slightly negative, but clip at
-        # zero.
-        if fst < 0:
-            fst = 0.0
-
-        return fst, se
+        return self._average_fst_from_allele_counts(ac1=ac1, ac2=ac2, n_jack=n_jack)
 
     @_check_types
     @doc(
@@ -464,6 +473,21 @@ class AnophelesFstAnalysis(
 
         cohort_ids = list(cohorts_checked.keys())
         cohort_queries = list(cohorts_checked.values())
+        cohort_allele_counts = [
+            self.snp_allele_counts(
+                region=region,
+                sample_sets=sample_sets,
+                sample_query=cohort_query,
+                sample_query_options=sample_query_options,
+                cohort_size=cohort_size,
+                site_mask=site_mask,
+                site_class=site_class,
+                min_cohort_size=min_cohort_size,
+                max_cohort_size=max_cohort_size,
+                random_seed=random_seed,
+            )
+            for cohort_query in cohort_queries
+        ]
         cohort1_ids = []
         cohort2_ids = []
         fst_stats = []
@@ -471,20 +495,12 @@ class AnophelesFstAnalysis(
 
         n_cohorts = len(cohorts_checked)
         for i in range(n_cohorts):
+            ac1 = cohort_allele_counts[i]
             for j in range(i + 1, n_cohorts):
-                (fst, se) = self.average_fst(
-                    region=region,
-                    cohort1_query=cohort_queries[i],
-                    cohort2_query=cohort_queries[j],
-                    sample_sets=sample_sets,
-                    sample_query_options=sample_query_options,
-                    cohort_size=cohort_size,
-                    min_cohort_size=min_cohort_size,
-                    max_cohort_size=max_cohort_size,
+                (fst, se) = self._average_fst_from_allele_counts(
+                    ac1=ac1,
+                    ac2=cohort_allele_counts[j],
                     n_jack=n_jack,
-                    site_mask=site_mask,
-                    site_class=site_class,
-                    random_seed=random_seed,
                 )
                 cohort1_ids.append(cohort_ids[i])
                 cohort2_ids.append(cohort_ids[j])
