@@ -494,6 +494,21 @@ def _init_filesystem(url, **kwargs):
     # Process the URL using fsspec.
     fs, path = url_to_fs(url, **storage_options)
 
+    # Decode URL-encoded paths for local filesystems.
+    protocol = getattr(fs, "protocol", None)
+    if isinstance(protocol, str):
+        protocols = {protocol}
+    elif isinstance(protocol, (tuple, list)):
+        protocols = set(protocol)
+    else:
+        protocols = set()
+
+    is_local = bool(protocols.intersection({"file", "local"})) or fs.__class__.__name__ == "LocalFileSystem"
+    
+    if is_local:
+        from urllib.parse import unquote
+        path = unquote(path)
+
     # Path compatibility, fsspec/gcsfs behaviour varies between versions.
     while path.endswith("/"):
         path = path[:-1]
