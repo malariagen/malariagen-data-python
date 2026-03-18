@@ -503,10 +503,14 @@ def _init_filesystem(url, **kwargs):
     else:
         protocols = set()
 
-    is_local = bool(protocols.intersection({"file", "local"})) or fs.__class__.__name__ == "LocalFileSystem"
-    
+    is_local = (
+        bool(protocols.intersection({"file", "local"}))
+        or fs.__class__.__name__ == "LocalFileSystem"
+    )
+
     if is_local:
         from urllib.parse import unquote
+
         path = unquote(path)
 
     # Path compatibility, fsspec/gcsfs behaviour varies between versions.
