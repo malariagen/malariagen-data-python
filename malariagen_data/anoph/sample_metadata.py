@@ -1534,8 +1534,9 @@ class AnophelesSampleMetadata(AnophelesBase):
             if min_cohort_size is not None:
                 cohort_size = min_cohort_size
             if cohort_size is not None and n_samples < cohort_size:
-                print(
-                    f"Cohort ({cohort_label}) has insufficient samples ({n_samples}) for requested cohort size ({cohort_size}), dropping."
+                warnings.warn(
+                    f"Cohort ({cohort_label}) has insufficient samples ({n_samples}) for requested cohort size ({cohort_size}), dropping.",
+                    stacklevel=2,
                 )
             else:
                 cohort_queries_checked[cohort_label] = cohort_query

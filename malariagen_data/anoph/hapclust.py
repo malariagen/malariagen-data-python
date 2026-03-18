@@ -1,3 +1,4 @@
+import warnings
 from typing import Optional, Tuple
 
 import allel  # type: ignore
@@ -402,8 +403,9 @@ class AnophelesHapClustAnalysis(
 
         if cohort_size and snp_transcript:
             cohort_size = None
-            print(
-                "Cohort size is not supported with amino acid heatmap. Overriding cohort size to None."
+            warnings.warn(
+                "Cohort size is not supported with amino acid heatmap. Overriding cohort size to None.",
+                stacklevel=2,
             )
 
         res = self.plot_haplotype_clustering(
@@ -709,8 +711,9 @@ class AnophelesHapClustAnalysis(
             figures.append(snp_trace)
             subplot_heights.append(snp_row_height * df_haps.shape[0])
         else:
-            print(
-                f"No SNPs were found below {snp_filter_min_maf} allele frequency. Omitting SNP genotype plot."
+            warnings.warn(
+                f"No SNPs were found below {snp_filter_min_maf} allele frequency. Omitting SNP genotype plot.",
+                stacklevel=2,
             )
         return figures, subplot_heights, n_snps_transcript
 
