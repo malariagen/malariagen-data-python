@@ -88,6 +88,13 @@ class AnophelesFstAnalysis(
                 fst = np.clip(fst, a_min=clip_min, a_max=1)
                 x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
 
+        if len(x) == 0:
+            raise ValueError(
+                f"No Fst windows could be computed: window_size={window_size!r} is "
+                f"larger than the number of SNP sites available ({len(pos)}) in the "
+                "selected region. Try reducing window_size or selecting a larger region."
+            )
+
         results = dict(x=x, fst=fst)
 
         return results
