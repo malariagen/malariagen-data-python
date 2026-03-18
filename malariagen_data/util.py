@@ -874,9 +874,7 @@ def _value_error(
     value,
     expectation,
 ):
-    message = (
-        f"Bad value for parameter {name}; expected {expectation}, " f"found {value!r}"
-    )
+    message = f"Bad value for parameter {name}; expected {expectation}, found {value!r}"
     raise ValueError(message)
 
 
@@ -954,6 +952,7 @@ class LoggingHelper:
         self.flush()
 
     def set_level(self, level):
+        self._logger.setLevel(level)
         if self._handler is not None:
             self._handler.setLevel(level)
 
