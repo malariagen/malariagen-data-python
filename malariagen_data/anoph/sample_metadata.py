@@ -1839,7 +1839,12 @@ def _locate_cohorts(*, cohorts, data, min_cohort_size):
         # to pandas queries.
 
         for coh, query in cohorts.items():
-            loc_coh = data.eval(query).values
+            try:
+                loc_coh = data.eval(query).values
+            except Exception as e:
+                raise ValueError(
+                    f"Invalid query for cohort {coh!r}: {query!r}. Error: {e}"
+                ) from e
             coh_dict[coh] = loc_coh
 
     else:
