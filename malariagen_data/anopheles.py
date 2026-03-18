@@ -19,7 +19,6 @@ from .anoph import (
     plotly_params,
     xpehh_params,
 )
-
 from .anoph.aim_data import AnophelesAimData
 from .anoph.base import AnophelesBase
 from .anoph.describe import AnophelesDescribe
@@ -78,6 +77,7 @@ class AnophelesDataResource(
     AnophelesHetAnalysis,
     AnophelesHapFrequencyAnalysis,
     AnophelesDistanceAnalysis,
+    AnophelesDiversityAnalysis,
     AnophelesPca,
     PlinkConverter,
     AnophelesIgv,
@@ -91,7 +91,6 @@ class AnophelesDataResource(
     AnophelesDescribe,
     AnophelesBase,
     AnophelesPhenotypeData,
-    AnophelesDiversityAnalysis,  # new commit
 ):
     """Anopheles data resources."""
 
@@ -1438,6 +1437,9 @@ class AnophelesDataResource(
             run_params["jupyter_mode"] = server_mode
         if server_port is not None:
             run_params["port"] = server_port
+
+        debug("launch the dash app")
+        app.run(**run_params)
 
         debug("launch the dash app")
         app.run(**run_params)

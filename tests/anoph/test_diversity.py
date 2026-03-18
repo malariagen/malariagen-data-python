@@ -112,22 +112,21 @@ def case_amin1_sim(amin1_sim_fixture, amin1_sim_api):
 def test_cohort_diversity_stats(fixture, api: AnophelesDiversityAnalysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    df_samples = api.sample_metadata(sample_sets=all_sample_sets)
-    cohort_cols = [c for c in df_samples.columns if c.startswith("cohort_")]
-    cohort_col = random.choice(cohort_cols)
-    cohort_label = random.choice(df_samples[cohort_col].dropna().unique().tolist())
-    cohort_query = f"{cohort_col} == {cohort_label!r}"
-    n_samples = len(df_samples.query(cohort_query))
-    cohort_size = min(5, n_samples)
+    sample_set = random.choice(all_sample_sets)
+    df_samples = api.sample_metadata(sample_sets=[sample_set])
+    cohort_sample_ids = df_samples["sample_id"].head(10).to_list()
+    cohort_size = min(5, len(cohort_sample_ids))
     if cohort_size < 2:
-        pytest.skip("not enough samples in cohort")
+        pytest.skip("not enough samples in simulated cohort")
+    region = random.choice(api.contigs)
+    site_mask = random.choice(api.site_mask_ids)
 
     diversity_params = dict(
-        cohort=(cohort_label, cohort_query),
+        cohort=("test_cohort", f"sample_id in {cohort_sample_ids!r}"),
         cohort_size=cohort_size,
-        region=random.choice(api.contigs),
-        sample_sets=all_sample_sets,
-        site_mask=random.choice(api.site_mask_ids),
+        region=region,
+        sample_sets=[sample_set],
+        site_mask=site_mask,
         n_jack=random.randint(10, 200),
     )
 
@@ -164,17 +163,16 @@ def test_cohort_diversity_stats(fixture, api: AnophelesDiversityAnalysis):
 def test_diversity_stats(fixture, api: AnophelesDiversityAnalysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    df_samples = api.sample_metadata(sample_sets=all_sample_sets)
-    cohort_cols = [c for c in df_samples.columns if c.startswith("cohort_")]
-    cohort_col = random.choice(cohort_cols)
-    cohort_size = 5
+    cohorts = "admin1_year"
+    region = random.choice(api.contigs)
+    site_mask = random.choice(api.site_mask_ids)
 
     diversity_params = dict(
-        cohorts=cohort_col,
-        cohort_size=cohort_size,
-        region=random.choice(api.contigs),
+        cohorts=cohorts,
+        cohort_size=5,
+        region=region,
         sample_sets=all_sample_sets,
-        site_mask=random.choice(api.site_mask_ids),
+        site_mask=site_mask,
         n_jack=random.randint(10, 200),
     )
 
@@ -207,21 +205,55 @@ def test_diversity_stats(fixture, api: AnophelesDiversityAnalysis):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
+def test_diversity_stats_with_bad_cohorts(fixture, api: AnophelesDiversityAnalysis):
+    # Set up test parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    region = random.choice(api.contigs)
+
+    # Run function under test.
+    with pytest.raises(ValueError):
+        api.diversity_stats(
+            cohorts="foobar",
+            cohort_size=5,
+            region=region,
+            sample_sets=all_sample_sets,
+        )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_cohort_diversity_stats_with_bad_cohort_type(
+    fixture, api: AnophelesDiversityAnalysis
+):
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    with pytest.raises(TypeError):
+        api.cohort_diversity_stats(
+            cohort=12345,
+            cohort_size=5,
+            region=random.choice(api.contigs),
+            sample_sets=all_sample_sets,
+        )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
 def test_plot_diversity_stats(fixture, api: AnophelesDiversityAnalysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    df_samples = api.sample_metadata(sample_sets=all_sample_sets)
-    cohort_cols = [c for c in df_samples.columns if c.startswith("cohort_")]
-    cohort_col = random.choice(cohort_cols)
+    cohorts = "admin1_year"
+    region = random.choice(api.contigs)
+    site_mask = random.choice(api.site_mask_ids)
 
     df_stats = api.diversity_stats(
-        cohorts=cohort_col,
+        cohorts=cohorts,
         cohort_size=5,
-        region=random.choice(api.contigs),
+        region=region,
         sample_sets=all_sample_sets,
-        site_mask=random.choice(api.site_mask_ids),
+        site_mask=site_mask,
         n_jack=random.randint(10, 200),
     )
+
+    if len(df_stats) == 0:
+        pytest.skip("no cohorts with enough samples for cohort_size")
+        return
 
     # Run function under test.
     figures = api.plot_diversity_stats(df_stats, show=False)
