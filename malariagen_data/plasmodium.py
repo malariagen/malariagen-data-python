@@ -244,7 +244,7 @@ class PlasmodiumDataResource:
             slice_start = region.start - 1
         else:
             slice_start = None
-            
+
         if region.end is not None:
             if region.end < 1:
                 raise ValueError("Region end must be >= 1 or None.")

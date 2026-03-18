@@ -692,6 +692,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
 
     def test_subset_genome_sequence_region_slice(self):
         from malariagen_data.util import Region
+
         # contig1 is np.arange(10)
         # Valid slice 1-3 -> indices 0,1,2 (length 3)
         region = Region("contig1", 1, 3)
@@ -704,6 +705,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
 
     def test_subset_genome_sequence_region_invalid_start_0(self):
         from malariagen_data.util import Region
+
         region = Region("contig1", 0, 3)
         with self.assertRaises(ValueError):
             self.test_plasmodium_class._subset_genome_sequence_region(
@@ -712,6 +714,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
 
     def test_subset_genome_sequence_region_invalid_end_0(self):
         from malariagen_data.util import Region
+
         region = Region("contig1", 1, 0)
         with self.assertRaises(ValueError):
             self.test_plasmodium_class._subset_genome_sequence_region(
