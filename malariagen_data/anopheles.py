@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, Mapping, Optional, Tuple, Sequence
 
 import allel  # type: ignore
 import bokeh.layouts
@@ -8,6 +8,7 @@ import bokeh.palettes
 import bokeh.plotting
 import numpy as np
 from numpydoc_decorator import doc  # type: ignore
+
 
 from .anoph import (
     aim_params,
@@ -19,32 +20,37 @@ from .anoph import (
     plotly_params,
     xpehh_params,
 )
+from .anoph.karyotype import AnophelesKaryotypeAnalysis
 from .anoph.aim_data import AnophelesAimData
 from .anoph.base import AnophelesBase
-from .anoph.describe import AnophelesDescribe
-from .anoph.dipclust import AnophelesDipClustAnalysis
-from .anoph.distance import AnophelesDistanceAnalysis
-from .anoph.diversity import AnophelesDiversityAnalysis  # new commit
-from .anoph.fst import AnophelesFstAnalysis
-from .anoph.g123 import AnophelesG123Analysis
 from .anoph.genome_features import AnophelesGenomeFeaturesData
 from .anoph.genome_sequence import AnophelesGenomeSequenceData
-from .anoph.h1x import AnophelesH1XAnalysis
-from .anoph.h12 import AnophelesH12Analysis
 from .anoph.hap_data import AnophelesHapData, hap_params
 from .anoph.hap_frq import AnophelesHapFrequencyAnalysis
-from .anoph.hapclust import AnophelesHapClustAnalysis
-from .anoph.heterozygosity import AnophelesHetAnalysis
 from .anoph.igv import AnophelesIgv
-from .anoph.karyotype import AnophelesKaryotypeAnalysis
 from .anoph.pca import AnophelesPca
-from .anoph.phenotypes import AnophelesPhenotypeData
+from .anoph.distance import AnophelesDistanceAnalysis
 from .anoph.sample_metadata import AnophelesSampleMetadata
 from .anoph.snp_data import AnophelesSnpData
 from .anoph.to_plink import PlinkConverter
+from .anoph.g123 import AnophelesG123Analysis
+from .anoph.fst import AnophelesFstAnalysis
+from .anoph.h12 import AnophelesH12Analysis
+from .anoph.h1x import AnophelesH1XAnalysis
+from .anoph.phenotypes import AnophelesPhenotypeData
 from .mjn import _median_joining_network, _mjn_graph
-from .util import Region  # noqa: F401 (re-exported via __init__.py)
-from .util import CacheMiss, _check_types, _plotly_discrete_legend
+from .anoph.hapclust import AnophelesHapClustAnalysis
+from .anoph.describe import AnophelesDescribe
+from .anoph.dipclust import AnophelesDipClustAnalysis
+from .anoph.heterozygosity import AnophelesHetAnalysis
+from .anoph.diversity import AnophelesDiversityAnalysis
+from .util import (
+    CacheMiss,
+    Region,  # noqa: F401 (re-exported via __init__.py)
+    _check_types,
+    _plotly_discrete_legend,
+)
+
 
 # N.B., we are in the process of breaking up the AnophelesDataResource
 # class into multiple parent classes like AnophelesGenomeSequenceData
@@ -1437,9 +1443,6 @@ class AnophelesDataResource(
             run_params["jupyter_mode"] = server_mode
         if server_port is not None:
             run_params["port"] = server_port
-
-        debug("launch the dash app")
-        app.run(**run_params)
 
         debug("launch the dash app")
         app.run(**run_params)
