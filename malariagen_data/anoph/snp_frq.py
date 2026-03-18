@@ -419,7 +419,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             for c in nobs_cols:
                 agg[c] = "first"
 
-        keep_cols = (
+        keep_cols = [
             "contig",
             "transcript",
             "aa_pos",
@@ -430,7 +430,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             "impact",
             "grantham_score",
             "sneath_score",
-        )
+        ]
         for c in keep_cols:
             agg[c] = "first"
         agg["alt_allele"] = lambda v: "{" + ",".join(v) + "}" if len(v) > 1 else v
