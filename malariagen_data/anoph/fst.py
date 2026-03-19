@@ -1,3 +1,4 @@
+import warnings
 from typing import Tuple, Optional
 
 import numpy as np
@@ -81,19 +82,22 @@ class AnophelesFstAnalysis(
                 chunks=chunks,
             ).compute()
 
+        n_snps = len(pos)
+        if window_size > n_snps:
+            warnings.warn(
+                f"window_size ({window_size}) is larger than the number of SNP sites "
+                f"available ({n_snps}); adjusting window_size to {n_snps}.",
+                UserWarning,
+                stacklevel=2,
+            )
+            window_size = n_snps
+
         with self._spinner(desc="Compute Fst"):
             with np.errstate(divide="ignore", invalid="ignore"):
                 fst = allel.moving_hudson_fst(ac1, ac2, size=window_size)
                 # Sometimes Fst can be very slightly below zero, clip for simplicity.
                 fst = np.clip(fst, a_min=clip_min, a_max=1)
                 x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
-
-        if len(x) == 0:
-            raise ValueError(
-                f"No Fst windows could be computed: window_size={window_size!r} is "
-                f"larger than the number of SNP sites available ({len(pos)}) in the "
-                "selected region. Try reducing window_size or selecting a larger region."
-            )
 
         results = dict(x=x, fst=fst)
 
@@ -103,7 +107,9 @@ class AnophelesFstAnalysis(
     @doc(
         summary="""
             Run a Fst genome-wide scan to investigate genetic differentiation
-            between two cohorts.
+            between two cohorts. If window_size exceeds the number of available
+            SNP sites, a UserWarning is issued and window_size is automatically
+            reduced to the number of available sites.
         """,
         returns=dict(
             x="An array containing the window centre point genomic positions",
