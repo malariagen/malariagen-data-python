@@ -84,7 +84,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         # Initialize cache attributes.
         self._cache_sample_metadata: Dict[Tuple[str, ...], pd.DataFrame] = dict()
-        self._cache_cohorts: Dict = dict()
+        self._cache_cohorts: Dict[Tuple[str, str], pd.DataFrame] = dict()
         self._cache_cohort_geometries: Dict[Tuple[str, str], Dict[str, Any]] = dict()
 
     def _metadata_paths(
