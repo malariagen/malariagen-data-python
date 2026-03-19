@@ -3,6 +3,7 @@
 __pycache__
 *.pyc
 dist
+.venv/
 .coverage
 coverage.xml
 .ipynb_checkpoints/
