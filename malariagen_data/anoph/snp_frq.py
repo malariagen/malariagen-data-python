@@ -1,3 +1,4 @@
+from functools import cached_property
 from typing import Optional, Dict, Union, Callable, List
 import warnings
 
@@ -40,9 +41,6 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-        # Set up cache variables.
-        self._cache_annotator = None
-
     def _snp_df_melt(self, *, ds_snp: xr.Dataset) -> pd.DataFrame:
         """Set up a dataframe with SNP site and filter data,
         melting each alternate allele into a separate row."""
@@ -81,13 +79,12 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
         return df_snps
 
+    @cached_property
     def _snp_effect_annotator(self):
         """Set up variant effect annotator."""
-        if self._cache_annotator is None:
-            self._cache_annotator = veff.Annotator(
-                genome=self.open_genome(), genome_features=self.genome_features()
-            )
-        return self._cache_annotator
+        return veff.Annotator(
+            genome=self.open_genome(), genome_features=self.genome_features()
+        )
 
     @_check_types
     @doc(
@@ -112,7 +109,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         df_snps = self._snp_df_melt(ds_snp=ds_snp)
 
         # Setup variant effect annotator.
-        ann = self._snp_effect_annotator()
+        ann = self._snp_effect_annotator
 
         # Add effects to the dataframe.
         ann.get_effects(transcript=transcript, variants=df_snps)
@@ -128,7 +125,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             A dataframe of SNP allele frequencies, one row per variant allele. The variant alleles are indexed by
             their contig, their position, the reference allele, the alternate allele and the associated amino acid change.
             The columns are split into three categories: there is one column for each taxon filter (e.g., pass_funestus, pass_gamb_colu, ...) containing whether the site of the variant allele passes the filter;
-            there is then 1 column for each cohort containing the frequency of the variant allele within the cohort, additionally there is a column `max_af` containing the maximum allele frequency of the variant allele accross all cohorts;
+            there is then 1 column for each cohort containing the frequency of the variant allele within the cohort, additionally there is a column `max_af` containing the maximum allele frequency of the variant allele across all cohorts;
             finally, there are 9 columns describing the variant allele: `transcript` contains the gene transcript used for this analysis,
             `effect` is the effect of the allele change,
             `impact`is the impact of the allele change,
@@ -136,7 +133,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             `alt_codon` is the altered codon with the variant allele,
             `aa_pos` is the position of the amino acid,
             `ref_aa` is the reference amino acid,
-            `alt_aa` is the altered amino acid with the varaint allele,
+            `alt_aa` is the altered amino acid with the variant allele,
             and `label` is the label of the variant allele.
         """,
         notes="""
@@ -249,7 +246,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
         if effects:
             # Add effect annotations.
-            ann = self._snp_effect_annotator()
+            ann = self._snp_effect_annotator
             ann.get_effects(
                 transcript=transcript, variants=df_snps, progress=self._progress
             )
@@ -299,15 +296,15 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         returns="""
             A dataframe of amino acid allele frequencies, one row per variant. The variants are indexed by
             their amino acid change, their contig, their position.
-            The columns are split into two categories: there is 1 column for each cohort containing the frequency of the amino acid change within the cohort, additionally there is a column `max_af` containing the maximum frequency of the amino acide change accross all cohorts;
+            The columns are split into two categories: there is 1 column for each cohort containing the frequency of the amino acid change within the cohort, additionally there is a column `max_af` containing the maximum frequency of the amino acid change across all cohorts;
             finally, there are 9 columns describing the variant allele: `transcript` contains the gene transcript used for this analysis,
             `effect` is the effect of the allele change,
             `impact`is the impact of the allele change,
-            `ref_allele` is the reference allel,
+            `ref_allele` is the reference allele,
             `alt_allele` is the alternate allele,
             `aa_pos` is the position of the amino acid,
             `ref_aa` is the reference amino acid,
-            `alt_aa` is the altered amino acid with the varaint allele,
+            `alt_aa` is the altered amino acid with the variant allele,
             and `label` is the label of the variant allele.
         """,
         notes="""
@@ -348,11 +345,55 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         # We just want aa change.
         df_ns_snps = df_snps.query(AA_CHANGE_QUERY).copy()
 
-        # Early check for no matching SNPs.
-        if len(df_ns_snps) == 0:  # pragma: no cover
-            raise ValueError(
-                "No amino acid change SNPs found for the given transcript and site mask."
+        # Handle case where no amino acid change SNPs are found.
+        # N.B., this can legitimately happen for some transcript/site_mask/query
+        # combinations. Return a well-formed empty DataFrame rather than raising,
+        # to avoid transient test failures and to allow downstream code to handle
+        # the empty result gracefully. See also:
+        # https://github.com/malariagen/malariagen-data-python/issues/1064
+        if len(df_ns_snps) == 0:
+            warnings.warn(
+                "No amino acid change SNPs found for the given transcript "
+                "and site mask. Returning an empty DataFrame.",
+                stacklevel=2,
             )
+            # Build an empty DataFrame with the expected schema.
+            freq_cols = [col for col in df_snps.columns if col.startswith("frq_")]
+            count_cols = [col for col in df_snps.columns if col.startswith("count_")]
+            nobs_cols = [col for col in df_snps.columns if col.startswith("nobs_")]
+            keep_cols = [
+                "contig",
+                "transcript",
+                "aa_pos",
+                "ref_allele",
+                "ref_aa",
+                "alt_aa",
+                "effect",
+                "impact",
+                "grantham_score",
+                "sneath_score",
+            ]
+            all_cols = (
+                ["aa_change"]
+                + freq_cols
+                + ["max_af"]
+                + keep_cols
+                + ["alt_allele", "label", "position"]
+            )
+            if include_counts:
+                all_cols = all_cols + count_cols + nobs_cols
+            df_empty = pd.DataFrame(columns=all_cols)
+            df_empty.set_index(["aa_change", "contig", "position"], inplace=True)
+
+            # Add metadata.
+            gene_name = self._transcript_to_parent_name(transcript)
+            title = transcript
+            if gene_name:
+                title += f" ({gene_name})"
+            title += " SNP frequencies"
+            df_empty.attrs["title"] = title
+
+            return df_empty
 
         # N.B., we need to worry about the possibility of the
         # same aa change due to SNPs at different positions. We cannot
@@ -378,7 +419,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             for c in nobs_cols:
                 agg[c] = "first"
 
-        keep_cols = (
+        keep_cols = [
             "contig",
             "transcript",
             "aa_pos",
@@ -387,7 +428,9 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             "alt_aa",
             "effect",
             "impact",
-        )
+            "grantham_score",
+            "sneath_score",
+        ]
         for c in keep_cols:
             agg[c] = "first"
         agg["alt_allele"] = lambda v: "{" + ",".join(v) + "}" if len(v) > 1 else v
@@ -453,6 +496,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         taxon_by: frq_params.taxon_by = frq_params.taxon_by_default,
+        filter_unassigned: Optional[frq_params.filter_unassigned] = None,
     ) -> xr.Dataset:
         # Load sample metadata.
         df_samples = self.sample_metadata(
@@ -467,6 +511,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             area_by=area_by,
             period_by=period_by,
             taxon_by=taxon_by,
+            filter_unassigned=filter_unassigned,
         )
 
         # Group samples to make cohorts.
@@ -586,7 +631,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             frequency = np.compress(loc_variant, frequency, axis=0)
 
         # Set up variant effect annotator.
-        ann = self._snp_effect_annotator()
+        ann = self._snp_effect_annotator
 
         # Add effects to the dataframe.
         ann.get_effects(
@@ -684,6 +729,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         taxon_by: frq_params.taxon_by = frq_params.taxon_by_default,
+        filter_unassigned: Optional[frq_params.filter_unassigned] = None,
     ) -> xr.Dataset:
         # Begin by computing SNP allele frequencies.
         ds_snp_frq = self.snp_allele_frequencies_advanced(
@@ -702,6 +748,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             chunks=chunks,
             inline_array=inline_array,
             taxon_by=taxon_by,
+            filter_unassigned=filter_unassigned,
         )
 
         # N.B., we need to worry about the possibility of the
@@ -832,7 +879,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         df_snps = pd.concat([df_snps, df_counts], axis=1)
 
         # Add effect annotations.
-        ann = self._snp_effect_annotator()
+        ann = self._snp_effect_annotator
         ann.get_effects(
             transcript=transcript, variants=df_snps, progress=self._progress
         )

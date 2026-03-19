@@ -15,8 +15,11 @@ authors = [
 license = "MIT"
 
 [tool.poetry.dependencies]
+# We should try to remain compatible with the latest
+# package versions in Google Colab:
+# https://github.com/googlecolab/backend-info
 python = ">=3.10,<3.13"
-numpy = "==1.26.4"
+numpy = ">=2.0.2,<2.1"
 numba = ">=0.60.0"
 llvmlite = "*"
 scipy = "*"
@@ -33,10 +36,10 @@ BioPython = "*"
 scikit-allel = ">=1.3.13"
 xarray = "*"
 plotly = "*"
-# Bokeh 3.7.x causes type checking issues.
-# https://github.com/bokeh/bokeh/issues/14412
+# https://github.com/malariagen/malariagen-data-python/issues/845
 # https://github.com/malariagen/malariagen-data-python/issues/734
-bokeh = "<3.7.0"
+# https://github.com/malariagen/malariagen-data-python/issues/743
+bokeh = ">=3.7.0"
 statsmodels = ">=0.14.2"
 ipyleaflet = ">=0.17.0"
 ipywidgets = "*"
@@ -68,27 +71,27 @@ anjl = ">=1.2.0"
 # needed for plink output
 bed_reader = "*"
 
-# dev extras
+[tool.poetry.group.dev.dependencies]
+pre-commit = "*"
+ruff = "*"
+mypy = "*"
+memory-profiler = "*"
+snakeviz = "*"
+notebook = "*"
+jupyterlab = "*"
+
+[tool.poetry.group.test.dependencies]
 pytest = "*"
 pytest-mock = "*"
 pytest-xdist = "*"
 pytest-cases = "*"
 pytest-cov = "*"
-notebook = "*"
-jupyterlab = "*"
-pre-commit = "*"
-ruff = "*"
-snakeviz = "*"
-mypy = "*"
-memory-profiler = "*"
-# docs
+
+[tool.poetry.group.docs.dependencies]
 sphinx = "*"
 pydata-sphinx-theme = "*"
 sphinx_design = "*"
 pandas-stubs = "*"
-
-[tool.poetry.extras]
-dev = ["pytest", "pytest-xdist", "pytest-cases", "pytest-cov", "notebook", "jupyterlab", "pre-commit", "ruff", "snakeviz", "mypy", "memory-profiler", "sphinx", "pydata-sphinx-theme", "sphinx_design", "pandas-stubs"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
@@ -104,3 +107,10 @@ line-length = 88
 
 [tool.ruff.lint]
 extend-select = []
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["bokeh", "bokeh.*"]
+follow_imports = "skip"
