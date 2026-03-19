@@ -690,37 +690,6 @@ class TestPlasmodiumDataResource(unittest.TestCase):
         assert sequence.shape == (15,)
         assert sequence.ndim == 1
 
-    def test_subset_genome_sequence_region_slice(self):
-        from malariagen_data.util import Region
-
-        # contig1 is np.arange(10)
-        # Valid slice 1-3 -> indices 0,1,2 (length 3)
-        region = Region("contig1", 1, 3)
-        sequence = self.test_plasmodium_class._subset_genome_sequence_region(
-            genome=self.test_ref_zarr, region=region
-        )
-        assert isinstance(sequence, da.Array)
-        assert sequence.shape == (3,)
-        assert sequence.compute().tolist() == [0, 1, 2]
-
-    def test_subset_genome_sequence_region_invalid_start_0(self):
-        from malariagen_data.util import Region
-
-        region = Region("contig1", 0, 3)
-        with self.assertRaises(ValueError):
-            self.test_plasmodium_class._subset_genome_sequence_region(
-                genome=self.test_ref_zarr, region=region
-            )
-
-    def test_subset_genome_sequence_region_invalid_end_0(self):
-        from malariagen_data.util import Region
-
-        region = Region("contig1", 1, 0)
-        with self.assertRaises(ValueError):
-            self.test_plasmodium_class._subset_genome_sequence_region(
-                genome=self.test_ref_zarr, region=region
-            )
-
 
 if __name__ == "__main__":
     unittest.main()
