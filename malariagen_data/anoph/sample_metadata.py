@@ -182,9 +182,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
             # Derive a quarter column from month.
             # Vectorized operation: quarter = ((month - 1) // 3) + 1 if month > 0 else -1
-            df["quarter"] = np.where(
-                df["month"] > 0, ((df["month"] - 1) // 3) + 1, -1
-            )
+            df["quarter"] = np.where(df["month"] > 0, ((df["month"] - 1) // 3) + 1, -1)
 
             # Add study columns.
             study_info = self.lookup_study_info(sample_set=sample_set)

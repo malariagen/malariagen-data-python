@@ -1,4 +1,3 @@
-import re
 from textwrap import dedent
 from typing import Optional, Union, List
 
@@ -113,7 +112,7 @@ def _build_cohorts_from_sample_grouping(
         df_cohorts["period_end"] = period.map(
             lambda v: v.end_time if pd.notna(v) else pd.NaT
         )
-    
+
     # Create a label that is similar to the cohort metadata,
     # although this won't be perfect.
     # Vectorized string operations
@@ -126,7 +125,11 @@ def _build_cohorts_from_sample_grouping(
     else:
         # Non-default case: replace non-alphanumeric characters with underscores
         area_str = df_cohorts["area"].astype(str)
-        taxon_clean = df_cohorts[taxon_by].astype(str).str.replace(r"[^A-Za-z0-9]+", "_", regex=True)
+        taxon_clean = (
+            df_cohorts[taxon_by]
+            .astype(str)
+            .str.replace(r"[^A-Za-z0-9]+", "_", regex=True)
+        )
         period_str = df_cohorts["period"].astype(str)
         df_cohorts["label"] = area_str + "_" + taxon_clean + "_" + period_str
 

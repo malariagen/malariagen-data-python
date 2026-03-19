@@ -609,7 +609,7 @@ class AnophelesBase:
             # Add an "unrestricted_use" column, set to True if terms-of-use expiry date <= today's date.
             # Vectorized operation: True if NaN, else (d <= today_date_iso)
             s = df[terms_of_use_expiry_date_column]
-            df["unrestricted_use"] = (s.isna() | (s <= today_date_iso))
+            df["unrestricted_use"] = s.isna() | (s <= today_date_iso)
             # Make the "unrestricted_use" column a nullable boolean, to allow missing data.
             df["unrestricted_use"] = df["unrestricted_use"].astype(pd.BooleanDtype())
 
