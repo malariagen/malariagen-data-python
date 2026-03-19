@@ -220,7 +220,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         df_nobs = pd.DataFrame(nobs_cols)
 
         # Compute max_af.
-        df_max_af = pd.DataFrame({"max_af": df_freqs.max(axis=1)})
+        df_max_af = pd.DataFrame({"max_af": df_freqs.max(axis=1).fillna(0.0)})
 
         # Build the final dataframe.
         df_snps.reset_index(drop=True, inplace=True)
@@ -437,7 +437,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         df_aaf = df_ns_snps.groupby(["position", "aa_change"]).agg(agg).reset_index()
 
         # Compute new max_af.
-        df_aaf["max_af"] = df_aaf[freq_cols].max(axis=1)
+        df_aaf["max_af"] = df_aaf[freq_cols].max(axis=1).fillna(0.0)
 
         # Add label.
         df_aaf["label"] = _pandas_apply(
@@ -603,7 +603,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         with warnings.catch_warnings():
             # Ignore "All-NaN slice encountered" warnings.
             warnings.simplefilter("ignore", category=RuntimeWarning)
-            max_af = np.nanmax(frequency, axis=1)
+            max_af = np.nan_to_num(np.nanmax(frequency, axis=1), nan=0.0)
 
         # Make dataframe of SNPs.
         df_variants_cols = {
@@ -791,7 +791,9 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         with warnings.catch_warnings():
             # Ignore "All-NaN slice encountered" warnings.
             warnings.simplefilter("ignore", category=RuntimeWarning)
-            max_af = np.nanmax(ds_aa_frq["event_frequency"].values, axis=1)
+            max_af = np.nan_to_num(
+                np.nanmax(ds_aa_frq["event_frequency"].values, axis=1), nan=0.0
+            )
         ds_aa_frq["variant_max_af"] = "variants", max_af
 
         # Set up variant dataframe, useful intermediate.

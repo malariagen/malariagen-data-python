@@ -381,7 +381,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         debug("compute max_af and additional columns")
         df_extras = pd.DataFrame(
             {
-                "max_af": df_freqs.max(axis=1),
+                "max_af": df_freqs.max(axis=1).fillna(0.0),
                 "windows": np.concatenate(
                     [ds_cnv["gene_windows"].values, ds_cnv["gene_windows"].values]
                 ),
@@ -597,7 +597,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         with warnings.catch_warnings():
             # ignore "All-NaN slice encountered" warnings
             warnings.simplefilter("ignore", category=RuntimeWarning)
-            max_af = np.nanmax(frequency, axis=1)
+            max_af = np.nan_to_num(np.nanmax(frequency, axis=1), nan=0.0)
         df_variants = pd.DataFrame(
             {
                 "contig": region.contig,

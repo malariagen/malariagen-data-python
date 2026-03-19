@@ -111,7 +111,7 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
         df_freqs = pd.DataFrame(freq_cols, index=list(hap_dict.keys()))
 
         # Compute max_af.
-        df_max_af = pd.DataFrame({"max_af": df_freqs.max(axis=1)})
+        df_max_af = pd.DataFrame({"max_af": df_freqs.max(axis=1).fillna(0.0)})
 
         # Build the final dataframe.
         df_haps = pd.concat([df_freqs, df_max_af], axis=1)
@@ -240,7 +240,7 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
         df_freqs = pd.DataFrame(freq_cols, index=list(hap_freq.keys()))
 
         # Compute max_af.
-        df_max_af = pd.DataFrame({"max_af": df_freqs.max(axis=1)})
+        df_max_af = pd.DataFrame({"max_af": df_freqs.max(axis=1).fillna(0.0)})
 
         df_counts = pd.DataFrame(count_cols, index=list(hap_count.keys()))
 
