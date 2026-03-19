@@ -430,6 +430,7 @@ def _init_filesystem(url, **kwargs):
     """Initialise a fsspec filesystem from a given base URL and parameters."""
 
     storage_options = None  # To prevent using before assignment (Pylint).
+    simplecache_options = kwargs.pop("simplecache", None)
 
     # Special case Google Cloud Storage, authenticate the user.
     if "gs://" in url or "gcs://" in url:
@@ -487,8 +488,30 @@ def _init_filesystem(url, **kwargs):
         # Some other kind of URL, pass through kwargs as-is.
         storage_options = kwargs
 
+    if simplecache_options is not None:
+        storage_options["simplecache"] = simplecache_options
+
     # Process the URL using fsspec.
     fs, path = url_to_fs(url, **storage_options)
+
+    # Decode URL-encoded paths for local filesystems.
+    protocol = getattr(fs, "protocol", None)
+    if isinstance(protocol, str):
+        protocols = {protocol}
+    elif isinstance(protocol, (tuple, list)):
+        protocols = set(protocol)
+    else:
+        protocols = set()
+
+    is_local = (
+        bool(protocols.intersection({"file", "local"}))
+        or fs.__class__.__name__ == "LocalFileSystem"
+    )
+
+    if is_local:
+        from urllib.parse import unquote
+
+        path = unquote(path)
 
     # Path compatibility, fsspec/gcsfs behaviour varies between versions.
     while path.endswith("/"):
@@ -851,9 +874,7 @@ def _value_error(
     value,
     expectation,
 ):
-    message = (
-        f"Bad value for parameter {name}; expected {expectation}, " f"found {value!r}"
-    )
+    message = f"Bad value for parameter {name}; expected {expectation}, found {value!r}"
     raise ValueError(message)
 
 
@@ -895,6 +916,12 @@ class LoggingHelper:
             handler = logging.FileHandler(out)
         self._handler = handler
 
+        # Remove any pre-existing handlers from the singleton logger to prevent
+        # accumulation (and FileHandler FD leaks) on repeated instantiation.
+        for existing_handler in logger.handlers[:]:
+            logger.removeHandler(existing_handler)
+            existing_handler.close()
+
         # configure handler
         if handler is not None:
             if debug:
@@ -925,6 +952,7 @@ class LoggingHelper:
         self.flush()
 
     def set_level(self, level):
+        self._logger.setLevel(level)
         if self._handler is not None:
             self._handler.setLevel(level)
 

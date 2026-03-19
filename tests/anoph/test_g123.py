@@ -265,3 +265,10 @@ def test_g123_calibration(fixture, api: AnophelesG123Analysis):
     # Run plotting function.
     fig = api.plot_g123_calibration(**g123_params, show=False)
     assert isinstance(fig, bokeh.models.Plot)
+
+
+def test_garud_g123_empty_window():
+    import numpy as np
+    from malariagen_data.anoph.g123 import _garud_g123
+
+    assert np.isnan(_garud_g123(np.empty((0, 0), dtype=int)))

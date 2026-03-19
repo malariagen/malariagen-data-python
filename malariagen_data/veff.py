@@ -1,7 +1,9 @@
 import collections
 import operator
 
+import pandas as pd
 from Bio.Seq import Seq  # type: ignore
+from .amino_acid_distance import grantham_score, sneath_dist
 
 VariantEffect = collections.namedtuple(
     "VariantEffect",
@@ -62,7 +64,15 @@ class Annotator(object):
         return self._idx_feature_id.loc[feature_id]
 
     def get_children(self, feature_id):
-        return self._idx_parent_id.loc[feature_id]
+        result = self._idx_parent_id.loc[feature_id]
+        # When there is only one child, pandas .loc returns a Series
+        # instead of a DataFrame. Ensure we always return a DataFrame
+        # so downstream code (e.g. .sort_values, column filtering) works.
+        if isinstance(result, pd.Series):
+            result = result.to_frame().T
+            # Preserve the index name from the parent DataFrame.
+            result.index.name = self._idx_parent_id.index.name
+        return result
 
     def get_ref_seq(self, chrom, start, stop):
         """Accepts 1-based coords."""
@@ -82,10 +92,12 @@ class Annotator(object):
 
         # check the reference allele matches the reference sequence
         ref_seq = self.get_ref_seq(chrom, ref_start, ref_stop).lower()
-        assert ref_seq == ref.lower(), (
-            "reference allele does not match reference sequence, "
-            f"expected {ref_seq!r}, found {ref.lower()!r}"
-        )
+        if ref_seq != ref.lower():
+            raise ValueError(
+                f"Reference allele does not match reference sequence at "
+                f"{chrom}:{ref_start}-{ref_stop}. Expected {ref_seq!r}, "
+                f"found {ref.lower()!r}."
+            )
 
         return ref_start, ref_stop
 
@@ -104,6 +116,17 @@ class Annotator(object):
         utr3 = list(children[children.type == "three_prime_UTR"].itertuples())
         introns = [(x.end + 1, y.start - 1) for x, y in zip(exons[:-1], exons[1:])]
 
+        # Guard: raise an informative error if the transcript has no CDS
+        # regions, as variant effect annotation is not meaningful for
+        # non-coding transcripts.
+        if len(cdss) == 0 and len(utr5) == 0 and len(utr3) == 0:
+            raise ValueError(
+                f"Transcript {transcript!r} has no CDS or UTR children. "
+                f"Variant effect annotation is only supported for "
+                f"protein-coding transcripts. This may indicate "
+                f"incomplete or incorrect genome annotations."
+            )
+
         effect_values = []
         impact_values = []
         ref_codon_values = []
@@ -112,6 +135,8 @@ class Annotator(object):
         ref_aa_values = []
         alt_aa_values = []
         aa_change_values = []
+        grantham_values = []
+        sneath_values = []
 
         feature_contig = feature.contig
         feature_start = feature.start
@@ -147,7 +172,12 @@ class Annotator(object):
             )
 
             # reference allele falls within current transcript
-            assert feature_start <= ref_start <= ref_stop <= feature_stop
+            if not (feature_start <= ref_start <= ref_stop <= feature_stop):
+                raise ValueError(
+                    f"Variant coordinates ({ref_start}-{ref_stop}) fall outside "
+                    f"transcript boundaries ({feature_start}-{feature_stop}) "
+                    f"on {chrom}."
+                )
 
             effect = _get_within_transcript_effect(
                 ann=self,
@@ -158,6 +188,21 @@ class Annotator(object):
                 introns=introns,
             )
 
+            # compute grantham and sneath scores
+            # Assume no score (None) for introns and stop codons
+            g_score = None
+            s_score = None
+
+            # Check if both exist and are standard uppercase letters (no '*' or None)
+            if (
+                isinstance(effect.ref_aa, str)
+                and effect.ref_aa.isalpha()
+                and isinstance(effect.alt_aa, str)
+                and effect.alt_aa.isalpha()
+            ):
+                g_score = grantham_score(effect.ref_aa, effect.alt_aa)
+                s_score = sneath_dist(effect.ref_aa, effect.alt_aa)
+
             effect_values.append(effect.effect)
             impact_values.append(effect.impact)
             ref_codon_values.append(effect.ref_codon)
@@ -166,6 +211,8 @@ class Annotator(object):
             ref_aa_values.append(effect.ref_aa)
             alt_aa_values.append(effect.alt_aa)
             aa_change_values.append(effect.aa_change)
+            grantham_values.append(g_score)
+            sneath_values.append(s_score)
 
         variants["transcript"] = transcript
         variants["effect"] = effect_values
@@ -176,6 +223,8 @@ class Annotator(object):
         variants["ref_aa"] = ref_aa_values
         variants["alt_aa"] = alt_aa_values
         variants["aa_change"] = aa_change_values
+        variants["grantham_score"] = grantham_values
+        variants["sneath_score"] = sneath_values
 
         return variants
 
@@ -234,7 +283,11 @@ def _get_cds_effect(ann, base_effect, cds, cdss):
     cds_stop = cds.end
 
     # reference allele falls within current transcript
-    assert cds_start <= ref_start <= ref_stop <= cds_stop
+    if not (cds_start <= ref_start <= ref_stop <= cds_stop):
+        raise ValueError(
+            f"Variant coordinates ({ref_start}-{ref_stop}) fall outside "
+            f"CDS boundaries ({cds_start}-{cds_stop})."
+        )
     return _get_within_cds_effect(ann, base_effect, cds, cdss)
 
 
@@ -303,10 +356,15 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
             effect = base_effect._replace(effect="STOP_GAINED", impact="HIGH")
 
         else:
-            # TODO NON_SYNONYMOUS_START and NON_SYNONYMOUS_STOP
-
             # variant causes a codon that produces a different amino acid
             # e.g.: Tgg/Cgg, W/R
+            # N.B. NON_SYNONYMOUS_START and NON_SYNONYMOUS_STOP from the SnpEff
+            # taxonomy do not require separate handling here. Any start codon
+            # mutation that changes the amino acid is already classified as
+            # START_LOST (when ref_aa == "M"). Any stop codon mutation that
+            # changes the amino acid is already classified as STOP_LOST or
+            # STOP_GAINED. There is no reachable case that falls through to here
+            # with ref or alt at a start or stop codon position.
             effect = base_effect._replace(
                 effect="NON_SYNONYMOUS_CODING", impact="MODERATE"
             )
@@ -548,7 +606,21 @@ def _get_within_intron_effect(base_effect, intron):
             effect = base_effect._replace(effect="INTRONIC", impact="MODIFIER")
 
     else:
-        # TODO intronic INDELs and MNPs
-        effect = base_effect._replace(effect="TODO intronic indels and MNPs")
+        # INDELs and MNPs — use the closest edge of the variant to the splice site
+        if strand == "+":
+            dist_5prime = ref_start - (intron_start - 1)
+            dist_3prime = -(ref_stop - (intron_stop + 1))
+        else:
+            dist_5prime = (intron_stop + 1) - ref_stop
+            dist_3prime = -((intron_start - 1) - ref_start)
+
+        indel_min_dist = min(dist_5prime, dist_3prime)
+
+        if indel_min_dist <= 2:
+            effect = base_effect._replace(effect="SPLICE_CORE", impact="HIGH")
+        elif indel_min_dist <= 7:
+            effect = base_effect._replace(effect="SPLICE_REGION", impact="MODERATE")
+        else:
+            effect = base_effect._replace(effect="INTRONIC", impact="MODIFIER")
 
     return effect
