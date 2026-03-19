@@ -446,10 +446,11 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
             # Put gene pointers (▲ or ▼) in a new column, depending on the strand.
             # Except if the gene_label is null or an empty string, which should not be shown.
-            # Vectorized operation: use np.where for conditional logic
-            has_label = data["gene_label"].astype(bool)
-            pointer_symbol = np.where(data["strand"] == "+", "▼", "▲")
-            data["gene_pointer"] = np.where(has_label, pointer_symbol, "")
+            data["gene_pointer"] = np.where(
+                data["gene_label"] == "",
+                "",
+                np.where(data["strand"] == "+", "▼", "▲"),
+            )
 
             # Put the pointer above or below the gene rectangle, depending on + or - strand.
             neg_strand_pointer_y = orig_mid_y_range - 1.1
