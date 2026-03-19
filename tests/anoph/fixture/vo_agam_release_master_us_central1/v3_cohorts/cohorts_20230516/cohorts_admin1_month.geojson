@@ -1,0 +1,29 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "cohort_id": "BF-01_arab_2008_04",
+        "admin1_name": "Boucle du Mouhoun",
+        "admin1_iso": "BF-01"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[-4.5, 12.0], [-3.5, 12.0], [-3.5, 13.0], [-4.5, 13.0], [-4.5, 12.0]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "cohort_id": "BF-02_colu_2011_07",
+        "admin1_name": "Cascades",
+        "admin1_iso": "BF-02"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[-5.0, 10.0], [-4.0, 10.0], [-4.0, 11.0], [-5.0, 11.0], [-5.0, 10.0]]]
+      }
+    }
+  ]
+}

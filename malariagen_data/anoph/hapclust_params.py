@@ -15,3 +15,11 @@ distance_metric: TypeAlias = Annotated[
 ]
 
 distance_metric_default: Literal["hamming", "dxy"] = "hamming"
+
+cohort_col: TypeAlias = Annotated[
+    str,
+    """
+    Column name in sample metadata used to define cohorts for grouping,
+    e.g., 'country', 'taxon', 'aim_species'.
+    """,
+]
