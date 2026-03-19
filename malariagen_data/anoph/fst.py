@@ -360,7 +360,7 @@ class AnophelesFstAnalysis(
     )
     def average_fst(
         self,
-        region: base_params.region,
+        region: base_params.regions,
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
         sample_query_options: Optional[base_params.sample_query_options] = None,
@@ -435,7 +435,7 @@ class AnophelesFstAnalysis(
     )
     def pairwise_average_fst(
         self,
-        region: base_params.region,
+        region: base_params.regions,
         cohorts: base_params.cohorts,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
@@ -477,6 +477,7 @@ class AnophelesFstAnalysis(
                     cohort1_query=cohort_queries[i],
                     cohort2_query=cohort_queries[j],
                     sample_sets=sample_sets,
+                    sample_query_options=sample_query_options,
                     cohort_size=cohort_size,
                     min_cohort_size=min_cohort_size,
                     max_cohort_size=max_cohort_size,

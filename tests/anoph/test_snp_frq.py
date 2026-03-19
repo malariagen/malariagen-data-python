@@ -200,6 +200,8 @@ def test_snp_effects(fixture, api: AnophelesSnpFrequencyAnalysis):
             "ref_aa",
             "alt_aa",
             "aa_change",
+            "grantham_score",
+            "sneath_score",
         ]
     )
     assert df.columns.tolist() == expected_fields
@@ -251,6 +253,8 @@ def check_snp_allele_frequencies(
         "aa_pos",
         "ref_aa",
         "alt_aa",
+        "grantham_score",
+        "sneath_score",
     ]
     frq_fields = ["frq_" + s for s in cohort_labels] + ["max_af"]
     expected_fields = universal_fields + frq_fields + effects_fields
@@ -306,9 +310,10 @@ def check_aa_allele_frequencies(
         "alt_allele",
         "ref_aa",
         "alt_aa",
+        "grantham_score",
+        "sneath_score",
     ]
     frq_fields = ["frq_" + s for s in cohort_labels] + ["max_af"]
-    expected_fields = universal_fields + frq_fields + effects_fields
     expected_fields = universal_fields + frq_fields + effects_fields
     assert sorted(df.columns.tolist()) == sorted(expected_fields)
     assert df.index.names == [
@@ -398,14 +403,21 @@ def test_allele_frequencies_with_str_cohorts(
     # Run the function under test.
     df_aa = api.aa_allele_frequencies(**params)
 
-    check_plot_frequencies_heatmap(api, df_aa)
+    # Handle the case where no amino acid change SNPs are found.
+    # In this case, aa_allele_frequencies returns an empty DataFrame
+    # instead of raising (see issue #1064).
+    if len(df_aa) > 0:
+        check_plot_frequencies_heatmap(api, df_aa)
 
-    # Standard checks.
-    check_aa_allele_frequencies(
-        df=df_aa,
-        cohort_labels=cohort_labels,
-        transcript=transcript,
-    )
+        # Standard checks.
+        check_aa_allele_frequencies(
+            df=df_aa,
+            cohort_labels=cohort_labels,
+            transcript=transcript,
+        )
+    else:
+        assert isinstance(df_aa, pd.DataFrame)
+        assert df_aa.index.names == ["aa_change", "contig", "position"]
 
 
 @pytest.mark.parametrize("min_cohort_size", [0, 10, 100])
@@ -526,14 +538,22 @@ def test_allele_frequencies_with_str_cohorts_and_sample_query(
     # Run the function under test.
     df_aa = api.aa_allele_frequencies(**params)
 
-    check_plot_frequencies_heatmap(api, df_aa)
+    # Handle the case where no amino acid change SNPs are found.
+    # In this case, aa_allele_frequencies returns an empty DataFrame
+    # instead of raising (see issue #1064).
+    if len(df_aa) > 0:
+        check_plot_frequencies_heatmap(api, df_aa)
 
-    # Standard checks.
-    check_aa_allele_frequencies(
-        df=df_aa,
-        cohort_labels=cohort_labels,
-        transcript=transcript,
-    )
+        # Standard checks.
+        check_aa_allele_frequencies(
+            df=df_aa,
+            cohort_labels=cohort_labels,
+            transcript=transcript,
+        )
+    else:
+        # Verify the empty DataFrame has the expected structure.
+        assert isinstance(df_aa, pd.DataFrame)
+        assert df_aa.index.names == ["aa_change", "contig", "position"]
 
 
 @parametrize_with_cases(
@@ -599,14 +619,21 @@ def test_allele_frequencies_with_str_cohorts_and_sample_query_options(
     # Run the function under test.
     df_aa = api.aa_allele_frequencies(**params)
 
-    check_plot_frequencies_heatmap(api, df_aa)
+    # Handle the case where no amino acid change SNPs are found.
+    # In this case, aa_allele_frequencies returns an empty DataFrame
+    # instead of raising (see issue #1064).
+    if len(df_aa) > 0:
+        check_plot_frequencies_heatmap(api, df_aa)
 
-    # Standard checks.
-    check_aa_allele_frequencies(
-        df=df_aa,
-        cohort_labels=cohort_labels,
-        transcript=transcript,
-    )
+        # Standard checks.
+        check_aa_allele_frequencies(
+            df=df_aa,
+            cohort_labels=cohort_labels,
+            transcript=transcript,
+        )
+    else:
+        assert isinstance(df_aa, pd.DataFrame)
+        assert df_aa.index.names == ["aa_change", "contig", "position"]
 
 
 @parametrize_with_cases("fixture,api", cases=".")
