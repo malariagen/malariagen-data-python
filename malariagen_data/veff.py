@@ -356,10 +356,15 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
             effect = base_effect._replace(effect="STOP_GAINED", impact="HIGH")
 
         else:
-            # TODO NON_SYNONYMOUS_START and NON_SYNONYMOUS_STOP
-
             # variant causes a codon that produces a different amino acid
             # e.g.: Tgg/Cgg, W/R
+            # N.B. NON_SYNONYMOUS_START and NON_SYNONYMOUS_STOP from the SnpEff
+            # taxonomy do not require separate handling here. Any start codon
+            # mutation that changes the amino acid is already classified as
+            # START_LOST (when ref_aa == "M"). Any stop codon mutation that
+            # changes the amino acid is already classified as STOP_LOST or
+            # STOP_GAINED. There is no reachable case that falls through to here
+            # with ref or alt at a start or stop codon position.
             effect = base_effect._replace(
                 effect="NON_SYNONYMOUS_CODING", impact="MODERATE"
             )
