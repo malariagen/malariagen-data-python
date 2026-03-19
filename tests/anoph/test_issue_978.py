@@ -1,11 +1,12 @@
 import pytest
 import pandas as pd
-import numpy as np
 from malariagen_data.anoph.snp_frq import AnophelesSnpFrequencyAnalysis
+
 
 @pytest.fixture
 def ag3_sim_api(ag3_sim_fixture):
     from malariagen_data import ag3 as _ag3
+
     return AnophelesSnpFrequencyAnalysis(
         url=ag3_sim_fixture.url,
         public_url=ag3_sim_fixture.url,
@@ -29,6 +30,7 @@ def ag3_sim_api(ag3_sim_fixture):
         taxon_colors=_ag3.TAXON_COLORS,
     )
 
+
 def test_snp_allele_frequencies_max_af_nan(ag3_sim_api):
     df_gff = ag3_sim_api.genome_features(attributes=["ID"])
     transcript = df_gff.query("type == 'mRNA'")["ID"].iloc[0]
@@ -38,14 +40,15 @@ def test_snp_allele_frequencies_max_af_nan(ag3_sim_api):
         transcript=transcript,
         cohorts="admin1_year",
         min_cohort_size=1,
-        drop_invariant=False
+        drop_invariant=False,
     )
-    
+
     assert isinstance(df, pd.DataFrame)
     if "max_af" in df.columns:
         assert not df["max_af"].isna().any(), "max_af contains NaNs"
         # Check that it's float
-        assert df["max_af"].dtype.kind in "fc" # float or complex
+        assert df["max_af"].dtype.kind in "fc"  # float or complex
+
 
 def test_aa_allele_frequencies_max_af_nan(ag3_sim_api):
     df_gff = ag3_sim_api.genome_features(attributes=["ID"])
@@ -55,9 +58,9 @@ def test_aa_allele_frequencies_max_af_nan(ag3_sim_api):
         transcript=transcript,
         cohorts="admin1_year",
         min_cohort_size=1,
-        drop_invariant=False
+        drop_invariant=False,
     )
-    
+
     if len(df) > 0:
         assert not df["max_af"].isna().any(), "max_af contains NaNs in AA frequencies"
         assert df["max_af"].dtype.kind in "fc"
