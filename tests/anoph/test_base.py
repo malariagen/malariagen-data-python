@@ -1,3 +1,6 @@
+import io
+import logging
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -8,6 +11,7 @@ from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data import adir1 as _adir1
 from malariagen_data.anoph.base import AnophelesBase
+from malariagen_data.util import LoggingHelper
 
 
 @pytest.fixture
@@ -256,6 +260,47 @@ def test_lookup_study(fixture, api):
 
     with pytest.raises(ValueError):
         api.lookup_study("foobar")
+
+
+def test_logging_helper_no_handler_accumulation():
+    # Regression test: repeated LoggingHelper construction on the same logger
+    # name must not accumulate handlers (StreamHandler leak, FileHandler FD leak).
+    logger_name = "test_logging_helper_no_handler_accumulation"
+    for _ in range(10):
+        LoggingHelper(name=logger_name, out=io.StringIO())
+    logger = logging.getLogger(logger_name)
+    assert (
+        len(logger.handlers) <= 1
+    ), f"Handler leak: {len(logger.handlers)} handlers after 10 instantiations"
+
+
+def test_logging_helper_no_duplicate_output():
+    # Regression test: a message emitted after N instantiations must appear
+    # exactly once in the output stream.
+    logger_name = "test_logging_helper_no_duplicate_output"
+    out = io.StringIO()
+    for _ in range(5):
+        helper = LoggingHelper(name=logger_name, out=out)
+    helper.info("sentinel")
+    output = out.getvalue()
+    assert (
+        output.count("sentinel") == 1
+    ), f"Duplicate log output: 'sentinel' appeared {output.count('sentinel')} times"
+
+
+def test_logging_helper_set_level_updates_logger():
+    # Regression test: set_level() must update the logger level, not just the
+    # handler level. Without fixing the logger, the logger itself would filter
+    # out DEBUG messages before they ever reached the handler.
+    logger_name = "test_logging_helper_set_level_updates_logger"
+    out = io.StringIO()
+    helper = LoggingHelper(name=logger_name, out=out, debug=False)
+    helper.set_level(logging.DEBUG)
+    helper.debug("should appear")
+    output = out.getvalue()
+    assert (
+        "should appear" in output
+    ), "set_level(DEBUG) had no effect: debug message was silently dropped"
 
 
 def _strip_terms_of_use_from_manifest(manifest_path):
