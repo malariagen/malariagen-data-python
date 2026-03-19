@@ -1157,48 +1157,53 @@ def _check_colab_location(gcp_region: Optional[str]):
 def _check_types(f):
     """Decorator to provide runtime checking of parameter types.
 
-    Uses Pydantic v2's TypeAdapter for parameter validation.
-    Validates input types without coercing arguments — the original
-    function is called with the original unmodified arguments.
+    Uses Pydantic v2's validate_call() for parameter validation.
+    Validates input types in strict mode without coercing arguments.
 
     """
-    from pydantic import ConfigDict, TypeAdapter, ValidationError
+    from pydantic import ConfigDict, ValidationError, validate_call
 
-    type_hints = get_type_hints(f)
-    config = ConfigDict(arbitrary_types_allowed=True)
+    config = ConfigDict(strict=True, arbitrary_types_allowed=True)
 
-    # Build a TypeAdapter for each annotated parameter (skip 'return').
-    adapters: dict = {}
-    for k, t in type_hints.items():
-        if k == "return":
-            continue
-        try:
-            adapters[k] = TypeAdapter(t, config=config)
-        except Exception:
-            pass  # Skip types pydantic cannot handle
+    try:
+        validated_f = validate_call(config=config, validate_return=False)(f)
+    except Exception as exc:
+        warnings.warn(
+            f"Could not apply validate_call to {f.__name__!r}: {exc}. "
+            "Type validation will be skipped for this function.",
+            stacklevel=2,
+        )
+        return f
 
     @wraps(f)
     def wrapper(*args, **kwargs):
-        call_args = getcallargs(f, *args, **kwargs)
-        for k, adapter in adapters.items():
-            if k in call_args:
-                v = call_args[k]
-                try:
-                    adapter.validate_python(v, strict=True)
-                except ValidationError as e:
-                    expected_type = humanize_type(type_hints[k])
-                    actual_type = humanize_type(type(v))
-                    message = fill(
-                        dedent(
-                            f"""
-                        Parameter {k!r} with value {v!r} in call to function {f.__name__!r} has incorrect type:
-                        found {actual_type}, expected {expected_type}. See below for further information.
-                    """
+        try:
+            return validated_f(*args, **kwargs)
+        except ValidationError as e:
+            type_hints = get_type_hints(f)
+            call_args = getcallargs(f, *args, **kwargs)
+            errors = e.errors()
+            if errors:
+                err = errors[0]
+                loc = err.get("loc", ())
+                if loc:
+                    k = str(loc[0])
+                    v = call_args.get(k)
+                    t = type_hints.get(k)
+                    if t is not None:
+                        expected_type = humanize_type(t)
+                        actual_type = humanize_type(type(v))
+                        message = fill(
+                            dedent(
+                                f"""\
+                            Parameter {k!r} with value {v!r} in call to function {f.__name__!r} has incorrect type:
+                            found {actual_type}, expected {expected_type}. See below for further information.
+                        """
+                            )
                         )
-                    )
-                    message += f"\n\n{e}"
-                    raise TypeError(message) from None
-        return f(*args, **kwargs)
+                        message += f"\n\n{e}"
+                        raise TypeError(message) from None
+            raise TypeError(str(e)) from None
 
     return wrapper
 
