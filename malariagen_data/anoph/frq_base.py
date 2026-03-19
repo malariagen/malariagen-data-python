@@ -28,6 +28,13 @@ def _prep_samples_for_cohort_grouping(
         # Users can explicitly override with True/False.
         filter_unassigned = taxon_by == "taxon"
 
+    # Validate taxon_by.
+    if taxon_by not in df_samples.columns:
+        raise ValueError(
+            f"Invalid value for `taxon_by`: {taxon_by!r}. "
+            f"Must be the name of an existing column in the sample metadata."
+        )
+
     if filter_unassigned:
         # Remove samples with "intermediate" or "unassigned" taxon values,
         # as we only want cohorts with clean taxon calls.
@@ -75,6 +82,13 @@ def _prep_samples_for_cohort_grouping(
     else:
         # Use the vectorized period creation function.
         df_samples["period"] = period_by_func_vectorized(df_samples)
+
+    # Validate area_by.
+    if area_by not in df_samples.columns:
+        raise ValueError(
+            f"Invalid value for `area_by`: {area_by!r}. "
+            f"Must be the name of an existing column in the sample metadata."
+        )
 
     # Copy the specified area_by column to a new "area" column.
     df_samples["area"] = df_samples[area_by]
