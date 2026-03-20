@@ -69,14 +69,18 @@ class PlinkConverter(
         random_seed: base_params.random_seed = 42,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
+        out: Optional[plink_params.out] = None,
     ):
         # Check that either sample_query xor sample_indices are provided.
         base_params._validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
-        # Define output files
-        plink_file_path = f"{output_dir}/{region}.{n_snps}.{min_minor_ac}.{max_missing_an}.{thin_offset}"
+        # Use user-provided prefix or fall back to auto-generated default
+        if out is not None:
+            plink_file_path = f"{output_dir}/{out}"
+        else:
+            plink_file_path = f"{output_dir}/{region}.{n_snps}.{min_minor_ac}.{max_missing_an}.{thin_offset}"
 
         bed_file_path = f"{plink_file_path}.bed"
 
