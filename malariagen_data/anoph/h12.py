@@ -223,9 +223,7 @@ class AnophelesH12Analysis(
         fig.xaxis.ticker = window_sizes
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     def _h12_gwss(
         self,
@@ -440,9 +438,7 @@ class AnophelesH12Analysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -527,9 +523,7 @@ class AnophelesH12Analysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -651,9 +645,7 @@ class AnophelesH12Analysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -742,9 +734,7 @@ class AnophelesH12Analysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -850,9 +840,7 @@ class AnophelesH12Analysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
 
 def _garud_h12(ht):

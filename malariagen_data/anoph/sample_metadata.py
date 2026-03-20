@@ -880,6 +880,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         sample_query_options: Optional[base_params.sample_query_options] = None,
+        sample_indices: Optional[base_params.sample_indices] = None,
         index: Union[str, Sequence[str]] = (
             "country",
             "admin1_iso",
@@ -894,6 +895,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             sample_sets=sample_sets,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
+            sample_indices=sample_indices,
         )
 
         # Create pivot table.
@@ -928,6 +930,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         sample_query_options: Optional[base_params.sample_query_options] = None,
+        sample_indices: Optional[base_params.sample_indices] = None,
         basemap: Optional[map_params.basemap] = map_params.basemap_default,
         center: map_params.center = map_params.center_default,
         zoom: map_params.zoom = map_params.zoom_default,
@@ -947,6 +950,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             sample_sets=sample_sets,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
+            sample_indices=sample_indices,
         )
 
         # Pivot taxa by locations.
@@ -1256,6 +1260,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         sample_query_options: Optional[base_params.sample_query_options] = None,
+        sample_indices: Optional[base_params.sample_indices] = None,
         template: plotly_params.template = "plotly_white",
         width: plotly_params.fig_width = 800,
         height: plotly_params.fig_height = 600,
@@ -1268,6 +1273,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             sample_sets=sample_sets,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
+            sample_indices=sample_indices,
         )
 
         # Special handling for plotting by year.
@@ -1317,9 +1323,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig
 
     def _setup_sample_symbol(
         self,
@@ -1539,6 +1543,12 @@ class AnophelesSampleMetadata(AnophelesBase):
             else:
                 cohort_queries_checked[cohort_label] = cohort_query
 
+        if not cohort_queries_checked:
+            raise ValueError(
+                "No cohorts remain after applying the minimum cohort size filter. "
+                "Try reducing `min_cohort_size` or broadening your sample selection."
+            )
+
         return cohort_queries_checked
 
     @_check_types
@@ -1748,9 +1758,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -1768,6 +1776,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         sample_sets: Optional[base_params.sample_sets],
         sample_query: Optional[base_params.sample_query] = None,
         sample_query_options: Optional[base_params.sample_query_options] = None,
+        sample_indices: Optional[base_params.sample_indices] = None,
         marker_size: plotly_params.marker_size = 10,
         color: plotly_params.color = "admin1_name",
         color_discrete_sequence: plotly_params.color_discrete_sequence = px.colors.qualitative.Prism,
@@ -1786,6 +1795,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             sample_sets=sample_sets,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
+            sample_indices=sample_indices,
         )
 
         # Set the location columns to use from the sample metadata.
@@ -1824,9 +1834,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig
 
 
 def _locate_cohorts(*, cohorts, data, min_cohort_size):

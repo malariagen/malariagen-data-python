@@ -297,7 +297,7 @@ def test_pairwise_average_fst_with_min_cohort_size(fixture, api: AnophelesFstAna
         cohorts=cohorts,
         sample_sets=all_sample_sets,
         site_mask=site_mask,
-        min_cohort_size=15,
+        min_cohort_size=2,
         n_jack=random.randint(10, 200),
     )
 
