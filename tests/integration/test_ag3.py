@@ -5,7 +5,6 @@ from numpy.testing import assert_allclose
 
 from malariagen_data import Ag3, Region
 from malariagen_data.util import _locate_region, _resolve_region
-import xarray as xr
 
 
 contigs = "2R", "2L", "3R", "3L", "X"
@@ -279,14 +278,14 @@ def test_plot_haplotype_network_none(mocker):
     assert call_args["ht_color_counts"] is None
 
 
-#def test_phenotype_data():
+# def test_phenotype_data():
 #    """Test basic functionality of phenotype_data method with sample_query."""
 #    ag3 = setup_ag3()
 
 #    sample_set = "1237-VO-BJ-DJOGBENOU-VMF00050"
 #    insecticide_query = "Deltamethrin"
 
-    # Use sample_query for filtering
+# Use sample_query for filtering
 #    df = ag3.phenotype_data(
 #        sample_sets=sample_set, sample_query=f"insecticide == '{insecticide_query}'"
 #    )
@@ -297,7 +296,7 @@ def test_plot_haplotype_network_none(mocker):
 #    for col in expected_cols:
 #        assert col in df.columns
 
-    # Check data content
+# Check data content
 #    assert len(df) > 0
 #    assert all(df["insecticide"] == insecticide_query)  # Check if filter was applied
 #    assert set(df["phenotype"].str.lower().unique()).issubset(
@@ -308,11 +307,11 @@ def test_plot_haplotype_network_none(mocker):
 #            "susceptible",
 #            "died",
 #            "survived",
-        }  # Include all possible values
+#        }  # Include all possible values
 #    )
 #    assert sample_set in df["sample_set"].unique()
 
-    # Test with multiple query conditions
+# Test with multiple query conditions
 #    df_multi_query = ag3.phenotype_data(
 #        sample_sets=sample_set,
 #        sample_query=f"insecticide == '{insecticide_query}' and dose == 0.5",
@@ -323,7 +322,7 @@ def test_plot_haplotype_network_none(mocker):
 #    assert all(df_multi_query["dose"] == 0.5)
 
 
-#def test_phenotype_binary_functionality():
+# def test_phenotype_binary_functionality():
 #    """Test phenotype_binary method using sample_query for filtering."""
 #    ag3 = setup_ag3()
 
@@ -372,15 +371,15 @@ def test_plot_haplotype_network_none(mocker):
 #    assert binary_series_empty.name == "phenotype_binary"
 
 
-#@pytest.mark.parametrize(
+# @pytest.mark.parametrize(
 #    "cohort_param,expected_result",
 #    [
 #        ({"min_cohort_size": 5}, "min_size"),
 #        ({"max_cohort_size": 10}, "max_size"),
 #        ({"cohort_size": 8}, "exact_size"),
 #    ],
-#)
-#def test_cohort_filtering(cohort_param, expected_result):
+# )
+# def test_cohort_filtering(cohort_param, expected_result):
 #    """Test cohort size filtering functionality with sample_query."""
 #    ag3 = setup_ag3()
 
@@ -423,7 +422,7 @@ def test_plot_haplotype_network_none(mocker):
 #            pass  # Acceptable if no cohorts meet exact size
 
 
-#def test_sample_query_functionality():
+# def test_sample_query_functionality():
 #    """Test sample_query functionality."""
 #    ag3 = setup_ag3()
 
@@ -448,7 +447,7 @@ def test_plot_haplotype_network_none(mocker):
 #        )
 
 
-#def test_invalid_parameters():
+# def test_invalid_parameters():
 #    """Test error handling for invalid parameters."""
 #    ag3 = setup_ag3()
 
@@ -468,7 +467,7 @@ def test_plot_haplotype_network_none(mocker):
 #        assert df.empty
 
 
-#def test_phenotype_binary_conversion():
+# def test_phenotype_binary_conversion():
 #    """Test binary conversion of phenotype values (internal method)."""
 #    ag3 = setup_ag3()
 
@@ -514,7 +513,7 @@ def test_plot_haplotype_network_none(mocker):
 #        assert np.isnan(invalid_binary.values[0])
 
 
-#def test_phenotype_sample_sets():
+# def test_phenotype_sample_sets():
 #    """Test phenotype_sample_sets method for listing available sample sets with phenotype data."""
 #    ag3 = setup_ag3()
 
@@ -532,7 +531,7 @@ def test_plot_haplotype_network_none(mocker):
 #        pytest.fail("No phenotype sample sets found to test.")
 
 
-#def test_phenotypes_with_snp_calls():
+# def test_phenotypes_with_snp_calls():
 #    """Test phenotypes_with_snps method."""
 #    ag3 = setup_ag3()
 
@@ -556,7 +555,7 @@ def test_plot_haplotype_network_none(mocker):
 #    assert all(ds["insecticide"].values == insecticide_query)
 
 
-#def test_phenotypes_with_haplotypes():
+# def test_phenotypes_with_haplotypes():
 #    """Test phenotypes_with_haplotypes method."""
 #    ag3 = setup_ag3()
 
@@ -580,7 +579,7 @@ def test_plot_haplotype_network_none(mocker):
 #    assert all(ds["insecticide"].values == insecticide_query)
 
 
-#def test_phenotype_data_only():
+# def test_phenotype_data_only():
 #    """Test phenotype_data method returns only phenotype data (DataFrame), no genetic data."""
 #    ag3 = setup_ag3()
 
