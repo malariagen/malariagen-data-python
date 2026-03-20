@@ -6,7 +6,7 @@ from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data import adir1 as _adir1
 
-from malariagen_data.anoph.to_plink import PlinkConverter
+from malariagen_data.anoph.to_plink import PlinkConverter, _compute_plink_selection_hash
 
 import os
 import bed_reader
@@ -127,7 +127,24 @@ def test_plink_converter(fixture, api: PlinkConverter, tmp_path):
     api.biallelic_snps_to_plink(**plink_params)
 
     # Test to see if bed, bim, fam output files exist.
-    file_path = f"{str(tmp_path)}/{plink_params['region']}.{plink_params['n_snps']}.{plink_params['min_minor_ac']}.{plink_params['max_missing_an']}.{plink_params['thin_offset']}"
+    digest = _compute_plink_selection_hash(
+        region=plink_params["region"],
+        n_snps=plink_params["n_snps"],
+        min_minor_ac=plink_params["min_minor_ac"],
+        max_missing_an=plink_params["max_missing_an"],
+        thin_offset=plink_params["thin_offset"],
+        site_mask=plink_params["site_mask"],
+        sample_sets=plink_params["sample_sets"],
+        sample_query=plink_params.get("sample_query"),
+        sample_query_options=plink_params.get("sample_query_options"),
+        sample_indices=plink_params.get("sample_indices"),
+        random_seed=plink_params["random_seed"],
+    )
+    file_path = (
+        f"{str(tmp_path)}/{plink_params['region']}.{plink_params['n_snps']}"
+        f".{plink_params['min_minor_ac']}.{plink_params['max_missing_an']}"
+        f".{plink_params['thin_offset']}.{digest}"
+    )
 
     assert os.path.exists(f"{file_path}.bed")
     assert os.path.exists(f"{file_path}.bim")
@@ -158,3 +175,44 @@ def test_plink_converter(fixture, api: PlinkConverter, tmp_path):
     # Test to make sure that the major and minor allele are exported to the .bim file as expected (coerce to str to match types).
     assert set(bed.allele_1) == set(ds_test.variant_allele.values[:, 0].astype(str))
     assert set(bed.allele_2) == set(ds_test.variant_allele.values[:, 1].astype(str))
+
+
+def test_plink_selection_hash():
+    base_kwargs = dict(
+        region="2L",
+        n_snps=1000,
+        min_minor_ac=2,
+        max_missing_an=8,
+        thin_offset=0,
+        site_mask="gamb_colu_arab",
+        sample_sets=["set_a", "set_b"],
+        sample_query=None,
+        sample_query_options=None,
+        sample_indices=None,
+        random_seed=42,
+    )
+
+    h1 = _compute_plink_selection_hash(**base_kwargs)
+
+    # Same parameters → same hash.
+    assert _compute_plink_selection_hash(**base_kwargs) == h1
+
+    # Different sample_sets → different hash.
+    assert _compute_plink_selection_hash(**{**base_kwargs, "sample_sets": ["set_c"]}) != h1
+
+    # Different sample_query → different hash.
+    assert (
+        _compute_plink_selection_hash(**{**base_kwargs, "sample_query": "taxon == 'gambiae'"})
+        != h1
+    )
+
+    # Different random_seed → different hash.
+    assert _compute_plink_selection_hash(**{**base_kwargs, "random_seed": 99}) != h1
+
+    # Order of sample_sets does not affect hash.
+    swapped = _compute_plink_selection_hash(**{**base_kwargs, "sample_sets": ["set_b", "set_a"]})
+    assert swapped == h1
+
+    # Hash is always 10 hex characters.
+    assert len(h1) == 10
+    assert all(c in "0123456789abcdef" for c in h1)
