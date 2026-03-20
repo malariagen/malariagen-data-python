@@ -1323,9 +1323,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig
 
     def _setup_sample_symbol(
         self,
@@ -1754,9 +1752,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -1832,9 +1828,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig
 
 
 def _locate_cohorts(*, cohorts, data, min_cohort_size):
