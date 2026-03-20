@@ -1529,6 +1529,7 @@ def test_allele_frequencies_advanced_with_variant_query(
             area_by=area_by,
             period_by=period_by,
             variant_query=variant_query,
+            min_cohort_size=0,
         )
         assert ds_snp.sizes["variants"] == 0
 
@@ -1539,6 +1540,7 @@ def test_allele_frequencies_advanced_with_variant_query(
             area_by=area_by,
             period_by=period_by,
             variant_query=variant_query,
+            min_cohort_size=0,
         )
         assert ds_aa.sizes["variants"] == 0
 
