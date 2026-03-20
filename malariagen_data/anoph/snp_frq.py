@@ -671,8 +671,10 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
             # Check for no SNPs remaining after applying variant query.
             if np.count_nonzero(loc_variants) == 0:
-                raise ValueError(
-                    f"No SNPs remaining after applying variant query {variant_query!r}."
+                warnings.warn(
+                    f"No SNPs remaining after applying variant query {variant_query!r}. "
+                    "Returning dataset with zero variants.",
+                    stacklevel=2,
                 )
 
             # Convert boolean mask to integer indices for NumPy 2.x compatibility
@@ -813,8 +815,10 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
             # Check for no SNPs remaining after applying variant query.
             if np.count_nonzero(loc_variants) == 0:
-                raise ValueError(
-                    f"No SNPs remaining after applying variant query {variant_query!r}."
+                warnings.warn(
+                    f"No SNPs remaining after applying variant query {variant_query!r}. "
+                    "Returning dataset with zero variants.",
+                    stacklevel=2,
                 )
 
             # Convert boolean mask to integer indices for NumPy 2.x compatibility
