@@ -198,11 +198,15 @@ def test_plink_selection_hash():
     assert _compute_plink_selection_hash(**base_kwargs) == h1
 
     # Different sample_sets → different hash.
-    assert _compute_plink_selection_hash(**{**base_kwargs, "sample_sets": ["set_c"]}) != h1
+    assert (
+        _compute_plink_selection_hash(**{**base_kwargs, "sample_sets": ["set_c"]}) != h1
+    )
 
     # Different sample_query → different hash.
     assert (
-        _compute_plink_selection_hash(**{**base_kwargs, "sample_query": "taxon == 'gambiae'"})
+        _compute_plink_selection_hash(
+            **{**base_kwargs, "sample_query": "taxon == 'gambiae'"}
+        )
         != h1
     )
 
@@ -210,7 +214,9 @@ def test_plink_selection_hash():
     assert _compute_plink_selection_hash(**{**base_kwargs, "random_seed": 99}) != h1
 
     # Order of sample_sets does not affect hash.
-    swapped = _compute_plink_selection_hash(**{**base_kwargs, "sample_sets": ["set_b", "set_a"]})
+    swapped = _compute_plink_selection_hash(
+        **{**base_kwargs, "sample_sets": ["set_b", "set_a"]}
+    )
     assert swapped == h1
 
     # Hash is always 10 hex characters.
