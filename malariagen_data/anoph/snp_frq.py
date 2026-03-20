@@ -145,7 +145,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         self,
         transcript: Optional[base_params.transcript] = None,
         region: Optional[base_params.region] = None,
-        cohorts: base_params.cohorts = None,
+        cohorts: Optional[base_params.cohorts] = None,
         sample_query: Optional[base_params.sample_query] = None,
         sample_query_options: Optional[base_params.sample_query_options] = None,
         min_cohort_size: base_params.min_cohort_size = 10,
