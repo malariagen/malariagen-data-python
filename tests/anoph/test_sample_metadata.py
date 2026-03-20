@@ -1632,3 +1632,33 @@ def test_cohort_geometries_cached(fixture, api):
     g1 = api.cohort_geometries("admin1_month")
     g2 = api.cohort_geometries("admin1_month")
     assert g1 is g2
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_list_taxons(fixture, api: AnophelesSampleMetadata):
+    sample_sets = random.choice(api.releases)
+    taxons = api.list_taxons(sample_sets=sample_sets)
+    assert isinstance(taxons, list)
+    assert all(isinstance(t, str) for t in taxons)
+    assert taxons == sorted(taxons)
+
+    # Check consistency with sample_metadata
+    df_samples = api.sample_metadata(sample_sets=sample_sets)
+    expected_taxons = sorted(df_samples["taxon"].dropna().unique().tolist())
+    assert taxons == expected_taxons
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_list_species_calls(fixture, api: AnophelesSampleMetadata):
+    sample_sets = random.choice(api.releases)
+    species = api.list_species_calls(sample_sets=sample_sets)
+    assert isinstance(species, list)
+
+    # Check consistency with sample_metadata
+    df_samples = api.sample_metadata(sample_sets=sample_sets)
+    if "aim_species" in df_samples.columns:
+        expected_species = sorted(df_samples["aim_species"].dropna().unique().tolist())
+        assert species == expected_species
+        assert all(isinstance(s, str) for s in species)
+    else:
+        assert species == []
