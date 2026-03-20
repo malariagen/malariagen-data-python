@@ -1724,3 +1724,16 @@ def _locate_cohorts(*, cohorts, data, min_cohort_size):
         )
 
     return coh_dict
+    def explain_general_metadata_query(sample_sets: Optional[List[str]] = None) -> None:
+        """
+        Explain what the general_metadata query will do.
+        """
+        if sample_sets is None:
+            print("This will fetch metadata for all available sample sets.")
+        else:
+            print(f"This will fetch metadata for sample sets: {sample_sets}")
+        print("The metadata includes fields like:")
+        print("- sample_id")
+        print("- location (country, coordinates)")
+        print("- collection date (year, month, quarter)")
+        print("- contributor and study info")
