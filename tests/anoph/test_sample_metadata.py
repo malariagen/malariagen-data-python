@@ -996,7 +996,9 @@ def test_extra_metadata(fixture, api, on):
         }
     )
     api.add_extra_metadata(data=extra1, on=on)
+    assert api.list_extra_metadata() == ["foo", "bar"]
     api.add_extra_metadata(data=extra2, on=on)
+    assert set(api.list_extra_metadata()) == {"foo", "bar", "baz", "qux"}
     df_samples_extra = api.sample_metadata()
     assert "foo" in df_samples_extra.columns
     assert "bar" in df_samples_extra.columns
@@ -1032,11 +1034,33 @@ def test_extra_metadata(fixture, api, on):
     with pytest.raises(KeyError):
         _ = df_samples_extra.loc["eggs"]
 
+    # Test overlapping columns
+    extra3_overlap = pd.DataFrame(
+        {
+            on: [sample_id[0], sample_id[1]],
+            "foo": [100, 200],  # Overlaps with extra1
+            "new_col": ["x", "y"], 
+        }
+    )
+    with pytest.warns(UserWarning, match=r"Overwriting previously added extra metadata columns: \['foo'\]"):
+        api.add_extra_metadata(data=extra3_overlap, on=on)
+
+    assert set(api.list_extra_metadata()) == {"foo", "bar", "baz", "qux", "new_col"}
+    df_samples_overlap = api.sample_metadata().set_index(on)
+    assert df_samples_overlap.loc[sample_id[0], "foo"] == 100
+    assert df_samples_overlap.loc[sample_id[0], "new_col"] == "x"
+
     # Clear extra metadata.
     api.clear_extra_metadata()
+    assert api.list_extra_metadata() == []
     df_samples_cleared = api.sample_metadata()
     assert df_samples_cleared.columns.tolist() == df_samples.columns.tolist()
     assert len(df_samples_cleared) == len(df_samples)
+
+    # Adding again and testing with clear_cache=True
+    api.add_extra_metadata(data=extra1, on=on)
+    api.clear_extra_metadata(clear_cache=True)
+    assert api.list_extra_metadata() == []
 
 
 @parametrize_with_cases("fixture,api", cases=".")

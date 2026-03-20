@@ -692,14 +692,51 @@ class AnophelesSampleMetadata(AnophelesBase):
         if not loc_isec.any():
             raise ValueError("no matching samples found")
 
+        # Check for overlapping columns with previously added extra metadata
+        new_cols = set(data.columns) - {on}
+
+        updated_extra_metadata = []
+        for prev_on, prev_data in self._extra_metadata:
+            overlap = new_cols.intersection(prev_data.columns)
+            if overlap:
+                warnings.warn(
+                    f"Overwriting previously added extra metadata columns: {list(overlap)}",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                prev_data = prev_data.drop(columns=list(overlap))
+
+            # Keep the previous extra metadata only if it still provides some extra columns
+            if len(prev_data.columns) > 1 or prev_on not in prev_data.columns:
+                updated_extra_metadata.append((prev_on, prev_data))
+
+        self._extra_metadata = updated_extra_metadata
+
         # store extra metadata
         self._extra_metadata.append((on, data.copy()))
 
     @doc(
-        summary="Clear any extra metadata previously added",
+        summary="Clear any extra metadata previously added.",
+        parameters=dict(
+            clear_cache="""
+                If True, also clear the internal sample metadata cache.
+            """,
+        ),
     )
-    def clear_extra_metadata(self):
+    def clear_extra_metadata(self, clear_cache: bool = False):
         self._extra_metadata = []
+        if clear_cache:
+            self._cache_sample_metadata.clear()
+
+    @doc(
+        summary="List the names of columns currently active in the extra metadata.",
+        returns="A list of column names.",
+    )
+    def list_extra_metadata(self) -> List[str]:
+        cols = []
+        for on, data in self._extra_metadata:
+            cols.extend([c for c in data.columns if c != on])
+        return cols
 
     @_check_types
     @doc(
