@@ -1501,9 +1501,7 @@ class AnophelesSnpData(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -1693,9 +1691,7 @@ class AnophelesSnpData(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -1723,7 +1719,7 @@ class AnophelesSnpData(
 
         # Access SNP site positions.
         pos = self.snp_sites(region=resolved_region, field="POS").compute()
-        if resolved_region.start:
+        if resolved_region.start is not None:
             offset = resolved_region.start
         else:
             offset = 1

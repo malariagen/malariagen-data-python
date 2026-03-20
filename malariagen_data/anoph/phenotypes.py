@@ -70,10 +70,8 @@ class AnophelesPhenotypeData:
                 df_pheno["sample_set"] = sample_set
                 phenotype_dfs.append(df_pheno)
 
-            except Exception as e:
-                warnings.warn(
-                    f"Unexpected error loading phenotype data for {sample_set}: {e}"
-                )
+            except (KeyError, FileNotFoundError, IOError) as e:
+                warnings.warn(f"Error loading phenotype data for {sample_set}: {e}")
                 continue
 
         if not phenotype_dfs:
@@ -307,11 +305,6 @@ class AnophelesPhenotypeData:
                 except ValueError as e:
                     warnings.warn(f"Value error in variant data merging: {e}")
                     return ds
-                except Exception as e:
-                    warnings.warn(
-                        f"Unexpected error selecting/merging variant data: {e}"
-                    )
-                    return ds
 
         return ds
 
@@ -346,11 +339,7 @@ class AnophelesPhenotypeData:
             return pd.DataFrame()
 
         # 3. Get sample metadata for all samples that have phenotype data
-        try:
-            df_metadata = self.sample_metadata(sample_sets=sample_sets_norm)
-        except Exception as e:
-            warnings.warn(f"Error fetching sample metadata: {e}")
-            return pd.DataFrame()
+        df_metadata = self.sample_metadata(sample_sets=sample_sets_norm)
 
         if df_metadata.empty:
             warnings.warn("No sample metadata found for samples with phenotype data")
@@ -373,8 +362,8 @@ class AnophelesPhenotypeData:
                 df_merged = df_merged.query(
                     sample_query, **(sample_query_options or {})
                 )
-            except Exception as e:
-                warnings.warn(f"Error applying sample_query '{sample_query}': {e}")
+            except (pd.errors.UndefinedVariableError, SyntaxError) as e:
+                warnings.warn(f"Invalid sample_query '{sample_query}': {e}")
                 return pd.DataFrame()
 
         # 6. Apply cohort filtering
@@ -494,7 +483,7 @@ class AnophelesPhenotypeData:
 
                 if self._fs.exists(phenotype_path):
                     phenotype_sample_sets.append(sample_set)
-            except Exception:
+            except (KeyError, FileNotFoundError):
                 continue
 
         return phenotype_sample_sets
