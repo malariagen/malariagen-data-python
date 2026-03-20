@@ -1039,10 +1039,13 @@ def test_extra_metadata(fixture, api, on):
         {
             on: [sample_id[0], sample_id[1]],
             "foo": [100, 200],  # Overlaps with extra1
-            "new_col": ["x", "y"], 
+            "new_col": ["x", "y"],
         }
     )
-    with pytest.warns(UserWarning, match=r"Overwriting previously added extra metadata columns: \['foo'\]"):
+    with pytest.warns(
+        UserWarning,
+        match=r"Overwriting previously added extra metadata columns: \['foo'\]",
+    ):
         api.add_extra_metadata(data=extra3_overlap, on=on)
 
     assert set(api.list_extra_metadata()) == {"foo", "bar", "baz", "qux", "new_col"}
