@@ -274,29 +274,27 @@ class PlasmodiumDataResource:
 
         """
         genome = self.open_genome()
-        if type(region) not in [tuple, list] and region != "*" and region is not None:
-            d = self._subset_genome_sequence_region(
+
+        if region == "*" or region is None:
+            regions = self.contigs
+        elif isinstance(region, (list, tuple)):
+            regions = list(region)
+        else:
+            regions = [region]
+
+        sequences = [
+            self._subset_genome_sequence_region(
                 genome=genome,
-                region=region,
+                region=r,
                 inline_array=inline_array,
                 chunks=chunks,
             )
-        else:
-            region = tuple(region)
-            if region == tuple("*"):
-                region = self.contigs
-            d = da.concatenate(
-                [
-                    self._subset_genome_sequence_region(
-                        genome=genome,
-                        region=r,
-                        inline_array=inline_array,
-                        chunks=chunks,
-                    )
-                    for r in region
-                ]
-            )
-        return d
+            for r in regions
+        ]
+
+        if len(sequences) == 1:
+            return sequences[0]
+        return da.concatenate(sequences)
 
     def genome_features(self, attributes=("ID", "Parent", "Name")):
         """Access genome feature annotations.
