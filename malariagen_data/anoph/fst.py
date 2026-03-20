@@ -257,9 +257,7 @@ class AnophelesFstAnalysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -345,9 +343,7 @@ class AnophelesFstAnalysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -360,7 +356,7 @@ class AnophelesFstAnalysis(
     )
     def average_fst(
         self,
-        region: base_params.region,
+        region: base_params.regions,
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
         sample_query_options: Optional[base_params.sample_query_options] = None,
@@ -435,7 +431,7 @@ class AnophelesFstAnalysis(
     )
     def pairwise_average_fst(
         self,
-        region: base_params.region,
+        region: base_params.regions,
         cohorts: base_params.cohorts,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
@@ -590,6 +586,4 @@ class AnophelesFstAnalysis(
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig
