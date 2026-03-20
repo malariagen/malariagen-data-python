@@ -9,15 +9,40 @@ cd malariagen-data-python
 ```
 
 ## 2. Install Python
+
+**Ubuntu** — install from the Deadsnakes PPA:
 ```bash
 sudo add-apt-repository ppa:deadsnakes/ppa
-sudo apt install python3.10 python3.10-venv
+sudo apt install python3.12 python3.12-venv
+```
+
+**Debian / other Linux distributions** — the Deadsnakes PPA is Ubuntu-only. Use [pyenv](https://github.com/pyenv/pyenv) instead:
+```bash
+# Install pyenv build dependencies (Debian/Ubuntu example)
+sudo apt install -y build-essential libssl-dev zlib1g-dev libbz2-dev \
+    libreadline-dev libsqlite3-dev curl libncursesw5-dev xz-utils \
+    tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
+
+# Install pyenv
+curl https://pyenv.run | bash
+
+# Add pyenv to your shell (add these lines to ~/.bashrc or ~/.zshrc)
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init -)"
+
+# Reload shell configuration
+source ~/.bashrc   # or source ~/.zshrc
+
+# Install and activate Python 3.12
+pyenv install 3.12
+pyenv shell 3.12
 ```
 
 ## 3. Install pipx and poetry
 ```bash
-python3.10 -m pip install --user pipx
-python3.10 -m pipx ensurepath
+python3 -m pip install --user pipx
+python3 -m pipx ensurepath
 pipx install poetry
 ```
 
