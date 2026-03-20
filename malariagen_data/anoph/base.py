@@ -233,6 +233,10 @@ class AnophelesBase:
         paths: Iterable[str],
         on_error: Literal["raise", "omit", "return"] = "return",
     ) -> Mapping[str, Union[bytes, Exception]]:
+        # Pydantic validate_call with strict=True converts Iterable into a
+        # generator, which can be exhausted. Convert to a tuple first.
+        paths = tuple(paths)
+
         # Check for any cached files.
         files = {
             path: data for path, data in self._cache_files.items() if path in paths

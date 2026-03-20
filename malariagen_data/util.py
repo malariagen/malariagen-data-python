@@ -26,7 +26,6 @@ import numba  # type: ignore
 import numpy as np
 import pandas as pd
 import plotly.express as px  # type: ignore
-import typeguard
 import xarray as xr
 import zarr  # type: ignore
 
@@ -1156,43 +1155,57 @@ def _check_colab_location(gcp_region: Optional[str]):
 
 
 def _check_types(f):
-    """Simple decorator to provide runtime checking of parameter types.
+    """Decorator to provide runtime checking of parameter types.
 
-    N.B., the typeguard package does have a decorator function called
-    @typechecked which performs a similar purpose. However, the typeguard
-    decorator causes a memory leak and doesn't seem usable. Also, the
-    typeguard decorator performs runtime checking of all variables within
-    the function as well as the arguments and return values. We only want
-    checking of the arguments to help users provide correct inputs.
+    Uses Pydantic v2's validate_call() for parameter validation.
+    Validates input types in strict mode without coercing arguments.
 
     """
+    from pydantic import ConfigDict, ValidationError, validate_call
+
+    config = ConfigDict(strict=True, arbitrary_types_allowed=True)
+
+    try:
+        validated_f = validate_call(config=config, validate_return=False)(f)
+    except Exception as exc:
+        warnings.warn(
+            f"Could not apply validate_call to {f.__name__!r}: {exc}. "
+            "Type validation will be skipped for this function.",
+            stacklevel=2,
+        )
+        return f
 
     @wraps(f)
-    def check_types_wrapper(*args, **kwargs):
-        type_hints = get_type_hints(f)
-        call_args = getcallargs(f, *args, **kwargs)
-        for k, t in type_hints.items():
-            if k in call_args:
-                v = call_args[k]
-                try:
-                    typeguard.check_type(v, t)
-                except typeguard.TypeCheckError as e:
-                    expected_type = humanize_type(t)
-                    actual_type = humanize_type(type(v))
-                    message = fill(
-                        dedent(
-                            f"""
-                        Parameter {k!r} with value {v!r} in call to function {f.__name__!r} has incorrect type:
-                        found {actual_type}, expected {expected_type}. See below for further information.
-                    """
+    def wrapper(*args, **kwargs):
+        try:
+            return validated_f(*args, **kwargs)
+        except ValidationError as e:
+            type_hints = get_type_hints(f)
+            call_args = getcallargs(f, *args, **kwargs)
+            errors = e.errors()
+            if errors:
+                err = errors[0]
+                loc = err.get("loc", ())
+                if loc:
+                    k = str(loc[0])
+                    v = call_args.get(k)
+                    t = type_hints.get(k)
+                    if t is not None:
+                        expected_type = humanize_type(t)
+                        actual_type = humanize_type(type(v))
+                        message = fill(
+                            dedent(
+                                f"""\
+                            Parameter {k!r} with value {v!r} in call to function {f.__name__!r} has incorrect type:
+                            found {actual_type}, expected {expected_type}. See below for further information.
+                        """
+                            )
                         )
-                    )
-                    message += f"\n\n{e}"
-                    error = TypeError(message)
-                    raise error from None
-        return f(*args, **kwargs)
+                        message += f"\n\n{e}"
+                        raise TypeError(message) from None
+            raise TypeError(str(e)) from None
 
-    return check_types_wrapper
+    return wrapper
 
 
 @numba.njit
