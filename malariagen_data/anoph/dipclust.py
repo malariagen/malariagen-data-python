@@ -189,13 +189,11 @@ class AnophelesDipClustAnalysis(
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return {
-                "figure": fig,
-                "dendro_sample_id_order": np.asarray(leaf_data["sample_id"].to_list()),
-                "n_snps": n_snps_used,
-            }
+        return {
+            "figure": fig,
+            "dendro_sample_id_order": np.asarray(leaf_data["sample_id"].to_list()),
+            "n_snps": n_snps_used,
+        }
 
     def diplotype_pairwise_distances(
         self,
@@ -800,6 +798,4 @@ class AnophelesDipClustAnalysis(
 
         if show:
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig

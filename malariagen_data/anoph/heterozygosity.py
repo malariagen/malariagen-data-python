@@ -231,9 +231,7 @@ class AnophelesHetAnalysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -334,9 +332,7 @@ class AnophelesHetAnalysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig_all)
-            return None
-        else:
-            return fig_all
+        return fig_all
 
     def _sample_count_het(
         self,
@@ -583,9 +579,7 @@ class AnophelesHetAnalysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -705,9 +699,7 @@ class AnophelesHetAnalysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig_all)
-            return None
-        else:
-            return fig_all
+        return fig_all
 
     @_check_types
     @doc(
