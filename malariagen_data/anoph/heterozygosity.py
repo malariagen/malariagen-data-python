@@ -817,4 +817,3 @@ class AnophelesHetAnalysis(
             )
 
         return pd.DataFrame(results)
-
