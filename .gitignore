@@ -28,3 +28,4 @@ docs/source/generated
 # gcloud cli
 google-cloud-cli-*
 google-cloud-sdk
+.mypy_cache/
