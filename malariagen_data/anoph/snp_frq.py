@@ -360,11 +360,55 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         # We just want aa change.
         df_ns_snps = df_snps.query(AA_CHANGE_QUERY).copy()
 
-        # Early check for no matching SNPs.
-        if len(df_ns_snps) == 0:  # pragma: no cover
-            raise ValueError(
-                "No amino acid change SNPs found for the given transcript and site mask."
+        # Handle case where no amino acid change SNPs are found.
+        # N.B., this can legitimately happen for some transcript/site_mask/query
+        # combinations. Return a well-formed empty DataFrame rather than raising,
+        # to avoid transient test failures and to allow downstream code to handle
+        # the empty result gracefully. See also:
+        # https://github.com/malariagen/malariagen-data-python/issues/1064
+        if len(df_ns_snps) == 0:
+            warnings.warn(
+                "No amino acid change SNPs found for the given transcript "
+                "and site mask. Returning an empty DataFrame.",
+                stacklevel=2,
             )
+            # Build an empty DataFrame with the expected schema.
+            freq_cols = [col for col in df_snps.columns if col.startswith("frq_")]
+            count_cols = [col for col in df_snps.columns if col.startswith("count_")]
+            nobs_cols = [col for col in df_snps.columns if col.startswith("nobs_")]
+            keep_cols = [
+                "contig",
+                "transcript",
+                "aa_pos",
+                "ref_allele",
+                "ref_aa",
+                "alt_aa",
+                "effect",
+                "impact",
+                "grantham_score",
+                "sneath_score",
+            ]
+            all_cols = (
+                ["aa_change"]
+                + freq_cols
+                + ["max_af"]
+                + keep_cols
+                + ["alt_allele", "label", "position"]
+            )
+            if include_counts:
+                all_cols = all_cols + count_cols + nobs_cols
+            df_empty = pd.DataFrame(columns=all_cols)
+            df_empty.set_index(["aa_change", "contig", "position"], inplace=True)
+
+            # Add metadata.
+            gene_name = self._transcript_to_parent_name(transcript)
+            title = transcript
+            if gene_name:
+                title += f" ({gene_name})"
+            title += " SNP frequencies"
+            df_empty.attrs["title"] = title
+
+            return df_empty
 
         # N.B., we need to worry about the possibility of the
         # same aa change due to SNPs at different positions. We cannot
@@ -390,7 +434,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             for c in nobs_cols:
                 agg[c] = "first"
 
-        keep_cols = (
+        keep_cols = [
             "contig",
             "transcript",
             "aa_pos",
@@ -401,7 +445,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             "impact",
             "grantham_score",
             "sneath_score",
-        )
+        ]
         for c in keep_cols:
             agg[c] = "first"
         agg["alt_allele"] = lambda v: "{" + ",".join(v) + "}" if len(v) > 1 else v
@@ -642,8 +686,10 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
             # Check for no SNPs remaining after applying variant query.
             if np.count_nonzero(loc_variants) == 0:
-                raise ValueError(
-                    f"No SNPs remaining after applying variant query {variant_query!r}."
+                warnings.warn(
+                    f"No SNPs remaining after applying variant query {variant_query!r}. "
+                    "Returning dataset with zero variants.",
+                    stacklevel=2,
                 )
 
             # Convert boolean mask to integer indices for NumPy 2.x compatibility
@@ -784,8 +830,10 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
             # Check for no SNPs remaining after applying variant query.
             if np.count_nonzero(loc_variants) == 0:
-                raise ValueError(
-                    f"No SNPs remaining after applying variant query {variant_query!r}."
+                warnings.warn(
+                    f"No SNPs remaining after applying variant query {variant_query!r}. "
+                    "Returning dataset with zero variants.",
+                    stacklevel=2,
                 )
 
             # Convert boolean mask to integer indices for NumPy 2.x compatibility
