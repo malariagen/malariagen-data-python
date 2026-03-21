@@ -2,6 +2,7 @@ import pandas as pd  # type: ignore
 from pandas import CategoricalDtype
 import numpy as np  # type: ignore
 import allel  # type: ignore
+from pathlib import Path
 
 from numpydoc_decorator import doc
 from ..util import _check_types
@@ -51,18 +52,25 @@ class AnophelesKaryotypeAnalysis(AnophelesSnpData):
         summary="Load tag SNPs for a given inversion.",
     )
     def load_inversion_tags(self, inversion: inversion_param) -> pd.DataFrame:
-        # needs to be modified depending on where we are hosting
-        import importlib.resources
-        from .. import resources
-
         if self._inversion_tag_path is None:
             raise NotImplementedError(
                 "No inversion tags are available for this data resource."
             )
+
+        tag_path = Path(self._inversion_tag_path)
+        if tag_path.is_absolute():
+            # Support arbitrary absolute paths, e.g. for testing with
+            # dynamically generated tag files on the local filesystem.
+            df_tag_snps = pd.read_csv(tag_path, sep=",")
         else:
+            # Default: load from the package resources directory.
+            import importlib.resources
+            from .. import resources
+
             with importlib.resources.path(resources, self._inversion_tag_path) as path:
                 df_tag_snps = pd.read_csv(path, sep=",")
-            return df_tag_snps.query(f"inversion == '{inversion}'").reset_index()
+
+        return df_tag_snps.query(f"inversion == '{inversion}'").reset_index()
 
     @_check_types
     @doc(
