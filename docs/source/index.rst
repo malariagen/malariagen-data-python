@@ -6,6 +6,30 @@ MalariaGEN Python API documentation
 The ``malariagen_data`` Python package provides a library of functions (API) for accessing and analysing
 data from the `Malaria Genomic Epidemiology Network (MalariaGEN) <https://www.malariagen.net/>`_.
 
+API overview
+------------
+
+The diagram below shows the high-level structure of the ``malariagen_data`` public API.
+Internal implementation classes are omitted for clarity.
+
+.. mermaid::
+
+   flowchart TD
+       malariagen_data --> AnophelesDataResource
+       malariagen_data --> PlasmodiumDataResource
+       AnophelesDataResource --> Ag3
+       AnophelesDataResource --> AfGroup["Af1 · Amin1 · Adir1 </br> (see Ag3)"]
+       Ag3 --> Metadata["Metadata"]
+       Ag3 --> SNP["SNP Data"]
+       Ag3 --> Hap["Haplotype Data"]
+       Ag3 --> CNV["CNV Data"]
+       Ag3 --> Analysis["Population Analysis"]
+       Ag3 --> Frequency["Frequency Analysis"]
+       Ag3 --> Plotting["Plotting"]
+       PlasmodiumDataResource --> Pf7
+       PlasmodiumDataResource --> Pf8
+       PlasmodiumDataResource --> Pv4
+
 API documentation
 -----------------
 

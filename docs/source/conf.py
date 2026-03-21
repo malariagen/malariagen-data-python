@@ -19,7 +19,8 @@ version = os.environ.get("VERSION_TAG", "dev")
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ["sphinx.ext.autosummary", "sphinx_design"]
+extensions = ["sphinx.ext.autosummary", "sphinx_design","sphinxcontrib.mermaid"]
+mermaid_init_js = """mermaid.initialize({startOnLoad:true});"""
 
 autosummary_generate = True
 
