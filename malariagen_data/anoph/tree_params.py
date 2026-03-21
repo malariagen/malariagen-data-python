@@ -13,7 +13,8 @@ count_sort: TypeAlias = Annotated[
 distance_sort: TypeAlias = Annotated[
     bool,
     """
-    If True, for each node n, if True, the child with the minimum distance between
-    is plotted first. Note distance_sort and count_sort cannot both be True.
+    If True, for each node n, the child with the minimum distance between its
+    direct descendants is plotted first. Note distance_sort and count_sort
+    cannot both be True.
     """,
 ]
