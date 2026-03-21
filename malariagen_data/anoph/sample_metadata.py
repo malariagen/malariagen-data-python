@@ -1580,6 +1580,12 @@ class AnophelesSampleMetadata(AnophelesBase):
             else:
                 cohort_queries_checked[cohort_label] = cohort_query
 
+        if not cohort_queries_checked:
+            raise ValueError(
+                "No cohorts remain after applying the minimum cohort size filter. "
+                "Try reducing `min_cohort_size` or broadening your sample selection."
+            )
+
         return cohort_queries_checked
 
     @_check_types
