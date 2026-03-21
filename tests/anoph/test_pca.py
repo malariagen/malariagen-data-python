@@ -313,3 +313,120 @@ def test_pca_fit_exclude_samples(fixture, api: AnophelesPca):
         len(pca_df.query(f"sample_id in {exclude_samples} and not pca_fit"))
         == n_samples_excluded
     )
+
+
+def test_pca_cohort_size_column_requires_cohort_size(ag3_sim_api):
+    api = ag3_sim_api
+    sample_set = api.sample_sets()["sample_set"].iloc[0]
+    with pytest.raises(ValueError, match="cohort_size must be provided"):
+        api.pca(
+            region=api.contigs[0],
+            n_snps=4,
+            n_components=2,
+            sample_sets=[sample_set],
+            cohort_size_column="country",
+        )
+
+
+def test_pca_cohort_size_column_downsamples_per_cohort(ag3_sim_api):
+    api = ag3_sim_api
+    df_samples = api.sample_metadata()
+    cohort_size = 2
+    cohort_counts = df_samples["country"].value_counts(dropna=True)
+    eligible_cohorts = cohort_counts[cohort_counts >= cohort_size]
+    if len(eligible_cohorts) < 2:
+        pytest.skip("not enough simulated cohorts with sufficient sample size")
+    selected_cohorts = eligible_cohorts.index[:2].to_list()
+
+    pca_df, _ = api.pca(
+        region=api.contigs[0],
+        n_snps=4,
+        n_components=2,
+        cohort_size=cohort_size,
+        cohort_size_column="country",
+        sample_query=f"country in {selected_cohorts!r}",
+        random_seed=42,
+    )
+
+    selected_counts = pca_df["country"].value_counts()
+    assert set(selected_counts.index.to_list()) == set(selected_cohorts)
+    assert (selected_counts == cohort_size).all()
+
+
+def test_pca_cohort_size_column_updates_sample_sets_after_downsampling(
+    ag3_sim_api, monkeypatch
+):
+    api = ag3_sim_api
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    if len(all_sample_sets) < 2:
+        pytest.skip("not enough simulated sample sets")
+    dropped_sample_set = all_sample_sets[-1]
+    cohort_size = 2
+
+    original_sample_metadata = api.sample_metadata
+
+    def sample_metadata_with_missing_cohort_column(*args, **kwargs):
+        df = original_sample_metadata(*args, **kwargs)
+        df = df.copy()
+        df.loc[df["sample_set"] == dropped_sample_set, "country"] = np.nan
+        return df
+
+    monkeypatch.setattr(
+        api, "sample_metadata", sample_metadata_with_missing_cohort_column
+    )
+
+    (
+        prepared_sample_sets,
+        prepared_sample_indices,
+    ) = api._prep_sample_selection_cache_params(
+        sample_sets=all_sample_sets,
+        sample_query=None,
+        sample_query_options=None,
+        sample_indices=None,
+    )
+    (
+        updated_sample_sets,
+        updated_sample_indices,
+    ) = api._downsample_sample_indices_by_cohort(
+        sample_sets=prepared_sample_sets,
+        sample_indices=prepared_sample_indices,
+        cohort_size=cohort_size,
+        cohort_size_column="country",
+        random_seed=42,
+    )
+
+    assert dropped_sample_set not in updated_sample_sets
+    assert updated_sample_indices
+    selected_df = api.sample_metadata(sample_sets=updated_sample_sets).iloc[
+        updated_sample_indices
+    ]
+    assert dropped_sample_set not in selected_df["sample_set"].to_list()
+
+
+def test_pca_cohort_size_column_skips_small_cohorts_with_warning(
+    ag3_sim_api, monkeypatch
+):
+    api = ag3_sim_api
+    cohort_size = 2
+    original_sample_metadata = api.sample_metadata
+
+    def sample_metadata_with_small_cohort(*args, **kwargs):
+        df = original_sample_metadata(*args, **kwargs)
+        df = df.copy()
+        if not df.empty:
+            df.loc[df.index[0], "country"] = "__tiny_cohort__"
+        return df
+
+    monkeypatch.setattr(api, "sample_metadata", sample_metadata_with_small_cohort)
+
+    with pytest.warns(UserWarning, match="Skipping cohort"):
+        pca_df, _ = api.pca(
+            region=api.contigs[0],
+            n_snps=4,
+            n_components=2,
+            cohort_size=cohort_size,
+            cohort_size_column="country",
+            random_seed=42,
+        )
+
+    assert "__tiny_cohort__" not in pca_df["country"].to_list()
