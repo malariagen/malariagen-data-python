@@ -149,6 +149,11 @@ class AnophelesSampleMetadata(AnophelesBase):
         for sample_set in sample_sets:
             path = file_paths[sample_set]
             data = files[path]
+            if isinstance(data, Exception):
+                raise RuntimeError(
+                    f"Failed to load metadata for sample set '{sample_set}' at path '{path}'. "
+                    f"Original error: {data}"
+                )
             df = parse_metadata_func(sample_set, data)
             dfs.append(df)
 
