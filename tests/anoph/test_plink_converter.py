@@ -1,4 +1,3 @@
-import random
 import pytest
 from pytest_cases import parametrize_with_cases
 
@@ -98,18 +97,18 @@ def case_af1_sim(af1_sim_fixture, af1_sim_api):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_plink_converter(fixture, api: PlinkConverter, tmp_path):
+def test_plink_converter(fixture, rng, api: PlinkConverter, tmp_path):
     # Parameters for selecting input data, filtering, and converting.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
 
     data_params = dict(
-        region=random.choice(api.contigs),
-        sample_sets=random.sample(all_sample_sets, 2),
-        site_mask=random.choice((None,) + api.site_mask_ids),
+        region=rng.choice(api.contigs),
+        sample_sets=rng.choice(all_sample_sets, 2, replace=False).tolist(),
+        site_mask=rng.choice((None,) + api.site_mask_ids),
         min_minor_ac=1,
         max_missing_an=1,
         thin_offset=1,
-        random_seed=random.randint(1, 2000),
+        random_seed=rng.integers(1, 2001, dtype=int),
     )
 
     # Load a ds containing the randomly generated samples and regions to get the number of available snps to subset from.
@@ -118,7 +117,7 @@ def test_plink_converter(fixture, api: PlinkConverter, tmp_path):
     )
 
     n_snps_available = ds.sizes["variants"]
-    n_snps = random.randint(1, n_snps_available)
+    n_snps = rng.integers(1, n_snps_available, endpoint=True, dtype=int)
 
     # Define plink params.
     plink_params = dict(output_dir=str(tmp_path), n_snps=n_snps, **data_params)
