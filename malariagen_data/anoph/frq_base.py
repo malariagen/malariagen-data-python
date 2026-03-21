@@ -583,6 +583,7 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         import ipyleaflet  # type: ignore
         import ipywidgets  # type: ignore
 
+
         # Slice dataset to variant of interest.
         if isinstance(variant, int):
             ds_variant = ds.isel(variants=variant)
@@ -688,17 +689,28 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         taxa = ds["cohort_taxon"].to_pandas().dropna().unique()  # type: ignore
         periods = ds["cohort_period"].to_pandas().dropna().unique()  # type: ignore
 
-        if len(variants) == 0:
+if len(variants) == 0:
             raise ValueError("No variants available in dataset.")
         if len(taxa) == 0:
             raise ValueError("No taxons available in dataset.")
         if len(periods) == 0:
             raise ValueError("No periods available in dataset.")
 
+        def _update_map(variant, taxon, period):
+            if variant is None or taxon is None or period is None:
+                return
+            
+            self.plot_frequencies_map_markers(
+                m=freq_map,
+                ds=ds,
+                variant=variant,
+                taxon=taxon,
+                period=period,
+                clear=True
+            )
+
         controls = ipywidgets.interactive(
-            self.plot_frequencies_map_markers,
-            m=ipywidgets.fixed(freq_map),
-            ds=ipywidgets.fixed(ds),
+            _update_map,
             variant=ipywidgets.Dropdown(
                 options=variants, value=variants[0], description="Variant: "
             ),
@@ -708,7 +720,7 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
             period=ipywidgets.Dropdown(
                 options=periods, value=periods[0], description="Period: "
             ),
-            clear=ipywidgets.fixed(True),
+        )
         )
 
         # Lay out widgets.
@@ -728,3 +740,4 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         out = ipywidgets.VBox(components)
 
         return out
+    
