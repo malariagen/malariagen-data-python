@@ -201,6 +201,7 @@ class AnophelesDataResource(
     def _block_jackknife_cohort_diversity_stats(
         self, *, cohort_label, ac, n_jack, confidence_level
     ):
+
         debug = self._log.debug
 
         debug("set up for diversity calculations")
