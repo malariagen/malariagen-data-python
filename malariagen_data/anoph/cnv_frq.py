@@ -90,7 +90,10 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         inline_array,
     ):
         # Sanity check.
-        assert isinstance(region, Region)
+        if not isinstance(region, Region):
+            raise TypeError(
+                f"'region' must be a Region instance, got {type(region).__name__}."
+            )
 
         # Access genes within the region of interest.
         df_genome_features = self.genome_features(region=region)
@@ -260,7 +263,10 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         debug = self._log.debug
 
         debug("sanity check - this function is one region at a time")
-        assert isinstance(region, Region)
+        if not isinstance(region, Region):
+            raise TypeError(
+                f"'region' must be a Region instance, got {type(region).__name__}."
+            )
 
         debug("get gene copy number data")
         ds_cnv = self.gene_cnv(
@@ -504,7 +510,10 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         debug = self._log.debug
 
         debug("sanity check - here we deal with one region only")
-        assert isinstance(region, Region)
+        if not isinstance(region, Region):
+            raise TypeError(
+                f"'region' must be a Region instance, got {type(region).__name__}."
+            )
 
         debug("access gene CNV calls")
         ds_cnv = self.gene_cnv(

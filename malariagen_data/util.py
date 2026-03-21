@@ -311,7 +311,10 @@ def _dask_compress_dataset(ds, indexer, dim):
         # the underlying data
         indexer_computed = indexer.compute()
     else:
-        assert isinstance(indexer, np.ndarray)
+        if not isinstance(indexer, np.ndarray):
+            raise TypeError(
+                f"'indexer' must be a numpy ndarray, got {type(indexer).__name__}."
+            )
         indexer_computed = indexer
 
     coords = dict()
@@ -375,7 +378,10 @@ def _da_compress(
 
     # Load the indexer temporarily for chunk size computations.
     if indexer_computed is None:
-        assert isinstance(indexer, da.Array)
+        if not isinstance(indexer, da.Array):
+            raise TypeError(
+                f"'indexer' must be a dask Array, got {type(indexer).__name__}."
+            )
         indexer_computed = indexer.compute()
 
     # Ensure indexer and data are chunked in the same way.
@@ -665,7 +671,10 @@ def _parse_single_region(resource, region: single_region_param_type) -> Region:
             end=region.get("end"),
         )
 
-    assert isinstance(region, str)
+    if not isinstance(region, str):
+        raise TypeError(
+            f"'region' must be a str, Region, or Mapping, got {type(region).__name__}."
+        )
 
     # check if region is a whole contig
     if region in _valid_contigs(resource):
