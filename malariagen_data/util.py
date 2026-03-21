@@ -582,29 +582,54 @@ class Region:
 
 
 def _handle_region_coords(resource, region):
-    region_pattern_match = re.search("([a-zA-Z0-9_]+):(.+)-(.+)", region)
-    if region_pattern_match:
-        # parse region string that contains genomic coordinates
-        region_split = region_pattern_match.groups()
-        contig = region_split[0]
-        start = int(region_split[1].replace(",", ""))
-        end = int(region_split[2].replace(",", ""))
+    """
+    Parse and validate genomic region strings of the form:
+    'contig:start-end' (e.g., 'chr1:1000-2000')
+    """
 
-        if contig not in _valid_contigs(resource):
-            raise ValueError(
-                f"The genomic region {region!r} is invalid because contig {contig!r} does not exist in the dataset."
-            )
-        else:
-            contig_length = resource.genome_sequence(region=contig).shape[0]
-            if start < 1 or end < start or end > contig_length:
-                raise ValueError(
-                    f"The genomic region {region!r} is invalid for contig {contig!r} with length {contig_length}."
-                )
+    if not isinstance(region, str):
+        raise TypeError(f"Region must be a string, got {type(region)}")
 
-        return Region(contig, start, end)
+    # Strict regex validation
+    pattern = r"^([a-zA-Z0-9_]+):(\d+)-(\d+)$"
+    match = re.match(pattern, region)
 
-    else:
-        return None
+    if not match:
+        raise ValueError(
+            f"Invalid region format: '{region}'. Expected format 'contig:start-end' (e.g., 'chr1:1000-2000')"
+        )
+
+    contig, start_str, end_str = match.groups()
+
+    # Convert to integers
+    try:
+        start = int(start_str)
+        end = int(end_str)
+    except ValueError:
+        raise ValueError(f"Start and end must be integers in region '{region}'")
+
+    # Logical validation
+    if start < 1:
+        raise ValueError(f"Start position must be >= 1 in region '{region}'")
+
+    if end < start:
+        raise ValueError(f"End position must be greater than start in region '{region}'")
+
+    # Validate contig exists
+    if contig not in _valid_contigs(resource):
+        raise ValueError(
+            f"Invalid contig '{contig}' in region '{region}'."
+        )
+
+    # Validate range within contig length
+    contig_length = resource.genome_sequence(region=contig).shape[0]
+
+    if end > contig_length:
+        raise ValueError(
+            f"End position {end} exceeds contig length {contig_length} for '{contig}'"
+        )
+
+    return Region(contig, start, end)
 
 
 def _prep_geneset_attributes_arg(attributes):
