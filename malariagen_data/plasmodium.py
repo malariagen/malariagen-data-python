@@ -141,55 +141,36 @@ class PlasmodiumDataResource:
         Returns
         -------
         ipyleaflet.Map
-
-        Examples
-        --------
-        Default map — all samples::
-
-            pf8 = malariagen_data.Pf8()
-            pf8.plot_samples_interactive_map()
-
-        QC-pass samples only::
-
-            pf8.plot_samples_interactive_map(sample_query="QC pass == True")
-
-        Count by year instead of population::
-
-            pf8.plot_samples_interactive_map(count_by="Year")
-
-        Satellite basemap::
-
-            pf8.plot_samples_interactive_map(basemap="satellite")
-
-        Notes
-        -----
-        Coordinates used are GADM admin level 1 centroids
-        (``Admin level 1 latitude`` / ``Admin level 1 longitude``).
-        All samples collected in the same first-level administrative
-        division share the same map coordinates, so one marker represents
-        all samples from that division.
         """
-        # Normalise height/width to CSS strings — matches mosquito behaviour
         if isinstance(height, int):
             height = f"{height}px"
         if isinstance(width, int):
             width = f"{width}px"
 
-        # Load sample metadata
         df = self.sample_metadata(
             sample_query=sample_query,
             sample_query_options=sample_query_options,
         )
+        _column_candidates = {
+            "admin_div": ["Admin level 1", "First-level administrative division"],
+            "lat": ["Admin level 1 latitude", "Lat"],
+            "lon": ["Admin level 1 longitude", "Long"],
+        }
 
-        # Key difference from mosquito version:
-        # Plasmodium has no per-sample coordinates — use GADM admin level 1
-        # centroids shared by all samples in the same division.
-        location_key = [
-            "Country",
-            "Admin level 1",
-            "Admin level 1 latitude",
-            "Admin level 1 longitude",
-        ]
+        def _resolve_col(key, candidates):
+            for c in candidates:
+                if c in df.columns:
+                    return c
+            raise ValueError(
+                f"Cannot find a column for {key!r}; tried {candidates}. "
+                f"Available columns: {sorted(df.columns.tolist())}"
+            )
+
+        col_admin = _resolve_col("admin_div", _column_candidates["admin_div"])
+        col_lat = _resolve_col("lat", _column_candidates["lat"])
+        col_lon = _resolve_col("lon", _column_candidates["lon"])
+
+        location_key = ["Country", col_admin, col_lat, col_lon]
 
         # Validate count_by column exists
         if count_by not in df.columns:
@@ -217,7 +198,9 @@ class PlasmodiumDataResource:
                     "Year": lambda x: ", ".join(
                         str(int(y)) for y in sorted(x.dropna().unique())
                     ),
-                    "Study": lambda x: ", ".join(str(s) for s in sorted(x.unique())),
+                    "Study": lambda x: ", ".join(
+                        str(s) for s in sorted(x.dropna().unique())
+                    ),
                 }
             )
             .reset_index()
