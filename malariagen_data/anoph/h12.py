@@ -281,6 +281,11 @@ class AnophelesH12Analysis(
     @_check_types
     @doc(
         summary="Run h12 genome-wide selection scan.",
+        parameters=dict(
+            apply_hampel="If True, apply Hampel filter to smooth isolated outliers.",
+            hampel_window="Window size for Hampel filter.",
+            hampel_t="Threshold multiplier for Hampel filter.",
+        ),
         returns=dict(
             x="An array containing the window centre point genomic positions.",
             h12="An array with h12 statistic values for each window.",
@@ -303,12 +308,15 @@ class AnophelesH12Analysis(
             base_params.max_cohort_size
         ] = h12_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
+        apply_hampel: bool = False,
+        hampel_window: int = 5,
+        hampel_t: float = 3,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "h12_gwss_v2"
+        name = "h12_gwss_v3"
 
         params = dict(
             contig=contig,
@@ -336,12 +344,19 @@ class AnophelesH12Analysis(
         x = results["x"]
         h12 = results["h12"]
         contigs = results["contigs"]
-
+        # Apply optional Hampel filtering
+        if apply_hampel:
+            h12 = hampel_filter(h12, size=hampel_window, t=hampel_t)
         return x, h12, contigs
 
     @_check_types
     @doc(
         summary="Plot h12 GWSS data.",
+        parameters=dict(
+            apply_hampel="If True, apply Hampel filter to smooth isolated outliers.",
+            hampel_window="Window size for Hampel filter.",
+            hampel_t="Threshold multiplier for Hampel filter.",
+        ),
     )
     def plot_h12_gwss_track(
         self,
@@ -367,6 +382,9 @@ class AnophelesH12Analysis(
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+        apply_hampel: bool = False,
+        hampel_window: int = 5,
+        hampel_t: float = 3,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.optional_figure:
@@ -384,6 +402,9 @@ class AnophelesH12Analysis(
             random_seed=random_seed,
             chunks=chunks,
             inline_array=inline_array,
+            apply_hampel=apply_hampel,
+            hampel_window=hampel_window,
+            hampel_t=hampel_t,
         )
 
         # Determine X axis range.
@@ -443,6 +464,11 @@ class AnophelesH12Analysis(
     @_check_types
     @doc(
         summary="Plot h12 GWSS data.",
+        parameters=dict(
+            apply_hampel="If True, apply Hampel filter to smooth isolated outliers.",
+            hampel_window="Window size for Hampel filter.",
+            hampel_t="Threshold multiplier for Hampel filter.",
+        ),
     )
     def plot_h12_gwss(
         self,
@@ -468,10 +494,13 @@ class AnophelesH12Analysis(
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-        chunks: base_params.chunks = base_params.native_chunks,
-        inline_array: base_params.inline_array = base_params.inline_array_default,
         gene_labels: Optional[gplt_params.gene_labels] = None,
         gene_labelset: Optional[gplt_params.gene_labelset] = None,
+        apply_hampel: bool = False,
+        hampel_window: int = 5,
+        hampel_t: float = 3,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.optional_figure:
         # Plot GWSS track.
         fig1 = self.plot_h12_gwss_track(
@@ -494,6 +523,9 @@ class AnophelesH12Analysis(
             output_backend=output_backend,
             chunks=chunks,
             inline_array=inline_array,
+            apply_hampel=apply_hampel,
+            hampel_window=hampel_window,
+            hampel_t=hampel_t,
         )
 
         fig1.xaxis.visible = False
@@ -528,6 +560,11 @@ class AnophelesH12Analysis(
     @_check_types
     @doc(
         summary="Plot h12 GWSS data track with multiple traces overlaid.",
+        parameters=dict(
+            apply_hampel="If True, apply Hampel filter to smooth isolated outliers.",
+            hampel_window="Window size for Hampel filter.",
+            hampel_t="Threshold multiplier for Hampel filter.",
+        ),
     )
     def plot_h12_gwss_multi_overlay_track(
         self,
@@ -554,6 +591,9 @@ class AnophelesH12Analysis(
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+        apply_hampel: bool = False,
+        hampel_window: int = 5,
+        hampel_t: float = 3,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.optional_figure:
@@ -586,8 +626,9 @@ class AnophelesH12Analysis(
                 sample_query_options=sample_query_options,
                 sample_sets=sample_sets,
                 random_seed=random_seed,
-                chunks=chunks,
-                inline_array=inline_array,
+                apply_hampel=apply_hampel,
+                hampel_window=hampel_window,
+                hampel_t=hampel_t,
             )
 
         # Determine X axis range.
@@ -650,6 +691,11 @@ class AnophelesH12Analysis(
     @_check_types
     @doc(
         summary="Plot h12 GWSS data with multiple traces overlaid.",
+        parameters=dict(
+            apply_hampel="If True, apply Hampel filter to smooth isolated outliers.",
+            hampel_window="Window size for Hampel filter.",
+            hampel_t="Threshold multiplier for Hampel filter.",
+        ),
     )
     def plot_h12_gwss_multi_overlay(
         self,
@@ -678,6 +724,9 @@ class AnophelesH12Analysis(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         gene_labels: Optional[gplt_params.gene_labels] = None,
         gene_labelset: Optional[gplt_params.gene_labelset] = None,
+        apply_hampel: bool = False,
+        hampel_window: int = 5,
+        hampel_t: float = 3,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.optional_figure:
@@ -701,6 +750,9 @@ class AnophelesH12Analysis(
             height=track_height,
             show=False,
             output_backend=output_backend,
+            apply_hampel=apply_hampel,
+            hampel_window=hampel_window,
+            hampel_t=hampel_t,
             chunks=chunks,
             inline_array=inline_array,
         )
@@ -739,6 +791,11 @@ class AnophelesH12Analysis(
     @_check_types
     @doc(
         summary="Plot h12 GWSS data with multiple tracks.",
+        parameters=dict(
+            apply_hampel="If True, apply Hampel filter to smooth isolated outliers.",
+            hampel_window="Window size for Hampel filter.",
+            hampel_t="Threshold multiplier for Hampel filter.",
+        ),
     )
     def plot_h12_gwss_multi_panel(
         self,
@@ -765,6 +822,9 @@ class AnophelesH12Analysis(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         gene_labels: Optional[gplt_params.gene_labels] = None,
         gene_labelset: Optional[gplt_params.gene_labelset] = None,
+        apply_hampel: bool = False,
+        hampel_window: int = 5,
+        hampel_t: float = 3,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.optional_figure:
@@ -807,9 +867,20 @@ class AnophelesH12Analysis(
                 inline_array=inline_array,
             )
             if i > 0:
-                track = self.plot_h12_gwss_track(x_range=figs[0].x_range, **params)
+                track = self.plot_h12_gwss_track(
+                    x_range=figs[0].x_range,
+                    apply_hampel=apply_hampel,
+                    hampel_window=hampel_window,
+                    hampel_t=hampel_t,
+                    **params,
+                )
             else:
-                track = self.plot_h12_gwss_track(**params)
+                track = self.plot_h12_gwss_track(
+                    apply_hampel=apply_hampel,
+                    hampel_window=hampel_window,
+                    hampel_t=hampel_t,
+                    **params,
+                )
             track.xaxis.visible = False
             figs.append(track)
 
@@ -841,6 +912,25 @@ class AnophelesH12Analysis(
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
         return fig
+
+
+def hampel_filter(x: np.ndarray, size: int, t: float = 3.0) -> np.ndarray:
+    """Apply Hampel filter to remove isolated outliers."""
+    y = x.copy()
+    mad_scale_factor = 1.4826
+
+    for i in range(size, len(x) - size):
+        w = x[i - size : i + size + 1]  # include center point
+        m = np.median(w)
+        mad = np.median(np.abs(w - m))
+        s = mad_scale_factor * mad
+        if s == 0:
+            if x[i] != m:  # clear outlier: all neighbors equal but center differs
+                y[i] = m
+        elif np.abs(x[i] - m) > (t * s):
+            y[i] = m
+
+    return y
 
 
 def _garud_h12(ht):
