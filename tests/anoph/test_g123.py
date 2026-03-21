@@ -40,6 +40,34 @@ def ag3_sim_api(ag3_sim_fixture):
 
 
 @pytest.fixture
+def ag3_sim_api_unphased(ag3_sim_fixture):
+    return AnophelesG123Analysis(
+        url=ag3_sim_fixture.url,
+        public_url=ag3_sim_fixture.url,
+        config_path=_ag3.CONFIG_PATH,
+        major_version_number=_ag3.MAJOR_VERSION_NUMBER,
+        major_version_path=_ag3.MAJOR_VERSION_PATH,
+        pre=True,
+        aim_metadata_dtype={
+            "aim_species_fraction_arab": "float64",
+            "aim_species_fraction_colu": "float64",
+            "aim_species_fraction_colu_no2l": "float64",
+            "aim_species_gambcolu_arabiensis": object,
+            "aim_species_gambiae_coluzzii": object,
+            "aim_species": object,
+        },
+        gff_gene_type="gene",
+        gff_gene_name_attribute="Name",
+        gff_default_attributes=("ID", "Parent", "Name", "description"),
+        default_site_mask="gamb_colu_arab",
+        results_cache=ag3_sim_fixture.results_cache_path.as_posix(),
+        taxon_colors=_ag3.TAXON_COLORS,
+        default_phasing_analysis=None,
+        virtual_contigs=_ag3.VIRTUAL_CONTIGS,
+    )
+
+
+@pytest.fixture
 def af1_sim_api(af1_sim_fixture):
     return AnophelesG123Analysis(
         url=af1_sim_fixture.url,
@@ -230,6 +258,26 @@ def test_g123_gwss_with_bad_sites(fixture, api: AnophelesG123Analysis):
     # Run function under test.
     with pytest.raises(ValueError):
         api.g123_gwss(**g123_params)
+
+
+def test_g123_gwss_default_sites_unphased(ag3_sim_fixture, ag3_sim_api_unphased):
+    """Verify g123_gwss works with default sites when no phasing analysis exists."""
+    api = ag3_sim_api_unphased
+    assert api._default_phasing_analysis is None
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    g123_params = dict(
+        contig=api.contigs[0],
+        sample_sets=[all_sample_sets[0]],
+        window_size=100,
+        min_cohort_size=10,
+    )
+    # Check default sites behaves correctly.
+    check_g123_gwss(api=api, g123_params=g123_params)
+    # Verify default sites matches explicit sites="segregating".
+    x_default, g123_default = api.g123_gwss(**g123_params)
+    x_segr, g123_segr = api.g123_gwss(**g123_params, sites="segregating")
+    assert np.array_equal(x_default, x_segr)
+    assert np.array_equal(g123_default, g123_segr)
 
 
 @parametrize_with_cases("fixture,api", cases=".")
