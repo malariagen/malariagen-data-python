@@ -141,6 +141,31 @@ def test_fst_gwss(fixture, api: AnophelesFstAnalysis):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
+def test_fst_gwss_window_size_too_large(fixture, api: AnophelesFstAnalysis):
+    # When window_size exceeds available SNPs, a UserWarning must be issued and
+    # the function must still return a valid result using the adjusted window_size.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    all_countries = api.sample_metadata()["country"].dropna().unique().tolist()
+    countries = random.sample(all_countries, 2)
+    cohort1_query = f"country == {countries[0]!r}"
+    cohort2_query = f"country == {countries[1]!r}"
+    with pytest.warns(UserWarning, match="window_size"):
+        x, fst = api.fst_gwss(
+            contig=random.choice(api.contigs),
+            sample_sets=all_sample_sets,
+            cohort1_query=cohort1_query,
+            cohort2_query=cohort2_query,
+            site_mask=random.choice(api.site_mask_ids),
+            window_size=10_000_000,  # far larger than any fixture SNP count
+            min_cohort_size=1,
+        )
+    assert isinstance(x, np.ndarray)
+    assert isinstance(fst, np.ndarray)
+    assert len(x) > 0
+    assert x.shape == fst.shape
+
+
+@parametrize_with_cases("fixture,api", cases=".")
 def test_average_fst(fixture, api: AnophelesFstAnalysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
