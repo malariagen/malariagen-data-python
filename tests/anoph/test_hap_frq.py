@@ -237,3 +237,21 @@ def test_hap_frequencies_advanced(
 
     # Standard checks.
     check_hap_frequencies_advanced(api=api, ds=ds_hap)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_hap_frequencies_advanced_no_cohorts(fixture, api: AnophelesHapFrequencyAnalysis):
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    region = fixture.random_region_str()
+
+    params_advanced = dict(
+        region=region,
+        area_by="admin1_iso",
+        period_by="year",
+        min_cohort_size=10_000,
+        sample_sets=sample_sets,
+    )
+
+    with pytest.raises(ValueError, match="No cohorts found"):
+        api.haplotypes_frequencies_advanced(**params_advanced)
