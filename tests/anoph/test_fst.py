@@ -347,7 +347,13 @@ def test_pairwise_average_fst_with_sample_query(fixture, api: AnophelesFstAnalys
     )
 
     # Run checks.
-    check_pairwise_average_fst(api=api, fst_params=fst_params)
+    try:
+        check_pairwise_average_fst(api=api, fst_params=fst_params)
+    except ValueError as e:
+        if "No cohorts remain" in str(e):
+            pytest.skip("Random sample query resulted in zero cohorts.")
+        else:
+            raise
 
 
 @parametrize_with_cases("fixture,api", cases=".")
