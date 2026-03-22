@@ -1873,7 +1873,7 @@ def _locate_cohorts(*, cohorts, data, min_cohort_size):
     else:
         if not isinstance(cohorts, str):
             raise TypeError(
-                f"Expected cohorts to be dict or str, "
+                f"Expected cohorts to be Mapping or str, "
                 f"got {type(cohorts).__name__}: {cohorts!r}"
             )
         # User has supplied the name of a sample metadata column.
