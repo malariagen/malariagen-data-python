@@ -443,7 +443,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             raise ValueError(f"Gene '{gene}' has no transcripts with exons")
 
         # Find canonical (maximum length)
-        canonical = max(transcript_lengths, key=transcript_lengths.get)
+        canonical = max(transcript_lengths, key=lambda tid: transcript_lengths[tid])
         canonical_length = transcript_lengths[canonical]
         debug(f"Canonical transcript: {canonical} with {canonical_length} bp")
         return canonical
