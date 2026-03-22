@@ -182,6 +182,13 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
             taxon_by=taxon_by,
         )
 
+        if df_cohorts.empty:
+            raise ValueError(
+                "No cohorts found after applying filters. "
+                "Try lowering min_cohort_size, adjusting area_by/period_by/taxon_by, "
+                "or relaxing sample_query."
+            )
+
         # Access haplotypes.
         ds_haps = self.haplotypes(
             region=region,
