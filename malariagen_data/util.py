@@ -675,7 +675,7 @@ def _parse_single_region(resource, region: single_region_param_type) -> Region:
 
     if not isinstance(region, str):
         raise TypeError(
-            f"Expected region to be a dict or str, "
+            f"Expected region to be a mapping or str, "
             f"got {type(region).__name__}: {region!r}"
         )
 
