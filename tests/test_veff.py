@@ -564,10 +564,11 @@ class TestGranthamSneathScores:
 
 class TestSynonymousStart:
     """
-    The SYNONYMOUS_START branch (veff.py L334-337) requires ref_cds_start==0
-    and ref_aa==alt_aa.  No SNP on ATG produces a synonymous Met under the
-    standard NCBI codon table, so this branch is unreachable in practice.
-    A test should be added here if non-standard codon tables are ever supported.
+    The SYNONYMOUS_START branch in `_get_within_cds_effect` requires
+    ref_cds_start == 0 and ref_aa == alt_aa. No SNP on ATG produces a
+    synonymous Met under the standard NCBI codon table, so this branch
+    is unreachable in practice. A test should be added here if
+    non-standard codon tables are ever supported.
     """
 
     def test_synonymous_start_is_unreachable_with_standard_codon_table(self):
