@@ -338,6 +338,8 @@ def test_canonical_transcript_single_transcript_gene(ag3_sim_api):
 
     if not found_single_transcript_gene:
         pytest.skip("No gene with exactly one transcript available in fixture")
+
+
 def test_canonical_transcript_calculation_correctness(ag3_sim_api):
     """Test that the returned transcript actually has the highest exon length."""
     genes = ag3_sim_api.genome_features().query(
@@ -359,7 +361,7 @@ def test_canonical_transcript_calculation_correctness(ag3_sim_api):
     for transcript_id in all_transcripts["ID"]:
         exons = ag3_sim_api.genome_feature_children(parent=transcript_id)
         exons = exons[exons["type"] == "exon"]
-        length = (exons["end"] - exons["start"]).sum()
+        length = (exons["end"] - exons["start"] + 1).sum()
         if length > max_length:
             max_length = length
             max_transcript = transcript_id
@@ -370,7 +372,7 @@ def test_canonical_transcript_calculation_correctness(ag3_sim_api):
     # Verify canonical has the correct length
     canonical_exons = ag3_sim_api.genome_feature_children(parent=canonical)
     canonical_exons = canonical_exons[canonical_exons["type"] == "exon"]
-    canonical_length = (canonical_exons["end"] - canonical_exons["start"]).sum()
+    canonical_length = (canonical_exons["end"] - canonical_exons["start"] + 1).sum()
     assert canonical_length == max_length
 
 
