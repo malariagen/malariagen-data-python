@@ -311,7 +311,11 @@ def _dask_compress_dataset(ds, indexer, dim):
         # the underlying data
         indexer_computed = indexer.compute()
     else:
-        assert isinstance(indexer, np.ndarray)
+        if not isinstance(indexer, np.ndarray):
+            raise TypeError(
+                f"Expected indexer to be a dask.array.Array or numpy.ndarray, "
+                f"got {type(indexer).__name__}"
+            )
         indexer_computed = indexer
 
     coords = dict()
@@ -375,7 +379,11 @@ def _da_compress(
 
     # Load the indexer temporarily for chunk size computations.
     if indexer_computed is None:
-        assert isinstance(indexer, da.Array)
+        if not isinstance(indexer, da.Array):
+            raise TypeError(
+                f"Expected indexer to be a dask.array.Array, "
+                f"got {type(indexer).__name__}"
+            )
         indexer_computed = indexer.compute()
 
     # Ensure indexer and data are chunked in the same way.
@@ -665,7 +673,11 @@ def _parse_single_region(resource, region: single_region_param_type) -> Region:
             end=region.get("end"),
         )
 
-    assert isinstance(region, str)
+    if not isinstance(region, str):
+        raise TypeError(
+            f"Expected region to be a dict or str, "
+            f"got {type(region).__name__}: {region!r}"
+        )
 
     # check if region is a whole contig
     if region in _valid_contigs(resource):
@@ -1495,8 +1507,14 @@ def _apply_allele_mapping(x, mapping, max_allele):
 
 
 def _dask_apply_allele_mapping(v, mapping, max_allele):
-    assert isinstance(v, da.Array)
-    assert isinstance(mapping, np.ndarray)
+    if not isinstance(v, da.Array):
+        raise TypeError(
+            f"Expected v to be a dask.array.Array, " f"got {type(v).__name__}"
+        )
+    if not isinstance(mapping, np.ndarray):
+        raise TypeError(
+            f"Expected mapping to be a numpy.ndarray, " f"got {type(mapping).__name__}"
+        )
     assert v.ndim == 2
     assert mapping.ndim == 2
     assert v.shape[0] == mapping.shape[0]
@@ -1516,8 +1534,14 @@ def _genotype_array_map_alleles(gt, mapping):
     # Transform genotype calls via an allele mapping.
     # N.B., scikit-allel does not handle empty blocks well, so we
     # include some extra logic to handle that better.
-    assert isinstance(gt, np.ndarray)
-    assert isinstance(mapping, np.ndarray)
+    if not isinstance(gt, np.ndarray):
+        raise TypeError(
+            f"Expected gt to be a numpy.ndarray, " f"got {type(gt).__name__}"
+        )
+    if not isinstance(mapping, np.ndarray):
+        raise TypeError(
+            f"Expected mapping to be a numpy.ndarray, " f"got {type(mapping).__name__}"
+        )
     assert gt.ndim == 3
     assert mapping.ndim == 3
     assert gt.shape[0] == mapping.shape[0]
@@ -1536,8 +1560,14 @@ def _genotype_array_map_alleles(gt, mapping):
 
 
 def _dask_genotype_array_map_alleles(gt, mapping):
-    assert isinstance(gt, da.Array)
-    assert isinstance(mapping, np.ndarray)
+    if not isinstance(gt, da.Array):
+        raise TypeError(
+            f"Expected gt to be a dask.array.Array, " f"got {type(gt).__name__}"
+        )
+    if not isinstance(mapping, np.ndarray):
+        raise TypeError(
+            f"Expected mapping to be a numpy.ndarray, " f"got {type(mapping).__name__}"
+        )
     assert gt.ndim == 3
     assert mapping.ndim == 2
     assert gt.shape[0] == mapping.shape[0]
