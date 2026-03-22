@@ -461,11 +461,11 @@ def _classify_inframe_complex_effect(base_effect, ref_cds_start, ref_aa, alt_aa)
     """
     if ref_aa == alt_aa:
         effect = base_effect._replace(effect="INFRAME_COMPLEX_SYNONYMOUS", impact="LOW")
-    elif ref_aa == "M" and ref_cds_start == 0:
+    elif ref_aa and ref_aa[0] == "M" and ref_cds_start == 0:
         effect = base_effect._replace(effect="START_LOST", impact="HIGH")
-    elif ref_aa == "*":
+    elif ref_aa and "*" in ref_aa:
         effect = base_effect._replace(effect="STOP_LOST", impact="HIGH")
-    elif alt_aa == "*":
+    elif alt_aa and "*" in alt_aa:
         effect = base_effect._replace(effect="STOP_GAINED", impact="HIGH")
     else:
         effect = base_effect._replace(effect="INFRAME_COMPLEX", impact="MODERATE")

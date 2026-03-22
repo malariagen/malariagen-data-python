@@ -150,8 +150,8 @@ class TestClassifyInframeComplexEffect:
         assert result.impact == "MODERATE"
 
 
-class TestInframeComplexEffectIntegration:
-    """Integration tests to ensure the fix works end-to-end."""
+class TestClassifyInframeComplexEffectEdgeCases:
+    """Edge case tests validating classification correctness."""
 
     def test_complex_variant_effect_not_unknown(self):
         """Complex variants have valid impact (not UNKNOWN)."""
@@ -186,3 +186,47 @@ class TestInframeComplexEffectIntegration:
             base_effect2, ref_cds_start=100, ref_aa="E", alt_aa="*"
         )
         assert result2.impact == "HIGH"
+
+
+class TestMultiCodonVariants:
+    """Test cases for multi-amino-acid string handling."""
+
+    def test_start_lost_multicodon_variant(self):
+        """START_LOST detection works for multi-codon translations (e.g., "MLR" → "RLR")."""
+        base_effect = create_test_effect(ref_aa="MLR", alt_aa="RLR")
+        result = _classify_inframe_complex_effect(
+            base_effect, ref_cds_start=0, ref_aa="MLR", alt_aa="RLR"
+        )
+
+        assert result.effect == "START_LOST"
+        assert result.impact == "HIGH"
+
+    def test_stop_lost_multicodon_variant(self):
+        """STOP_LOST detection works when * appears in multi-codon string (e.g., "Q*R" → "QWR")."""
+        base_effect = create_test_effect(ref_aa="Q*R", alt_aa="QWR")
+        result = _classify_inframe_complex_effect(
+            base_effect, ref_cds_start=5, ref_aa="Q*R", alt_aa="QWR"
+        )
+
+        assert result.effect == "STOP_LOST"
+        assert result.impact == "HIGH"
+
+    def test_stop_gained_multicodon_variant(self):
+        """STOP_GAINED detection works when * appears in multi-codon string (e.g., "QWR" → "QR*")."""
+        base_effect = create_test_effect(ref_aa="QWR", alt_aa="QR*")
+        result = _classify_inframe_complex_effect(
+            base_effect, ref_cds_start=10, ref_aa="QWR", alt_aa="QR*"
+        )
+
+        assert result.effect == "STOP_GAINED"
+        assert result.impact == "HIGH"
+
+    def test_synonymous_multicodon_variant(self):
+        """Synonymous detection works for matching multi-codon strings (e.g., "MLR" == "MLR")."""
+        base_effect = create_test_effect(ref_aa="MLR", alt_aa="MLR")
+        result = _classify_inframe_complex_effect(
+            base_effect, ref_cds_start=0, ref_aa="MLR", alt_aa="MLR"
+        )
+
+        assert result.effect == "INFRAME_COMPLEX_SYNONYMOUS"
+        assert result.impact == "LOW"
