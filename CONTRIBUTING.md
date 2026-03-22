@@ -1,6 +1,6 @@
 # Contributing to malariagen-data-python
 
-Thanks for your interest in contributing to this project! This guide will help you get started.
+Thanks for your interest in contributing! Whether you're fixing a bug, adding a feature, or improving the docs, we're glad to have you here. This guide will help you get your environment set up and walk you through the contribution process.
 
 ## About the project
 
@@ -10,18 +10,18 @@ This package provides Python tools for accessing and analyzing genomic data from
 
 ### Prerequisites
 
-You'll need:
+You'll need two tools before you start:
 
-- [pipx](https://pipx.pypa.io/) for installing Python tools
-- [git](https://git-scm.com/) for version control
+- [pipx](https://pipx.pypa.io/) — installs Python CLI tools in isolated environments
+- [git](https://git-scm.com/) — for version control
 
-Both of these can be installed using your distribution's package manager or [Homebrew](https://brew.sh/) on Mac.
+Both can be installed via your distribution's package manager or [Homebrew](https://brew.sh/) on Mac.
 
 ### Initial setup
 
 1. **Fork and clone the repository**
 
-   Fork the repository on GitHub, then clone your fork:
+   Fork the repository on GitHub so you have your own copy, then clone it locally:
 
    ```bash
    git clone git@github.com:[your-username]/malariagen-data-python.git
@@ -30,11 +30,15 @@ Both of these can be installed using your distribution's package manager or [Hom
 
 2. **Add the upstream remote**
 
+   This lets you pull in future changes from the main project:
+
    ```bash
    git remote add upstream https://github.com/malariagen/malariagen-data-python.git
    ```
 
 3. **Install Poetry**
+
+   [Poetry](https://python-poetry.org/) manages the project's dependencies and virtual environment:
 
    ```bash
    pipx install poetry
@@ -42,7 +46,7 @@ Both of these can be installed using your distribution's package manager or [Hom
 
 4. **Install Python 3.12**
 
-   Python 3.12 is tested in the CI-system and is the recommended version to use.
+   Python 3.12 is the recommended version — it's what CI uses and what the team develops against:
 
    ```bash
    poetry python install 3.12
@@ -87,18 +91,20 @@ Both of these can be installed using your distribution's package manager or [Hom
 
 6. **Install pre-commit hooks**
 
+   Pre-commit hooks run the linter and formatter automatically before every commit, so code quality issues are caught early:
+
    ```bash
    pipx install pre-commit
    pre-commit install
    ```
-
-   Pre-commit hooks will automatically run `ruff` (linter and formatter) on your changes before each commit.
 
 ## Development workflow
 
 ### Creating a new feature or fix
 
 1. **Sync with upstream**
+
+   Before starting, make sure your local `master` is up to date:
 
    ```bash
    git checkout master
@@ -121,13 +127,13 @@ Both of these can be installed using your distribution's package manager or [Hom
 
 4. **Run tests locally**
 
-   Fast unit tests using simulated data (no external data access):
+   Fast unit tests using simulated data (no external data access needed):
 
    ```bash
    poetry run pytest -v tests --ignore tests/integration
    ```
 
-   To run integration tests which read data from GCS, you'll need to [request access to MalariaGEN data on GCS](https://malariagen.github.io/vector-data/vobs/vobs-data-access.html).
+   To run integration tests that read data from GCS, you'll first need to [request access to MalariaGEN data on GCS](https://malariagen.github.io/vector-data/vobs/vobs-data-access.html).
 
    Once access has been granted, [install the Google Cloud CLI](https://cloud.google.com/sdk/docs/install). E.g., if on Linux:
 
@@ -135,19 +141,27 @@ Both of these can be installed using your distribution's package manager or [Hom
    ./install_gcloud.sh
    ```
 
-   You'll then need to obtain application-default credentials, e.g.:
+   Then obtain application-default credentials:
 
    ```bash
    ./google-cloud-sdk/bin/gcloud auth application-default login
    ```
 
-   Once this is done, you can run integration tests:
+   Once authenticated, run integration tests:
 
    ```bash
    poetry run pytest -v tests/integration
    ```
 
-   Tests will run slowly the first time, as data required for testing will be read from GCS. Subsequent runs will be faster as data will be cached locally in the "gcs_cache" folder.
+   Tests will run slowly the first time, as data will be read from GCS and cached locally in the `gcs_cache` folder.
+
+5. **Check code quality**
+
+   The pre-commit hooks will run automatically on commit, but you can also run them manually at any time:
+
+   ```bash
+   pre-commit run --all-files
+   ```
 
 6. **Run typechecking**
 
@@ -155,14 +169,6 @@ Both of these can be installed using your distribution's package manager or [Hom
 
    ```bash
    poetry run mypy malariagen_data tests --ignore-missing-imports
-   ```
-
-5. **Check code quality**
-
-   The pre-commit hooks will run automatically, but you can also run them manually:
-
-   ```bash
-   pre-commit run --all-files
    ```
 
 ### Code style
@@ -205,6 +211,8 @@ poetry run pytest -v tests --typeguard-packages=malariagen_data,malariagen_data.
 
 ### Before opening a pull request
 
+Run through this checklist to make sure your PR is ready for review:
+
 - [ ] Tests pass locally
 - [ ] Pre-commit hooks pass (or run `pre-commit run --all-files`)
 - [ ] Code is well-documented
@@ -224,18 +232,20 @@ poetry run pytest -v tests --typeguard-packages=malariagen_data,malariagen_data.
    - Select your fork and branch
    - Write a clear title and description
 
-3. **Pull request description should include:**
+3. **A good PR description includes:**
    - What problem does this solve?
    - How does it solve it?
-   - Any relevant issue numbers (e.g., "Fixes #123")
-   - Testing done
+   - Relevant issue numbers (e.g., "Fixes #123")
+   - What testing you did
    - Any breaking changes or migration notes
 
 ### Review process
 
-- PRs require approval from a project maintainer
-- CI tests must pass (pytest on Python 3.10 with NumPy 1.26.4)
-- Address review feedback by pushing new commits to your branch
+Once your PR is open, a project maintainer will review it. Here's what to expect:
+
+- PRs require approval from a project maintainer before merging
+- CI tests must pass (pytest on Python 3.10, 3.11, and 3.12, with NumPy versions `==2.0.2` and `>=2.0.2,<2.1`)
+- Address review feedback by pushing new commits to your branch — no need to open a new PR
 - Once approved, a maintainer will merge your PR
 
 ## Communication
@@ -247,18 +257,20 @@ poetry run pytest -v tests --typeguard-packages=malariagen_data,malariagen_data.
 
 ## Finding something to work on
 
-- Look for issues labeled [`good first issue`](https://github.com/malariagen/malariagen-data-python/labels/good%20first%20issue)
-- Check for issues labeled [`help wanted`](https://github.com/malariagen/malariagen-data-python/labels/help%20wanted)
-- Improve documentation or add examples
+Not sure where to start? Here are some good entry points:
+
+- Issues labeled [`good first issue`](https://github.com/malariagen/malariagen-data-python/labels/good%20first%20issue) — designed to be approachable for new contributors
+- Issues labeled [`help wanted`](https://github.com/malariagen/malariagen-data-python/labels/help%20wanted) — areas where the team would love community help
+- Improve documentation or add usage examples
 - Increase test coverage
 
 ## Questions?
 
-If you're unsure about anything, feel free to:
+Don't hesitate to ask — we'd rather help you get unstuck than have you spin your wheels:
 
-- Open an issue to ask
-- Start a discussion on GitHub Discussions
-- Ask in your pull request
+- Open an issue to ask a question
+- Start a discussion on [GitHub Discussions](https://github.com/malariagen/malariagen-data-python/discussions)
+- Ask directly in your pull request
 
 We appreciate your contributions and will do our best to help you succeed!
 
