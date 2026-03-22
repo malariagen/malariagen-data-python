@@ -424,22 +424,30 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         # Calculate transcript lengths and find canonical
         debug("Calculating transcript lengths for each transcript")
+        transcript_ids = df_transcripts["ID"].tolist()
+
+        # Get all exon children for all transcripts in a single pass
+        df_children = self.genome_feature_children(parent=transcript_ids, attributes=None)
+        if df_children is None or len(df_children) == 0:
+            raise ValueError(f"Gene '{gene}' has no transcripts with exons")
+
+        # Filter for exons only (important: exclude other feature types)
+        df_exons = df_children[df_children["type"] == "exon"].copy()
+        if len(df_exons) == 0:
+            raise ValueError(f"Gene '{gene}' has no transcripts with exons")
+
+        # Calculate exon lengths and sum per transcript (Parent)
+        df_exons = df_exons.sort_values("start")
+        exon_lengths_series = (df_exons["end"] - df_exons["start"])
+        df_exons = df_exons.assign(_exon_length=exon_lengths_series)
+        exon_length_per_transcript = df_exons.groupby("Parent")["_exon_length"].sum()
+
+        # Build transcript_lengths dict and emit debug for each transcript
         transcript_lengths = {}
-
-        for transcript_id in df_transcripts["ID"]:
-            # Get all exon children (genome_feature_children handles multi-parent exons)
-            df_exons = self.genome_feature_children(
-                parent=transcript_id, attributes=None
-            )
-            # Filter for exons only (important: exclude other feature types)
-            df_exons = df_exons[df_exons["type"] == "exon"].sort_values("start")
-
-            if len(df_exons) > 0:
-                # Calculate total transcribed length (1-based inclusive coordinates)
-                exon_lengths = (df_exons["end"] - df_exons["start"] + 1).sum()
-                transcript_lengths[transcript_id] = exon_lengths
-                debug(f"  {transcript_id}: {len(df_exons)} exons, {exon_lengths} bp")
-
+        for transcript_id, exon_length in exon_length_per_transcript.items():
+            transcript_lengths[transcript_id] = exon_length
+            n_exons = (df_exons["Parent"] == transcript_id).sum()
+            debug(f"  {transcript_id}: {n_exons} exons, {exon_length} bp")
         if not transcript_lengths:
             raise ValueError(f"Gene '{gene}' has no transcripts with exons")
 
