@@ -186,6 +186,19 @@ def test_roh_hmm(fixture, api: AnophelesHetAnalysis):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
+def test_roh_hmm_cache_name_resolution(fixture, api: AnophelesHetAnalysis):
+    """Regression test for GH#1151: _roh_hmm_cache_name must resolve to a string.
+
+    Verifies that the cache name resolver handles class attributes, properties,
+    and legacy method overrides without raising NotImplementedError.
+    """
+    # The resolver should always return a non-empty string.
+    name = api._get_roh_hmm_cache_name()
+    assert isinstance(name, str), f"Expected str, got {type(name)}"
+    assert len(name) > 0, "Cache name must be non-empty"
+
+
+@parametrize_with_cases("fixture,api", cases=".")
 def test_plot_roh(fixture, api: AnophelesHetAnalysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
