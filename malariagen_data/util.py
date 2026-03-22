@@ -613,13 +613,13 @@ def _handle_region_coords(resource, region):
         raise ValueError(f"Start position must be >= 1 in region '{region}'")
 
     if end < start:
-        raise ValueError(f"End position must be greater than start in region '{region}'")
+        raise ValueError(
+            f"End position must be greater than start in region '{region}'"
+        )
 
     # Validate contig exists
     if contig not in _valid_contigs(resource):
-        raise ValueError(
-            f"Invalid contig '{contig}' in region '{region}'."
-        )
+        raise ValueError(f"Invalid contig '{contig}' in region '{region}'.")
 
     # Validate range within contig length
     contig_length = resource.genome_sequence(region=contig).shape[0]
