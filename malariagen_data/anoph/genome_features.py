@@ -312,9 +312,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -514,9 +512,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     def _plot_genes_setup_data(self, *, region):
         attributes = [a for a in self._gff_default_attributes if a != "Parent"]

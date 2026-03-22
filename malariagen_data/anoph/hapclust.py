@@ -192,15 +192,13 @@ class AnophelesHapClustAnalysis(
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return {
-                "figure": fig,
-                "n_snps": n_snps_used,
-                "dist": dist,
-                "dist_samples": phased_samples,
-                "leaf_data": leaf_data,
-            }
+        return {
+            "figure": fig,
+            "n_snps": n_snps_used,
+            "dist": dist,
+            "dist_samples": phased_samples,
+            "leaf_data": leaf_data,
+        }
 
     @doc(
         summary="""
@@ -587,9 +585,7 @@ class AnophelesHapClustAnalysis(
 
         if show:
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig, leaf_data
+        return fig, leaf_data
 
     def transcript_haplotypes(
         self,
@@ -1020,9 +1016,7 @@ class AnophelesHapClustAnalysis(
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -1175,9 +1169,7 @@ class AnophelesHapClustAnalysis(
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig
 
 
 def _filter_and_remap(arr, x):

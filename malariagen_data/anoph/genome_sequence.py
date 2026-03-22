@@ -117,9 +117,13 @@ class AnophelesGenomeSequenceData(AnophelesBase):
 
         # Deal with region start and stop.
         slice_start = slice_stop = None
-        if resolved_region.start:
+        if resolved_region.start is not None:
+            if resolved_region.start < 1:
+                raise ValueError("Region start must be >= 1 or None.")
             slice_start = resolved_region.start - 1
-        if resolved_region.end:
+        if resolved_region.end is not None:
+            if resolved_region.end < 1:
+                raise ValueError("Region end must be >= 1 or None.")
             slice_stop = resolved_region.end
         loc_region = slice(slice_start, slice_stop)
 

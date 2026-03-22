@@ -685,9 +685,7 @@ class AnophelesDataResource(
             fig2.show(renderer=renderer)
             fig3.show(renderer=renderer)
             fig4.show(renderer=renderer)
-            return None
-        else:
-            return (fig1, fig2, fig3, fig4)
+        return (fig1, fig2, fig3, fig4)
 
     @_check_types
     @doc(
@@ -1008,9 +1006,7 @@ class AnophelesDataResource(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -1111,9 +1107,7 @@ class AnophelesDataResource(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @doc(
         summary="Run and plot iHS GWSS data.",
@@ -1218,9 +1212,7 @@ class AnophelesDataResource(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -1540,9 +1532,7 @@ class AnophelesDataResource(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
