@@ -430,8 +430,8 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             df_exons = df_exons[df_exons["type"] == "exon"].sort_values("start")
 
             if len(df_exons) > 0:
-                # Calculate total transcribed length
-                exon_lengths = (df_exons["end"] - df_exons["start"]).sum()
+                # Calculate total transcribed length (1-based inclusive coordinates)
+                exon_lengths = (df_exons["end"] - df_exons["start"] + 1).sum()
                 transcript_lengths[transcript_id] = exon_lengths
                 debug(f"  {transcript_id}: {len(df_exons)} exons, {exon_lengths} bp")
 
