@@ -919,6 +919,128 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
         return df_snps
 
+    @_check_types
+    @doc(
+        summary="Compute a simple SNP-based feature matrix for downstream ML workflows.",
+        parameters={
+            "transcript": "Gene/transcript ID to restrict variants (e.g. Vgsc). If None, use all sites in region.",
+            "region": "Genomic region string understood by the API. Ignored if transcript is provided.",
+            "sample_sets": "Passed through to snp_allele_frequencies / snp_calls.",
+            "sample_query": "Sample query expression to filter samples before feature computation.",
+            "cohorts": "Name of a cohort grouping (e.g. \"admin1_year\"). If provided, rows are cohorts; otherwise rows are samples.",
+        },
+        returns="""
+            Feature matrix with one row per sample or cohort, containing columns:
+            total_snp_count, nonsynonymous_snp_count, mean_allele_frequency.
+        """,
+        notes="""
+            This function does not perform any ML. It provides simple, reproducible
+            features intended as inputs to external machine-learning pipelines.
+            When only region is provided (no transcript), effect annotation may be
+            unavailable and nonsynonymous_snp_count may be 0 in sample mode.
+        """,
+    )
+    def snp_feature_matrix(
+        self,
+        transcript: Optional[str] = None,
+        region: Optional[str] = None,
+        sample_sets: Optional[Union[str, List[str]]] = None,
+        sample_query: Optional[str] = None,
+        cohorts: Optional[str] = None,
+    ) -> pd.DataFrame:
+        # Require at least one of transcript or region.
+        region_or_transcript = transcript if transcript is not None else region
+        if region_or_transcript is None:
+            raise ValueError("At least one of transcript or region must be provided.")
+
+        if cohorts is not None:
+            # Cohort mode: one row per cohort.
+            df_frq = self.snp_allele_frequencies(
+                transcript=region_or_transcript,
+                cohorts=cohorts,
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                effects=True,
+            )
+            df = df_frq.reset_index()
+            # Unique variant sites (melted layout: multiple rows per site).
+            unique_sites = df.drop_duplicates(["contig", "position"])
+            total_snp_count = len(unique_sites)
+            df_ns = df.query(AA_CHANGE_QUERY)
+            nonsynonymous_snp_count = (
+                len(df_ns.drop_duplicates(["contig", "position"]))
+                if len(df_ns) > 0
+                else 0
+            )
+            freq_cols = [c for c in df.columns if c.startswith("frq_")]
+            rows = []
+            for c in freq_cols:
+                cohort_id = c[4:]  # strip "frq_"
+                mean_af = df[c].mean()
+                rows.append(
+                    {
+                        "cohort": cohort_id,
+                        "total_snp_count": total_snp_count,
+                        "nonsynonymous_snp_count": nonsynonymous_snp_count,
+                        "mean_allele_frequency": mean_af,
+                    }
+                )
+            return pd.DataFrame(rows)
+        else:
+            # Sample mode: one row per sample.
+            df_counts = self.snp_genotype_allele_counts(
+                transcript=region_or_transcript,
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                snp_query=None,
+            )
+            count_cols = [c for c in df_counts.columns if c.startswith("count_")]
+            sample_ids = [c[6:] for c in count_cols]  # strip "count_"
+
+            # Allele frequencies (one cohort "all") for mean_allele_frequency.
+            df_frq = self.snp_allele_frequencies(
+                transcript=region_or_transcript,
+                cohorts={"all": "True"},
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                effects=True,
+            )
+            df_frq = df_frq.reset_index()
+            # Align on (contig, position, ref_allele, alt_allele).
+            merge_cols = ["contig", "position", "ref_allele", "alt_allele"]
+            frq_col = "frq_all" if "frq_all" in df_frq.columns else "max_af"
+            df_merged = df_counts.merge(
+                df_frq[merge_cols + [frq_col]],
+                on=merge_cols,
+                how="left",
+            )
+
+            rows = []
+            for sid, col in zip(sample_ids, count_cols):
+                has_alt = df_merged[col] > 0
+                total_snp_count = len(
+                    df_merged.loc[has_alt].drop_duplicates(["contig", "position"])
+                )
+                if "effect" in df_merged.columns:
+                    df_ns = df_merged.query(AA_CHANGE_QUERY)
+                    ns_has_alt = df_ns[col] > 0
+                    nonsynonymous_snp_count = len(
+                        df_ns.loc[ns_has_alt].drop_duplicates(["contig", "position"])
+                    )
+                else:
+                    nonsynonymous_snp_count = 0
+                af_vals = df_merged.loc[has_alt, frq_col]
+                mean_af = af_vals.mean() if len(af_vals) > 0 else np.nan
+                rows.append(
+                    {
+                        "sample_id": sid,
+                        "total_snp_count": total_snp_count,
+                        "nonsynonymous_snp_count": nonsynonymous_snp_count,
+                        "mean_allele_frequency": mean_af,
+                    }
+                )
+            return pd.DataFrame(rows)
+
 
 @numba.jit(nopython=True)
 def _melt_gt_counts(gt_counts):

@@ -1579,3 +1579,37 @@ def test_allele_frequencies_advanced_with_dup_samples(
         api=api,
         sample_sets=sample_sets,
     )
+
+
+@parametrize_with_cases("fixture,api", cases=case_ag3_sim)
+def test_snp_feature_matrix_cohort_mode(fixture, api: AnophelesSnpFrequencyAnalysis):
+    """snp_feature_matrix cohort mode: expected columns and at least one row."""
+    df = api.snp_feature_matrix(
+        transcript="AGAP004707-RD",
+        cohorts="admin1_year",
+    )
+    expected_cols = [
+        "cohort",
+        "total_snp_count",
+        "nonsynonymous_snp_count",
+        "mean_allele_frequency",
+    ]
+    assert list(df.columns) == expected_cols
+    assert len(df) >= 1
+
+
+@parametrize_with_cases("fixture,api", cases=case_ag3_sim)
+def test_snp_feature_matrix_sample_mode(fixture, api: AnophelesSnpFrequencyAnalysis):
+    """snp_feature_matrix sample mode: expected columns and at least one row."""
+    df = api.snp_feature_matrix(
+        transcript="AGAP004707-RD",
+        cohorts=None,
+    )
+    expected_cols = [
+        "sample_id",
+        "total_snp_count",
+        "nonsynonymous_snp_count",
+        "mean_allele_frequency",
+    ]
+    assert list(df.columns) == expected_cols
+    assert len(df) >= 1
