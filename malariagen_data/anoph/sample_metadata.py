@@ -1235,7 +1235,11 @@ class AnophelesSampleMetadata(AnophelesBase):
         if isinstance(sample, str):
             sample_rec = df_samples.loc[sample]
         else:
-            assert isinstance(sample, int)
+            if not isinstance(sample, int):
+                raise TypeError(
+                    f"Expected sample to be str or int, "
+                    f"got {type(sample).__name__}: {sample!r}"
+                )
             sample_rec = df_samples.iloc[sample]
         return sample_rec
 
@@ -1348,7 +1352,11 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         else:
             # Custom grouping using queries.
-            assert isinstance(symbol, Mapping)
+            if not isinstance(symbol, Mapping):
+                raise TypeError(
+                    f"Expected symbol to be str or Mapping, "
+                    f"got {type(symbol).__name__}: {symbol!r}"
+                )
             data["symbol"] = ""
             for key, value in symbol.items():
                 data.loc[data.query(value).index, "symbol"] = key
@@ -1397,7 +1405,11 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         else:
             # Custom grouping using queries.
-            assert isinstance(color, Mapping)
+            if not isinstance(color, Mapping):
+                raise TypeError(
+                    f"Expected color to be str or Mapping, "
+                    f"got {type(color).__name__}: {color!r}"
+                )
             data["color"] = ""
             for key, value in color.items():
                 data.loc[data.query(value).index, "color"] = key
@@ -1493,13 +1505,17 @@ class AnophelesSampleMetadata(AnophelesBase):
         """Convenience function to normalise the `cohorts` parameter to a
         dictionary mapping cohort labels to sample metadata queries."""
 
-        if isinstance(cohorts, dict):
+        if isinstance(cohorts, Mapping):
             # User has supplied a custom dictionary mapping cohort identifiers
             # to pandas queries.
             cohort_queries = cohorts
 
         else:
-            assert isinstance(cohorts, str)
+            if not isinstance(cohorts, str):
+                raise TypeError(
+                    f"Expected cohorts to be Mapping or str, "
+                    f"got {type(cohorts).__name__}: {cohorts!r}"
+                )
             # User has supplied a column in the sample metadata.
             df_samples = self.sample_metadata(
                 sample_sets=sample_sets,
@@ -1855,7 +1871,11 @@ def _locate_cohorts(*, cohorts, data, min_cohort_size):
             coh_dict[coh] = loc_coh
 
     else:
-        assert isinstance(cohorts, str)
+        if not isinstance(cohorts, str):
+            raise TypeError(
+                f"Expected cohorts to be Mapping or str, "
+                f"got {type(cohorts).__name__}: {cohorts!r}"
+            )
         # User has supplied the name of a sample metadata column.
 
         # Convenience to allow things like "admin1_year" instead of "cohort_admin1_year".
