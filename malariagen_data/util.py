@@ -863,6 +863,28 @@ def _simple_xarray_concat(
 
 
 def _da_concat(arrays: List[da.Array], **kwargs) -> da.Array:
+    """Efficiently concatenate a list of dask arrays.
+
+    Returns single array if only one input; otherwise concatenates.
+    This optimization avoids unnecessary dask graph overhead.
+
+    Parameters
+    ----------
+    arrays : List[da.Array]
+        List of dask arrays to concatenate.
+    **kwargs : Any
+        Additional keyword arguments passed to da.concatenate().
+        Common: axis (default 0).
+
+    Returns
+    -------
+    da.Array
+        Concatenated dask array if len(arrays) > 1, otherwise arrays[0].
+
+    See Also
+    --------
+    dask.array.concatenate : Underlying concatenation function.
+    """
     if len(arrays) == 1:
         return arrays[0]
     else:
@@ -874,19 +896,81 @@ def _value_error(
     value,
     expectation,
 ):
+    """Raise a ValueError for an invalid parameter value.
+
+    Parameters
+    ----------
+    name : str
+        Name of the parameter with the invalid value.
+    value : Any
+        The invalid value that was provided.
+    expectation : str
+        Description of what was expected.
+
+    Raises
+    ------
+    ValueError
+        Always raises with a formatted error message.
+
+    Examples
+    --------
+    >>> _value_error("sample_size", -5, "positive integer")
+    ValueError: Bad value for parameter sample_size; expected positive integer, found -5
+    """
     message = f"Bad value for parameter {name}; expected {expectation}, found {value!r}"
     raise ValueError(message)
 
 
 def _hash_params(params):
-    """Helper function to hash function parameters."""
+    """Generate MD5 hash and JSON string of function parameters.
+
+    Used for caching purposes to uniquely identify parameter combinations.
+
+    Parameters
+    ----------
+    params : Dict[str, Any]
+        Dictionary of parameters to hash.
+
+    Returns
+    -------
+    Tuple[str, str]
+        Tuple of (hash_hex, json_string) where:
+        - hash_hex is the MD5 hash as a hexadecimal string
+        - json_string is the formatted JSON representation
+
+    Examples
+    --------
+    >>> params = {"a": 1, "b": "test"}
+    >>> hash_val, json_str = _hash_params(params)
+    >>> len(hash_val)
+    32
+    """
     s = json.dumps(params, sort_keys=True, indent=4)
     h = hashlib.md5(s.encode()).hexdigest()
     return h, s
 
 
 def _jitter(a, fraction):
-    """Jitter data in `a` using the fraction `f`."""
+    """Add random noise (jitter) to array values.
+
+    Applies uniform random noise scaled to a fraction of the data range.
+
+    Parameters
+    ----------
+    a : np.ndarray
+        Input array to add noise to.
+    fraction : float
+        Fraction of the data range (max - min) to use as jitter magnitude.
+
+    Returns
+    -------
+    np.ndarray
+        Array with jitter applied. Original array is not modified.
+
+    Notes
+    -----
+    Uses uniform random distribution bounded by +/- (fraction * range).
+    """
     r = a.max() - a.min()
     return a + fraction * np.random.uniform(-r, r, a.shape)
 
