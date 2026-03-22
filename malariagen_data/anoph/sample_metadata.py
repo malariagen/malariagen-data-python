@@ -890,6 +890,58 @@ class AnophelesSampleMetadata(AnophelesBase):
         ),
         columns: Union[str, Sequence[str]] = "taxon",
     ) -> pd.DataFrame:
+        """Count samples by one or more metadata variables.
+
+        Returns a pivot table summarising the number of samples grouped
+        by the given row index and column variables. Useful for quickly
+        auditing sample representation across geographic regions, years,
+        and taxa.
+
+        Parameters
+        ----------
+        sample_sets : str or list of str, optional
+            Sample set identifier(s) to include. If not provided, all
+            available sample sets are included.
+        sample_query : str, optional
+            A pandas query string to filter samples prior to counting.
+        sample_query_options : dict, optional
+            Additional keyword arguments passed to ``pandas.DataFrame.query``.
+        sample_indices : array-like of int, optional
+            Integer indices of samples to include. Cannot be used together
+            with ``sample_query``.
+        index : str or sequence of str, optional
+            Metadata column(s) to use as the row index of the pivot table.
+            Defaults to ``("country", "admin1_iso", "admin1_name",
+            "admin2_name", "year")``.
+        columns : str or sequence of str, optional
+            Metadata column(s) to use as the columns of the pivot table.
+            Defaults to ``"taxon"``.
+
+        Returns
+        -------
+        pandas.DataFrame
+            A pivot table where each cell contains the number of samples
+            matching the corresponding row index and column values.
+            Missing combinations are filled with zero.
+
+        Examples
+        --------
+        Count samples by country and taxon using default settings:
+
+        >>> df = ag3.count_samples()
+
+        Count samples for a specific sample set, filtered to a single country:
+
+        >>> df = ag3.count_samples(
+        ...     sample_sets="AG1000G-GH",
+        ...     sample_query="country == 'Ghana'",
+        ... )
+
+        Group by year only, with taxon as columns:
+
+        >>> df = ag3.count_samples(index="year", columns="taxon")
+
+        """
         # Load sample metadata.
         df_samples = self.sample_metadata(
             sample_sets=sample_sets,
