@@ -865,6 +865,36 @@ class AnophelesSampleMetadata(AnophelesBase):
 
     @_check_types
     @doc(
+        summary="List the unique taxons present in one or more sample sets.",
+        returns="A list of unique taxon names.",
+    )
+    def list_taxons(
+        self, sample_sets: Optional[base_params.sample_sets] = None
+    ) -> List[str]:
+        df_samples = self.sample_metadata(sample_sets=sample_sets)
+        if "taxon" in df_samples.columns:
+            taxons = df_samples["taxon"].dropna().unique().tolist()
+            return sorted([str(t) for t in taxons])
+        else:
+            return []
+
+    @_check_types
+    @doc(
+        summary="List the unique species calls present in one or more sample sets.",
+        returns="A list of unique species call names.",
+    )
+    def list_species_calls(
+        self, sample_sets: Optional[base_params.sample_sets] = None
+    ) -> List[str]:
+        df_samples = self.sample_metadata(sample_sets=sample_sets)
+        if "aim_species" in df_samples.columns:
+            species = df_samples["aim_species"].dropna().unique().tolist()
+            return sorted([str(s) for s in species])
+        else:
+            return []
+
+    @_check_types
+    @doc(
         summary="""
             Create a pivot table showing numbers of samples available by space,
             time and taxon.
@@ -1906,4 +1936,5 @@ def _locate_cohorts(*, cohorts, data, min_cohort_size):
             "No cohorts available for the given sample selection parameters and minimum cohort size."
         )
 
+    return coh_dict
     return coh_dict
