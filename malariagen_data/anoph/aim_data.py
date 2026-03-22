@@ -40,10 +40,24 @@ class AnophelesAimData(
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-        # Store possible values for the `aims` parameter.
-        # TODO Consider moving this to data resource configuration.
-        self._aim_ids = aim_ids
-        self._aim_palettes = aim_palettes
+        # Read AIM parameters from the JSON config, falling back to
+        # constructor args for backward compatibility.
+        config = self.config
+        _aim_ids = config.get("AIM_IDS", None)
+        if _aim_ids is not None:
+            self._aim_ids: Optional[aim_params.aim_ids] = tuple(_aim_ids)
+        else:
+            self._aim_ids = aim_ids
+
+        _aim_palettes = config.get("AIM_PALETTES", None)
+        if _aim_palettes is not None:
+            # Convert lists to tuples for each palette entry.
+            self._aim_palettes: Optional[aim_params.aim_palettes] = {
+                k: tuple(v)
+                for k, v in _aim_palettes.items()  # type: ignore
+            }
+        else:
+            self._aim_palettes = aim_palettes
 
         # Set up caches.
         self._cache_aim_variants: Dict[str, xr.Dataset] = dict()
