@@ -378,11 +378,6 @@ def test_allele_frequencies_with_str_cohorts(
             api.snp_allele_frequencies(**params)
         return
 
-    # Run the function under test.
-    df_snp = api.snp_allele_frequencies(**params)
-
-    check_plot_frequencies_heatmap(api, df_snp)
-
     # Figure out expected cohort labels.
     df_samples = api.sample_metadata(sample_sets=sample_sets)
     if "cohort_" + cohorts in df_samples:
@@ -391,6 +386,18 @@ def test_allele_frequencies_with_str_cohorts(
         cohort_column = cohorts
     cohort_counts = df_samples[cohort_column].value_counts()
     cohort_labels = cohort_counts[cohort_counts >= min_cohort_size].index.to_list()
+
+    if len(cohort_labels) == 0:
+        with pytest.raises(ValueError):
+            api.snp_allele_frequencies(**params)
+        with pytest.raises(ValueError):
+            api.aa_allele_frequencies(**params)
+        return
+
+    # Run the function under test.
+    df_snp = api.snp_allele_frequencies(**params)
+
+    check_plot_frequencies_heatmap(api, df_snp)
 
     # Standard checks.
     check_snp_allele_frequencies(
