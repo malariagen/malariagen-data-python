@@ -372,6 +372,11 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         # Normalize input: strip whitespace
         gene_normalized = gene.strip()
 
+        # Reject empty identifiers after normalization to avoid ambiguous matches
+        if not gene_normalized:
+            raise ValueError(
+                "Gene identifier is empty after stripping whitespace; please provide a valid gene ID or name."
+            )
         # Try exact ID match first (case-sensitive)
         debug(f"Attempting ID match for '{gene_normalized}'")
         gene_id_match = df_genes[df_genes["ID"].str.strip() == gene_normalized]
