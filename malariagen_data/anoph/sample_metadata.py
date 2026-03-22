@@ -1505,7 +1505,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         """Convenience function to normalise the `cohorts` parameter to a
         dictionary mapping cohort labels to sample metadata queries."""
 
-        if isinstance(cohorts, dict):
+        if isinstance(cohorts, Mapping):
             # User has supplied a custom dictionary mapping cohort identifiers
             # to pandas queries.
             cohort_queries = cohorts
@@ -1513,7 +1513,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         else:
             if not isinstance(cohorts, str):
                 raise TypeError(
-                    f"Expected cohorts to be dict or str, "
+                    f"Expected cohorts to be Mapping or str, "
                     f"got {type(cohorts).__name__}: {cohorts!r}"
                 )
             # User has supplied a column in the sample metadata.
