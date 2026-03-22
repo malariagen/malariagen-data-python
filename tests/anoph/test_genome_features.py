@@ -326,15 +326,18 @@ def test_canonical_transcript_single_transcript_gene(ag3_sim_api):
         f"type == '{ag3_sim_api._gff_gene_type}'"
     )
     # Find a gene with exactly one transcript if possible
+    found_single_transcript_gene = False
     for gene_id in genes["ID"]:
         transcripts = ag3_sim_api.genome_feature_children(parent=gene_id)
         transcripts = transcripts[transcripts["type"] == "mRNA"]
         if len(transcripts) == 1:
             canonical = ag3_sim_api.canonical_transcript(gene_id)
             assert canonical == transcripts.iloc[0]["ID"]
+            found_single_transcript_gene = True
             break
 
-
+    if not found_single_transcript_gene:
+        pytest.skip("No gene with exactly one transcript available in fixture")
 def test_canonical_transcript_calculation_correctness(ag3_sim_api):
     """Test that the returned transcript actually has the highest exon length."""
     genes = ag3_sim_api.genome_features().query(
