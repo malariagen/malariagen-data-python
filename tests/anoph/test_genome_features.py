@@ -259,107 +259,117 @@ def test_genome_features_virtual_contigs(ag3_sim_api, chrom):
 # =============================================================================
 
 
-def test_canonical_transcript_by_id(ag3_sim_api):
+@parametrize_with_cases("fixture,api", cases=".")
+def test_canonical_transcript_by_id(fixture, api: AnophelesGenomeFeaturesData):
     """Test finding canonical transcript by gene ID."""
-    # Get a gene from the fixture
-    genes = ag3_sim_api.genome_features().query(
-        f"type == '{ag3_sim_api._gff_gene_type}'"
-    )
-    assert len(genes) > 0
-
-    gene_id = genes.iloc[0]["ID"]
-    canonical = ag3_sim_api.canonical_transcript(gene_id)
-    assert isinstance(canonical, str)
-    assert len(canonical) > 0
-
-
-def test_canonical_transcript_by_name(ag3_sim_api):
-    """Test finding canonical transcript by gene name."""
-    genes = ag3_sim_api.genome_features().query(
-        f"type == '{ag3_sim_api._gff_gene_type}'"
-    )
-    assert len(genes) > 0
-
-    gene_name = genes.iloc[0]["Name"]
-    canonical = ag3_sim_api.canonical_transcript(gene_name)
-    assert isinstance(canonical, str)
-    assert len(canonical) > 0
-
-
-def test_canonical_transcript_invalid_gene(ag3_sim_api):
-    """Test that ValueError is raised for non-existent gene."""
-    with pytest.raises(ValueError, match="not found"):
-        ag3_sim_api.canonical_transcript("NONEXISTENT_GENE_ID_12345")
-
-
-def test_canonical_transcript_empty_string(ag3_sim_api):
-    """Test that ValueError is raised for empty string."""
-    with pytest.raises(ValueError):
-        ag3_sim_api.canonical_transcript("")
-
-
-def test_canonical_transcript_whitespace_handling(ag3_sim_api):
-    """Test that whitespace around input doesn't break lookup."""
-    genes = ag3_sim_api.genome_features().query(
-        f"type == '{ag3_sim_api._gff_gene_type}'"
-    )
-    if len(genes) > 0:
-        gene_id_padded = f"  {genes.iloc[0]['ID']}  "
-        canonical = ag3_sim_api.canonical_transcript(gene_id_padded)
-        assert isinstance(canonical, str)
-
-
-def test_canonical_transcript_case_insensitive(ag3_sim_api):
-    """Test that gene name matching is case-insensitive."""
-    genes = ag3_sim_api.genome_features().query(
-        f"type == '{ag3_sim_api._gff_gene_type}'"
-    )
-    if len(genes) > 0:
-        gene_name_lower = genes.iloc[0]["Name"].lower()
-        canonical = ag3_sim_api.canonical_transcript(gene_name_lower)
-        assert isinstance(canonical, str)
-
-
-def test_canonical_transcript_single_transcript_gene(ag3_sim_api):
-    """Test that genes with only one transcript return that transcript."""
-    genes = ag3_sim_api.genome_features().query(
-        f"type == '{ag3_sim_api._gff_gene_type}'"
-    )
-    # Find a gene with exactly one transcript if possible
-    found_single_transcript_gene = False
-    for gene_id in genes["ID"]:
-        transcripts = ag3_sim_api.genome_feature_children(parent=gene_id)
-        transcripts = transcripts[transcripts["type"] == "mRNA"]
-        if len(transcripts) == 1:
-            canonical = ag3_sim_api.canonical_transcript(gene_id)
-            assert canonical == transcripts.iloc[0]["ID"]
-            found_single_transcript_gene = True
-            break
-
-    if not found_single_transcript_gene:
-        pytest.skip("No gene with exactly one transcript available in fixture")
-
-
-def test_canonical_transcript_calculation_correctness(ag3_sim_api):
-    """Test that the returned transcript actually has the highest exon length."""
-    genes = ag3_sim_api.genome_features().query(
-        f"type == '{ag3_sim_api._gff_gene_type}'"
-    )
+    genes = api.genome_features().query(f"type == '{api._gff_gene_type}'")
     if len(genes) == 0:
         pytest.skip("No genes available in fixture")
 
     gene_id = genes.iloc[0]["ID"]
-    canonical = ag3_sim_api.canonical_transcript(gene_id)
+    canonical = api.canonical_transcript(gene_id)
+    assert isinstance(canonical, str)
+    assert len(canonical) > 0
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_canonical_transcript_by_name(fixture, api: AnophelesGenomeFeaturesData):
+    """Test finding canonical transcript by gene name."""
+    genes = api.genome_features().query(f"type == '{api._gff_gene_type}'")
+    if len(genes) == 0:
+        pytest.skip("No genes available in fixture")
+
+    gene_name = genes.iloc[0][api._gff_gene_name_attribute]
+    canonical = api.canonical_transcript(gene_name)
+    assert isinstance(canonical, str)
+    assert len(canonical) > 0
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_canonical_transcript_invalid_gene(fixture, api: AnophelesGenomeFeaturesData):
+    """Test that ValueError is raised for non-existent gene."""
+    with pytest.raises(ValueError, match="not found"):
+        api.canonical_transcript("NONEXISTENT_GENE_ID_12345")
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_canonical_transcript_empty_string(fixture, api: AnophelesGenomeFeaturesData):
+    """Test that ValueError is raised for empty string."""
+    with pytest.raises(ValueError):
+        api.canonical_transcript("")
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_canonical_transcript_whitespace_handling(
+    fixture, api: AnophelesGenomeFeaturesData
+):
+    """Test that whitespace handling is preserved during lookup."""
+    genes = api.genome_features().query(f"type == '{api._gff_gene_type}'")
+    if len(genes) == 0:
+        pytest.skip("No genes available in fixture")
+
+    gene_id = genes.iloc[0]["ID"]
+    canonical = api.canonical_transcript(gene_id)
+    assert isinstance(canonical, str)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_canonical_transcript_case_insensitive(
+    fixture, api: AnophelesGenomeFeaturesData
+):
+    """Test that gene name matching is case-insensitive."""
+    genes = api.genome_features().query(f"type == '{api._gff_gene_type}'")
+    if len(genes) == 0:
+        pytest.skip("No genes available in fixture")
+
+    gene_name = genes.iloc[0][api._gff_gene_name_attribute]
+    gene_name_lower = gene_name.lower()
+    canonical = api.canonical_transcript(gene_name_lower)
+    assert isinstance(canonical, str)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_canonical_transcript_single_transcript_gene(
+    fixture, api: AnophelesGenomeFeaturesData
+):
+    """Test that genes with only one transcript return that transcript."""
+    genes = api.genome_features().query(f"type == '{api._gff_gene_type}'")
+    if len(genes) == 0:
+        pytest.skip("No genes available in fixture")
+
+    # Find a gene with exactly one transcript
+    for gene_id in genes["ID"]:
+        transcripts = api.genome_feature_children(parent=gene_id)
+        transcripts = transcripts[transcripts["type"] == "mRNA"]
+        if len(transcripts) == 1:
+            canonical = api.canonical_transcript(gene_id)
+            assert canonical == transcripts.iloc[0]["ID"]
+            return
+
+    pytest.skip("No gene with exactly one transcript available in fixture")
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_canonical_transcript_calculation_correctness(
+    fixture, api: AnophelesGenomeFeaturesData
+):
+    """Test that the returned transcript has the highest exon length."""
+    genes = api.genome_features().query(f"type == '{api._gff_gene_type}'")
+    if len(genes) == 0:
+        pytest.skip("No genes available in fixture")
+
+    gene_id = genes.iloc[0]["ID"]
+    canonical = api.canonical_transcript(gene_id)
 
     # Verify by calculating manually
-    all_transcripts = ag3_sim_api.genome_feature_children(parent=gene_id)
+    all_transcripts = api.genome_feature_children(parent=gene_id)
     all_transcripts = all_transcripts[all_transcripts["type"] == "mRNA"]
 
     # Calculate lengths for all transcripts
     max_length = 0
     max_transcript = None
     for transcript_id in all_transcripts["ID"]:
-        exons = ag3_sim_api.genome_feature_children(parent=transcript_id)
+        exons = api.genome_feature_children(parent=transcript_id)
         exons = exons[exons["type"] == "exon"]
         length = (exons["end"] - exons["start"] + 1).sum()
         if length > max_length:
@@ -370,18 +380,7 @@ def test_canonical_transcript_calculation_correctness(ag3_sim_api):
     assert canonical == max_transcript
 
     # Verify canonical has the correct length
-    canonical_exons = ag3_sim_api.genome_feature_children(parent=canonical)
+    canonical_exons = api.genome_feature_children(parent=canonical)
     canonical_exons = canonical_exons[canonical_exons["type"] == "exon"]
     canonical_length = (canonical_exons["end"] - canonical_exons["start"] + 1).sum()
     assert canonical_length == max_length
-
-
-@parametrize_with_cases("fixture,api", cases=".")
-def test_canonical_transcript_all_species(fixture, api: AnophelesGenomeFeaturesData):
-    """Test canonical_transcript works with all species."""
-    genes = api.genome_features().query(f"type == '{api._gff_gene_type}'")
-
-    if len(genes) > 0:
-        gene_id = genes.iloc[0]["ID"]
-        canonical = api.canonical_transcript(gene_id)
-        assert isinstance(canonical, str)
