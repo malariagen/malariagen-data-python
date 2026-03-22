@@ -182,26 +182,44 @@ class AnophelesDataResource(
     def _get_xpehh_gwss_cache_name(self):
         """Safe resolver for xpehh gwss cache name.
 
-        Subclasses should define _xpehh_gwss_cache_name as a class attribute.
+        Subclasses may define _xpehh_gwss_cache_name as a class attribute.
         This method safely retrieves it or returns a default if unavailable.
         """
-        cache_name = getattr(self.__class__, "_xpehh_gwss_cache_name", None)
-        if cache_name is None:
+        try:
+            # Try to get the cache name from the instance (respects MRO)
+            cache_name = getattr(self, "_xpehh_gwss_cache_name")
+            # Validate it's actually a string, not a descriptor or other object
+            if not isinstance(cache_name, str):
+                raise TypeError(
+                    f"_xpehh_gwss_cache_name must resolve to a string, "
+                    f"got {type(cache_name).__name__}"
+                )
+            return cache_name
+        except (AttributeError, TypeError):
             # Fallback to a generic cache name if subclass hasn't defined one
-            cache_name = "xpehh_gwss_v1"
-        return cache_name
+            # or if the attribute isn't a proper string
+            return "xpehh_gwss_v1"
 
     def _get_ihs_gwss_cache_name(self):
         """Safe resolver for ihs gwss cache name.
 
-        Subclasses should define _ihs_gwss_cache_name as a class attribute.
+        Subclasses may define _ihs_gwss_cache_name as a class attribute.
         This method safely retrieves it or returns a default if unavailable.
         """
-        cache_name = getattr(self.__class__, "_ihs_gwss_cache_name", None)
-        if cache_name is None:
+        try:
+            # Try to get the cache name from the instance (respects MRO)
+            cache_name = getattr(self, "_ihs_gwss_cache_name")
+            # Validate it's actually a string, not a descriptor or other object
+            if not isinstance(cache_name, str):
+                raise TypeError(
+                    f"_ihs_gwss_cache_name must resolve to a string, "
+                    f"got {type(cache_name).__name__}"
+                )
+            return cache_name
+        except (AttributeError, TypeError):
             # Fallback to a generic cache name if subclass hasn't defined one
-            cache_name = "ihs_gwss_v1"
-        return cache_name
+            # or if the attribute isn't a proper string
+            return "ihs_gwss_v1"
 
     @staticmethod
     def _make_gene_cnv_label(gene_id, gene_name, cnv_type):
