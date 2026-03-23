@@ -57,6 +57,21 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         return self.genome_features(*args, **kwargs)
 
     def _genome_features(self, *, attributes: Tuple[str, ...]):
+        """
+        Load genome feature annotations from the GFF3 file.
+
+        Parameters
+        ----------
+        attributes : tuple of str
+            Attributes to unpack from the GFF3 file. If empty, only core
+            GFF3 columns are returned.
+
+        Returns
+        -------
+        pandas.DataFrame
+            DataFrame containing genome features, one row per feature,
+            following the GFF3 specification.
+        """
         try:
             df = self._cache_genome_features[attributes]
 
@@ -72,6 +87,23 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         return df
 
     def _genome_features_for_contig(self, *, contig: str, attributes: Tuple[str, ...]):
+        """
+        Retrieve genome features for a specific contig.
+
+        Parameters
+        ----------
+        contig : str
+            Name of the contig (chromosome or scaffold).
+        attributes : tuple of str
+            Attributes to unpack from the GFF3 file.
+
+        Returns
+        -------
+        pandas.DataFrame
+            DataFrame containing genome features for the specified contig.
+            Handles both normal and virtual contigs.
+        """
+
         # Handle virtual contigs.
         if contig in self.virtual_contigs:
             contigs = self.virtual_contigs[contig]
@@ -106,6 +138,20 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
     def _prep_gff_attributes(
         self, attributes: base_params.gff_attributes
     ) -> Tuple[str, ...]:
+        """
+        Normalize GFF attribute input into a tuple of strings.
+
+        Parameters
+        ----------
+        attributes : gff_attributes
+            Attributes provided by the user. Can be None, DEFAULT, a string,
+            or an iterable of strings.
+
+        Returns
+        -------
+        tuple of str
+            Normalized attriutes as a tuple of strings.
+        """
         if attributes is None:
             attributes_normed: Tuple[str, ...] = ()
         elif attributes == base_params.DEFAULT:
@@ -161,6 +207,22 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
     def genome_feature_children(
         self, parent: str, attributes: base_params.gff_attributes = base_params.DEFAULT
     ) -> pd.DataFrame:
+      """
+      Return child genome features for a given parent feature.
+
+      Parameters
+      ----------
+      parent : str
+          Identifier of the parent genome feature.
+      attributes : gff_attributes, optional
+          Attributes to include when querying genome features.
+
+      Returns
+      -------
+      pandas.DataFrame
+          DataFrame containing child features of the specified parent.
+      """
+
         # Normalise attributes and ensure Parent is included.
         attributes_normed = self._prep_gff_attributes(attributes)
         if "Parent" not in attributes_normed:
@@ -468,6 +530,40 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         gene_labels: Optional[gplt_params.gene_labels] = None,
         gene_labelset: Optional[gplt_params.gene_labelset] = None,
     ) -> gplt_params.optional_figure:
+        """
+        Plot genes within a specified genomic region using Bokeh.
+
+        Parameters
+        ----------
+        region : base_params.region
+            Genomic region to plot, including contig and start/end coordinates.
+        sizing_mode : str, optional
+            Bokeh sizing mode for the figure layout.
+        width : int, optional
+            Width of the plot in pixels.
+        height : int, optional
+            Height of the plot in pixels.
+        show : bool, optional
+            Whether to immediately display the plot.
+    toolbar_location : str, optional
+        Location of the Bokeh toolbar.
+        x_range : bokeh.models.Range1d, optional
+            Custom x-axis range for the plot.
+        title : str, optional
+            Title of the plot. If None, a default title is generated.
+        output_backend : str, optional
+            Rendering backend for Bokeh (e.g., "canvas", "svg").
+        gene_labels : list, optional
+            Specific gene labels to display.
+        gene_labelset : str, optional
+            Label set to use for gene annotations.
+
+        Returns
+        -------
+        bokeh.plotting.Figure
+            A Bokeh figure object showing genes as rectangles across the region.
+        """
+
         debug = self._log.debug
 
         debug("handle region parameter - this determines the genome region to plot")
