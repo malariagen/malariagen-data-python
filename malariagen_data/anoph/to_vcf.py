@@ -100,6 +100,11 @@ class VcfConverter(
         if sample_ids.dtype.kind == "S":
             sample_ids = sample_ids.astype("U")
 
+        # Extract the contig names list from dataset attributes.
+        # variant_contig stores integer indices (dtype u1) into this list,
+        # not the contig name strings themselves.
+        contig_names = ds.attrs["contigs"]
+
         # Extract variant data lazily (dask arrays).
         variant_position = ds["variant_position"]
         variant_contig = ds["variant_contig"]
@@ -118,6 +123,9 @@ class VcfConverter(
                 vcf_file.write(
                     "##FORMAT=<ID=GT,Number=1,Type=String," 'Description="Genotype">\n'
                 )
+                # Write contig header lines.
+                for contig_name in contig_names:
+                    vcf_file.write(f"##contig=<ID={contig_name}>\n")
                 # Column header line.
                 header_cols = [
                     "#CHROM",
@@ -144,16 +152,15 @@ class VcfConverter(
                     allele_chunk = variant_allele[chunk_slice].values
                     gt_chunk = call_genotype[chunk_slice].values
 
-                    # Decode bytes to strings if needed.
-                    if contig_chunk.dtype.kind == "S":
-                        contig_chunk = contig_chunk.astype("U")
+                    # Decode byte-backed alleles to strings if needed.
                     if allele_chunk.dtype.kind == "S":
                         allele_chunk = allele_chunk.astype("U")
 
                     n_chunk = pos_chunk.shape[0]
 
                     for i in range(n_chunk):
-                        chrom = str(contig_chunk[i])
+                        # Map integer contig index to actual contig name.
+                        chrom = contig_names[contig_chunk[i]]
                         pos = str(pos_chunk[i])
 
                         # REF is the first allele, ALT are the remaining
