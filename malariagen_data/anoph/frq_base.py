@@ -1,4 +1,3 @@
-import re
 from textwrap import dedent
 from typing import Optional, Union, List
 
@@ -29,6 +28,13 @@ def _prep_samples_for_cohort_grouping(
         # Users can explicitly override with True/False.
         filter_unassigned = taxon_by == "taxon"
 
+    # Validate taxon_by.
+    if taxon_by not in df_samples.columns:
+        raise ValueError(
+            f"Invalid value for `taxon_by`: {taxon_by!r}. "
+            f"Must be the name of an existing column in the sample metadata."
+        )
+
     if filter_unassigned:
         # Remove samples with "intermediate" or "unassigned" taxon values,
         # as we only want cohorts with clean taxon calls.
@@ -43,18 +49,18 @@ def _prep_samples_for_cohort_grouping(
 
     # Add period column.
 
-    # Map supported period_by values to functions that return either the relevant pd.Period or pd.NaT per row.
-    period_by_funcs = {
-        "year": _make_sample_period_year,
-        "quarter": _make_sample_period_quarter,
-        "month": _make_sample_period_month,
+    # Map supported period_by values to vectorized functions that create Period arrays.
+    period_by_funcs_vectorized = {
+        "year": _make_sample_periods_year_vectorized,
+        "quarter": _make_sample_periods_quarter_vectorized,
+        "month": _make_sample_periods_month_vectorized,
     }
 
     # Get the matching function for the specified period_by value, or None.
-    period_by_func = period_by_funcs.get(period_by)
+    period_by_func_vectorized = period_by_funcs_vectorized.get(period_by)
 
     # If there were no matching functions for the specified period_by value...
-    if period_by_func is None:
+    if period_by_func_vectorized is None:
         # Raise a ValueError if the specified period_by value is not a column in the DataFrame.
         if period_by not in df_samples.columns:
             raise ValueError(
@@ -62,21 +68,27 @@ def _prep_samples_for_cohort_grouping(
                 "or a supported period: 'year', 'quarter', or 'month'."
             )
 
-        # Raise a ValueError if the specified period_by column does not contain instances pd.Period.
-        if (
-            not df_samples[period_by]
-            .apply(lambda value: pd.isnull(value) or isinstance(value, pd.Period))
-            .all()
-        ):
-            raise TypeError(
-                f"Invalid values in {period_by!r} column. Must be either pandas.Period or null."
-            )
+        # Validate the specified period_by column contains pandas Periods (or nulls).
+        s_period_by = df_samples[period_by]
+        if not pd.api.types.is_period_dtype(s_period_by.dtype):
+            non_null = s_period_by.dropna()
+            if len(non_null) > 0 and not non_null.map(type).eq(pd.Period).all():
+                raise TypeError(
+                    f"Invalid values in {period_by!r} column. Must be either pandas.Period or null."
+                )
 
         # Copy the specified period_by column to a new "period" column.
         df_samples["period"] = df_samples[period_by]
     else:
-        # Apply the matching period_by function to create a new "period" column.
-        df_samples["period"] = df_samples.apply(period_by_func, axis="columns")
+        # Use the vectorized period creation function.
+        df_samples["period"] = period_by_func_vectorized(df_samples)
+
+    # Validate area_by.
+    if area_by not in df_samples.columns:
+        raise ValueError(
+            f"Invalid value for `area_by`: {area_by!r}. "
+            f"Must be the name of an existing column in the sample metadata."
+        )
 
     # Copy the specified area_by column to a new "area" column.
     df_samples["area"] = df_samples[area_by]
@@ -101,22 +113,39 @@ def _build_cohorts_from_sample_grouping(
     df_cohorts = df_cohorts.reset_index()
 
     # Add cohort helper variables.
-    cohort_period_start = df_cohorts["period"].apply(lambda v: v.start_time)
-    cohort_period_end = df_cohorts["period"].apply(lambda v: v.end_time)
-    df_cohorts["period_start"] = cohort_period_start
-    df_cohorts["period_end"] = cohort_period_end
+    # Vectorized extraction of period start/end times.
+    period = df_cohorts["period"]
+    if pd.api.types.is_period_dtype(period.dtype):
+        df_cohorts["period_start"] = period.dt.start_time
+        df_cohorts["period_end"] = period.dt.end_time
+    else:
+        # Fallback for object dtype Period values.
+        df_cohorts["period_start"] = period.map(
+            lambda v: v.start_time if pd.notna(v) else pd.NaT
+        )
+        df_cohorts["period_end"] = period.map(
+            lambda v: v.end_time if pd.notna(v) else pd.NaT
+        )
+
     # Create a label that is similar to the cohort metadata,
     # although this won't be perfect.
+    # Vectorized string operations
     if taxon_by == frq_params.taxon_by_default:
-        df_cohorts["label"] = df_cohorts.apply(
-            lambda v: f"{v.area}_{v[taxon_by][:4]}_{v.period}", axis="columns"
-        )
+        # Default case: area_taxon_short_period
+        area_str = df_cohorts["area"].astype(str)
+        taxon_short = df_cohorts[taxon_by].astype(str).str.slice(0, 4)
+        period_str = df_cohorts["period"].astype(str)
+        df_cohorts["label"] = area_str + "_" + taxon_short + "_" + period_str
     else:
-        # Replace non-alphanumeric characters in the taxon with underscores.
-        df_cohorts["label"] = df_cohorts.apply(
-            lambda v: f"{v.area}_{re.sub(r'[^A-Za-z0-9]+', '_', str(v[taxon_by]))}_{v.period}",
-            axis="columns",
+        # Non-default case: replace non-alphanumeric characters with underscores
+        area_str = df_cohorts["area"].astype(str)
+        taxon_clean = (
+            df_cohorts[taxon_by]
+            .astype(str)
+            .str.replace(r"[^A-Za-z0-9]+", "_", regex=True)
         )
+        period_str = df_cohorts["period"].astype(str)
+        df_cohorts["label"] = area_str + "_" + taxon_clean + "_" + period_str
 
     # Apply minimum cohort size.
     df_cohorts = df_cohorts.query(f"size >= {min_cohort_size}").reset_index(drop=True)
@@ -171,6 +200,50 @@ def _make_sample_period_year(row):
         return pd.Period(freq="Y", year=year)
     else:
         return pd.NaT
+
+
+def _make_sample_periods_month_vectorized(df_samples):
+    year = df_samples["year"]
+    month = df_samples["month"]
+    valid = (year > 0) & (month > 0)
+
+    out = pd.Series(pd.NaT, index=df_samples.index, dtype="period[M]")
+    if valid.any():
+        out.loc[valid] = pd.PeriodIndex.from_fields(
+            year=year.loc[valid].to_numpy(),
+            month=month.loc[valid].to_numpy(),
+            freq="M",
+        )
+    return out
+
+
+def _make_sample_periods_quarter_vectorized(df_samples):
+    year = df_samples["year"]
+    month = df_samples["month"]
+    valid = (year > 0) & (month > 0)
+
+    out = pd.Series(pd.NaT, index=df_samples.index, dtype="period[Q-DEC]")
+    if valid.any():
+        out.loc[valid] = pd.PeriodIndex.from_fields(
+            year=year.loc[valid].to_numpy(),
+            month=month.loc[valid].to_numpy(),
+            freq="Q-DEC",
+        )
+    return out
+
+
+def _make_sample_periods_year_vectorized(df_samples):
+    year = df_samples["year"]
+    valid = year > 0
+
+    out = pd.Series(pd.NaT, index=df_samples.index, dtype="period[Y-DEC]")
+    if valid.any():
+        out.loc[valid] = pd.PeriodIndex.from_fields(
+            year=year.loc[valid].to_numpy(),
+            month=np.full(int(valid.sum()), 12, dtype="int64"),
+            freq="Y-DEC",
+        )
+    return out
 
 
 class AnophelesFrequencyAnalysis(AnophelesBase):
@@ -263,16 +336,16 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
             index = list(index_names_as_list)
         df = df.reset_index().copy()
         if isinstance(index, list):
-            index_col = (
-                df[index]
-                .astype(str)
-                .apply(
-                    lambda row: ", ".join([o for o in row if o is not None]),
-                    axis="columns",
-                )
-            )
+            idx_vals = df[index].astype(str).to_numpy()
+            index_col = pd.Series(idx_vals[:, 0], index=df.index)
+            for j in range(1, idx_vals.shape[1]):
+                index_col = index_col + ", " + idx_vals[:, j]
         else:
-            assert isinstance(index, str)
+            if not isinstance(index, str):
+                raise TypeError(
+                    f"Expected index to be str or list, "
+                    f"got {type(index).__name__}: {index!r}"
+                )
             index_col = df[index].astype(str)
 
         # Check that index is unique.
@@ -332,9 +405,7 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -492,9 +563,7 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -531,7 +600,11 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
             ds_variant = ds.isel(variants=variant)
             variant_label = ds["variant_label"].values[variant]
         else:
-            assert isinstance(variant, str)
+            if not isinstance(variant, str):
+                raise TypeError(
+                    f"Expected variant to be int or str, "
+                    f"got {type(variant).__name__}: {variant!r}"
+                )
             ds_variant = ds.set_index(variants="variant_label").sel(variants=variant)
             variant_label = variant
 

@@ -12,7 +12,7 @@ This package provides Python tools for accessing and analyzing genomic data from
 
 You'll need:
 
-- [pipx](https://python-poetry.org/) for installing Python tools
+- [pipx](https://pipx.pypa.io/) for installing Python tools
 - [git](https://git-scm.com/) for version control
 
 Both of these can be installed using your distribution's package manager or [Homebrew](https://brew.sh/) on Mac.
@@ -52,8 +52,12 @@ Both of these can be installed using your distribution's package manager or [Hom
 
    ```bash
    poetry env use 3.12
-   poetry install --extras dev
+   poetry install --with dev,test,docs
    ```
+
+   This installs the runtime dependencies along with the `dev`, `test`, and `docs`
+   [dependency groups](https://python-poetry.org/docs/managing-dependencies/#dependency-groups).
+   If you only need to run tests, `poetry install --with test` is sufficient.
 
    **Recommended**: Use `poetry run` to run commands inside the virtual environment:
 

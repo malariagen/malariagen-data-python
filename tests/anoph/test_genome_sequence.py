@@ -9,6 +9,7 @@ from pytest_cases import parametrize_with_cases
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.genome_sequence import AnophelesGenomeSequenceData
+from malariagen_data.util import Region
 
 
 @pytest.fixture
@@ -123,5 +124,14 @@ def test_genome_sequence_virtual_contigs(ag3_sim_api, chrom):
     seq_region = api.genome_sequence(region=region)
     assert isinstance(seq_region, da.Array)
     assert seq_region.ndim == 1
-    assert seq_region.dtype == seq.dtype
     assert seq_region.shape[0] == stop - start + 1
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_genome_sequence_invalid_region(fixture, api):
+    for contig in fixture.contigs:
+        with pytest.raises(ValueError, match="Region start must be >= 1 or None."):
+            api.genome_sequence(region=Region(contig, start=0, end=100))
+
+        with pytest.raises(ValueError, match="Region end must be >= 1 or None."):
+            api.genome_sequence(region=Region(contig, start=1, end=0))

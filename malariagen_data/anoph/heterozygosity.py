@@ -231,9 +231,7 @@ class AnophelesHetAnalysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -334,9 +332,7 @@ class AnophelesHetAnalysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig_all)
-            return None
-        else:
-            return fig_all
+        return fig_all
 
     def _sample_count_het(
         self,
@@ -583,9 +579,7 @@ class AnophelesHetAnalysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -705,6 +699,121 @@ class AnophelesHetAnalysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig_all)
-            return None
-        else:
-            return fig_all
+        return fig_all
+
+    @_check_types
+    @doc(
+        summary="Return windowed heterozygosity for a single sample over a genome region.",
+        returns="""
+            A DataFrame with one row per window. Columns are:
+            `sample_id` is the identifier of the sample,
+            `window_start` is the start position of the window,
+            `window_stop` is the stop position of the window,
+            `heterozygosity` is the heterozygosity in the window.
+        """,
+    )
+    def sample_count_het(
+        self,
+        sample: base_params.sample,
+        region: base_params.region,
+        window_size: het_params.window_size = het_params.window_size_default,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
+        sample_set: Optional[base_params.sample_set] = None,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+    ) -> pd.DataFrame:
+        # Normalise region parameter.
+        region_prepped: Region = _parse_single_region(self, region)
+        del region
+
+        # Compute windowed heterozygosity using private method.
+        sample_id, sample_set, windows, counts = self._sample_count_het(
+            sample=sample,
+            region=region_prepped,
+            site_mask=site_mask,
+            window_size=window_size,
+            sample_set=sample_set,
+            chunks=chunks,
+            inline_array=inline_array,
+        )
+
+        # Build and return a DataFrame.
+        df = pd.DataFrame(
+            {
+                "sample_id": sample_id,
+                "window_start": windows[:, 0],
+                "window_stop": windows[:, 1],
+                "heterozygosity": counts / window_size,
+            }
+        )
+
+        return df
+
+    @_check_types
+    @doc(
+        summary="Compute mean heterozygosity for multiple cohorts over a genome region.",
+        returns="""
+            A DataFrame with one row per cohort. Columns are:
+            `cohort` is the cohort identifier,
+            `n_samples` is the number of samples in the cohort,
+            `mean_heterozygosity` is the mean heterozygosity across all samples and windows in the cohort.
+        """,
+    )
+    def cohort_heterozygosity(
+        self,
+        region: base_params.region,
+        cohorts: base_params.cohorts,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
+        window_size: het_params.window_size = het_params.window_size_default,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+    ) -> pd.DataFrame:
+        # Normalise region parameter.
+        region_prepped: Region = _parse_single_region(self, region)
+        del region
+
+        # Set up cohort queries.
+        cohort_queries = self._setup_cohort_queries(
+            cohorts=cohorts,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            cohort_size=None,
+            min_cohort_size=1,
+        )
+
+        # Compute heterozygosity for each cohort.
+        results = []
+        for cohort_label, cohort_query in cohort_queries.items():
+            # Get samples in this cohort.
+            df_cohort_samples = self.sample_metadata(
+                sample_sets=sample_sets,
+                sample_query=cohort_query,
+            )
+            n_samples = len(df_cohort_samples)
+
+            # Compute heterozygosity for each sample and take the mean.
+            het_values = []
+            for sample_id in df_cohort_samples["sample_id"]:
+                df_het = self.sample_count_het(
+                    sample=sample_id,
+                    region=region_prepped,
+                    window_size=window_size,
+                    site_mask=site_mask,
+                    chunks=chunks,
+                    inline_array=inline_array,
+                )
+                het_values.append(df_het["heterozygosity"].mean())
+
+            results.append(
+                {
+                    "cohort": cohort_label,
+                    "n_samples": n_samples,
+                    "mean_heterozygosity": np.mean(het_values),
+                }
+            )
+
+        return pd.DataFrame(results)

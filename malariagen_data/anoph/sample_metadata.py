@@ -1,4 +1,7 @@
+import difflib
 import io
+import json
+import re
 from itertools import cycle
 from typing import (
     Any,
@@ -81,6 +84,8 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         # Initialize cache attributes.
         self._cache_sample_metadata: Dict = dict()
+        self._cache_cohorts: Dict = dict()
+        self._cache_cohort_geometries: Dict = dict()
 
     def _metadata_paths(
         self,
@@ -181,10 +186,8 @@ class AnophelesSampleMetadata(AnophelesBase):
             df["release"] = release
 
             # Derive a quarter column from month.
-            df["quarter"] = df.apply(
-                lambda row: ((row.month - 1) // 3) + 1 if row.month > 0 else -1,
-                axis="columns",
-            )
+            # Vectorized operation: quarter = ((month - 1) // 3) + 1 if month > 0 else -1
+            df["quarter"] = np.where(df["month"] > 0, ((df["month"] - 1) // 3) + 1, -1)
 
             # Add study columns.
             study_info = self.lookup_study_info(sample_set=sample_set)
@@ -702,6 +705,17 @@ class AnophelesSampleMetadata(AnophelesBase):
     @doc(
         summary="Access sample metadata for one or more sample sets.",
         returns="A dataframe of sample metadata, one row per sample.",
+        notes="""
+            Some samples in the dataset are lab crosses — mosquitoes bred in
+            the laboratory that have no real collection date. These samples
+            use ``year=-1`` and ``month=-1`` as sentinel values. They may
+            cause unexpected results in date-based analyses (e.g.,
+            ``pd.to_datetime`` will fail on negative year values).
+
+            To exclude lab cross samples, use::
+
+                df = api.sample_metadata(sample_query="year >= 0")
+        """,
     )
     def sample_metadata(
         self,
@@ -781,11 +795,64 @@ class AnophelesSampleMetadata(AnophelesBase):
         if prepared_sample_query is not None:
             # Assume a pandas query string.
             sample_query_options = sample_query_options or {}
+
+            # Save a reference to the pre-query DataFrame so we can detect
+            # zero-result queries and provide a helpful warning.
+            df_before_query = df_samples
+
             # Use the python engine in order to support extension array dtypes, e.g. Float64, Int64, boolean.
             df_samples = df_samples.query(
                 prepared_sample_query, **sample_query_options, engine="python"
             )
             df_samples = df_samples.reset_index(drop=True)
+
+            # Warn if query returned zero results on a non-empty dataset.
+            # Provide fuzzy-match suggestions so users can spot typos,
+            # case mismatches, or partial-value issues.
+            if len(df_samples) == 0 and len(df_before_query) > 0:
+                hint_lines = [
+                    f"sample_metadata() returned 0 samples for query: {prepared_sample_query!r}.",
+                ]
+
+                # Extract column == 'value' pairs from the query.
+                col_val_pairs = re.findall(
+                    r"\b(\w+)\s*==\s*['\"]([^'\"]+)['\"]",
+                    prepared_sample_query,
+                )
+
+                for col_name, queried_val in col_val_pairs:
+                    # If the column name is not recognised, suggest
+                    # close column names.
+                    if col_name not in df_before_query.columns:
+                        close_cols = difflib.get_close_matches(
+                            col_name,
+                            df_before_query.columns.tolist(),
+                            n=3,
+                            cutoff=0.6,
+                        )
+                        if close_cols:
+                            hint_lines.append(
+                                f"Column {col_name!r} not found. "
+                                f"Did you mean: {close_cols}?"
+                            )
+                        continue
+
+                    # For string columns, suggest close values.
+                    if df_before_query[col_name].dtype == object:
+                        valid_vals = (
+                            df_before_query[col_name].dropna().unique().tolist()
+                        )
+                        close_vals = difflib.get_close_matches(
+                            queried_val, valid_vals, n=5, cutoff=0.6
+                        )
+                        if close_vals:
+                            hint_lines.append(
+                                f"Value {queried_val!r} not found in "
+                                f"column {col_name!r}. "
+                                f"Did you mean: {close_vals}?"
+                            )
+
+                warnings.warn("\n".join(hint_lines), UserWarning, stacklevel=2)
 
         # Apply the sample_indices, if there are any.
         # Note: this might need to apply to the result of an internal sample_query, e.g. `is_surveillance == True`.
@@ -813,6 +880,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         sample_query_options: Optional[base_params.sample_query_options] = None,
+        sample_indices: Optional[base_params.sample_indices] = None,
         index: Union[str, Sequence[str]] = (
             "country",
             "admin1_iso",
@@ -827,6 +895,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             sample_sets=sample_sets,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
+            sample_indices=sample_indices,
         )
 
         # Create pivot table.
@@ -861,6 +930,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         sample_query_options: Optional[base_params.sample_query_options] = None,
+        sample_indices: Optional[base_params.sample_indices] = None,
         basemap: Optional[map_params.basemap] = map_params.basemap_default,
         center: map_params.center = map_params.center_default,
         zoom: map_params.zoom = map_params.zoom_default,
@@ -880,6 +950,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             sample_sets=sample_sets,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
+            sample_indices=sample_indices,
         )
 
         # Pivot taxa by locations.
@@ -1164,7 +1235,11 @@ class AnophelesSampleMetadata(AnophelesBase):
         if isinstance(sample, str):
             sample_rec = df_samples.loc[sample]
         else:
-            assert isinstance(sample, int)
+            if not isinstance(sample, int):
+                raise TypeError(
+                    f"Expected sample to be str or int, "
+                    f"got {type(sample).__name__}: {sample!r}"
+                )
             sample_rec = df_samples.iloc[sample]
         return sample_rec
 
@@ -1189,6 +1264,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         sample_query_options: Optional[base_params.sample_query_options] = None,
+        sample_indices: Optional[base_params.sample_indices] = None,
         template: plotly_params.template = "plotly_white",
         width: plotly_params.fig_width = 800,
         height: plotly_params.fig_height = 600,
@@ -1201,6 +1277,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             sample_sets=sample_sets,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
+            sample_indices=sample_indices,
         )
 
         # Special handling for plotting by year.
@@ -1250,9 +1327,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig
 
     def _setup_sample_symbol(
         self,
@@ -1277,7 +1352,11 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         else:
             # Custom grouping using queries.
-            assert isinstance(symbol, Mapping)
+            if not isinstance(symbol, Mapping):
+                raise TypeError(
+                    f"Expected symbol to be str or Mapping, "
+                    f"got {type(symbol).__name__}: {symbol!r}"
+                )
             data["symbol"] = ""
             for key, value in symbol.items():
                 data.loc[data.query(value).index, "symbol"] = key
@@ -1326,7 +1405,11 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         else:
             # Custom grouping using queries.
-            assert isinstance(color, Mapping)
+            if not isinstance(color, Mapping):
+                raise TypeError(
+                    f"Expected color to be str or Mapping, "
+                    f"got {type(color).__name__}: {color!r}"
+                )
             data["color"] = ""
             for key, value in color.items():
                 data.loc[data.query(value).index, "color"] = key
@@ -1422,13 +1505,17 @@ class AnophelesSampleMetadata(AnophelesBase):
         """Convenience function to normalise the `cohorts` parameter to a
         dictionary mapping cohort labels to sample metadata queries."""
 
-        if isinstance(cohorts, dict):
+        if isinstance(cohorts, Mapping):
             # User has supplied a custom dictionary mapping cohort identifiers
             # to pandas queries.
             cohort_queries = cohorts
 
         else:
-            assert isinstance(cohorts, str)
+            if not isinstance(cohorts, str):
+                raise TypeError(
+                    f"Expected cohorts to be Mapping or str, "
+                    f"got {type(cohorts).__name__}: {cohorts!r}"
+                )
             # User has supplied a column in the sample metadata.
             df_samples = self.sample_metadata(
                 sample_sets=sample_sets,
@@ -1465,11 +1552,18 @@ class AnophelesSampleMetadata(AnophelesBase):
             if min_cohort_size is not None:
                 cohort_size = min_cohort_size
             if cohort_size is not None and n_samples < cohort_size:
-                print(
-                    f"Cohort ({cohort_label}) has insufficient samples ({n_samples}) for requested cohort size ({cohort_size}), dropping."
+                warnings.warn(
+                    f"Cohort ({cohort_label}) has insufficient samples ({n_samples}) for requested cohort size ({cohort_size}), dropping.",
+                    stacklevel=2,
                 )
             else:
                 cohort_queries_checked[cohort_label] = cohort_query
+
+        if not cohort_queries_checked:
+            raise ValueError(
+                "No cohorts remain after applying the minimum cohort size filter. "
+                "Try reducing `min_cohort_size` or broadening your sample selection."
+            )
 
         return cohort_queries_checked
 
@@ -1485,7 +1579,11 @@ class AnophelesSampleMetadata(AnophelesBase):
                 A cohort set name. Accepted values are:
                 "admin1_month", "admin1_quarter", "admin1_year",
                 "admin2_month", "admin2_quarter", "admin2_year".
-            """
+            """,
+            query="""
+                An optional pandas query string to filter the resulting
+                dataframe, e.g., "country == 'Burkina Faso'".
+            """,
         ),
         returns="""A dataframe of cohort data, one row per cohort. There are up to 18 columns:
         `cohort_id` is the identifier of the cohort,
@@ -1512,20 +1610,98 @@ class AnophelesSampleMetadata(AnophelesBase):
     def cohorts(
         self,
         cohort_set: base_params.cohorts,
+        query: Optional[str] = None,
     ) -> pd.DataFrame:
-        major_version_path = self._major_version_path
+        valid_cohort_sets = {
+            "admin1_month",
+            "admin1_quarter",
+            "admin1_year",
+            "admin2_month",
+            "admin2_quarter",
+            "admin2_year",
+        }
+        if cohort_set not in valid_cohort_sets:
+            raise ValueError(
+                f"{cohort_set!r} is not a valid cohort set. "
+                f"Accepted values are: {sorted(valid_cohort_sets)}."
+            )
+
         cohorts_analysis = self._cohorts_analysis
 
-        path = f"{major_version_path[:2]}_cohorts/cohorts_{cohorts_analysis}/cohorts_{cohort_set}.csv"
+        # Cache to avoid repeated reads.
+        cache_key = (cohorts_analysis, cohort_set)
+        try:
+            df_cohorts = self._cache_cohorts[cache_key]
+        except KeyError:
+            major_version_path = self._major_version_path
+            path = f"{major_version_path[:2]}_cohorts/cohorts_{cohorts_analysis}/cohorts_{cohort_set}.csv"
 
-        # Read the manifest into a pandas dataframe.
-        with self.open_file(path) as f:
-            df_cohorts = pd.read_csv(f, sep=",", na_values="")
+            with self.open_file(path) as f:
+                df_cohorts = pd.read_csv(f, sep=",", na_values="")
 
-        # Ensure all column names are lower case.
-        df_cohorts.columns = [c.lower() for c in df_cohorts.columns]  # type: ignore
+            # Ensure all column names are lower case.
+            df_cohorts.columns = [c.lower() for c in df_cohorts.columns]  # type: ignore
 
-        return df_cohorts
+            self._cache_cohorts[cache_key] = df_cohorts
+
+        if query is not None:
+            df_cohorts = df_cohorts.query(query)
+            df_cohorts = df_cohorts.reset_index(drop=True)
+
+        return df_cohorts.copy()
+
+    @_check_types
+    @doc(
+        summary="""
+            Read GeoJSON geometry data for a specific cohort set,
+            providing boundary geometries for each cohort.
+        """,
+        parameters=dict(
+            cohort_set="""
+                A cohort set name. Accepted values are:
+                "admin1_month", "admin1_quarter", "admin1_year",
+                "admin2_month", "admin2_quarter", "admin2_year".
+            """,
+        ),
+        returns="""
+            A dict containing the parsed GeoJSON FeatureCollection,
+            with boundary geometries for each cohort in the set.
+        """,
+    )
+    def cohort_geometries(
+        self,
+        cohort_set: base_params.cohorts,
+    ) -> dict:
+        valid_cohort_sets = {
+            "admin1_month",
+            "admin1_quarter",
+            "admin1_year",
+            "admin2_month",
+            "admin2_quarter",
+            "admin2_year",
+        }
+        if cohort_set not in valid_cohort_sets:
+            raise ValueError(
+                f"{cohort_set!r} is not a valid cohort set. "
+                f"Accepted values are: {sorted(valid_cohort_sets)}."
+            )
+
+        cohorts_analysis = self._cohorts_analysis
+
+        # Cache to avoid repeated reads.
+        cache_key = (cohorts_analysis, cohort_set)
+        try:
+            geojson_data = self._cache_cohort_geometries[cache_key]
+        except KeyError:
+            major_version_path = self._major_version_path
+            path = f"{major_version_path[:2]}_cohorts/cohorts_{cohorts_analysis}/cohorts_{cohort_set}.geojson"
+
+            with self.open_file(path) as f:
+                geojson_data = json.load(f)
+
+            self._cache_cohort_geometries[cache_key] = geojson_data
+
+        return geojson_data
 
     @_check_types
     @doc(
@@ -1598,9 +1774,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -1618,6 +1792,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         sample_sets: Optional[base_params.sample_sets],
         sample_query: Optional[base_params.sample_query] = None,
         sample_query_options: Optional[base_params.sample_query_options] = None,
+        sample_indices: Optional[base_params.sample_indices] = None,
         marker_size: plotly_params.marker_size = 10,
         color: plotly_params.color = "admin1_name",
         color_discrete_sequence: plotly_params.color_discrete_sequence = px.colors.qualitative.Prism,
@@ -1636,6 +1811,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             sample_sets=sample_sets,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
+            sample_indices=sample_indices,
         )
 
         # Set the location columns to use from the sample metadata.
@@ -1674,9 +1850,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig
 
 
 def _locate_cohorts(*, cohorts, data, min_cohort_size):
@@ -1688,11 +1862,20 @@ def _locate_cohorts(*, cohorts, data, min_cohort_size):
         # to pandas queries.
 
         for coh, query in cohorts.items():
-            loc_coh = data.eval(query).values
+            try:
+                loc_coh = data.eval(query).values
+            except Exception as e:
+                raise ValueError(
+                    f"Invalid query for cohort {coh!r}: {query!r}. Error: {e}"
+                ) from e
             coh_dict[coh] = loc_coh
 
     else:
-        assert isinstance(cohorts, str)
+        if not isinstance(cohorts, str):
+            raise TypeError(
+                f"Expected cohorts to be Mapping or str, "
+                f"got {type(cohorts).__name__}: {cohorts!r}"
+            )
         # User has supplied the name of a sample metadata column.
 
         # Convenience to allow things like "admin1_year" instead of "cohort_admin1_year".

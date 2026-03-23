@@ -1,3 +1,4 @@
+import warnings
 from typing import Optional, Tuple
 
 import allel  # type: ignore
@@ -188,13 +189,11 @@ class AnophelesDipClustAnalysis(
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return {
-                "figure": fig,
-                "dendro_sample_id_order": np.asarray(leaf_data["sample_id"].to_list()),
-                "n_snps": n_snps_used,
-            }
+        return {
+            "figure": fig,
+            "dendro_sample_id_order": np.asarray(leaf_data["sample_id"].to_list()),
+            "n_snps": n_snps_used,
+        }
 
     def diplotype_pairwise_distances(
         self,
@@ -540,8 +539,9 @@ class AnophelesDipClustAnalysis(
             figures.append(snp_trace)
             subplot_heights.append(snp_row_height * n_snps_transcript)
         else:
-            print(
-                f"No SNPs were found below {snp_filter_min_maf} allele frequency. Omitting SNP genotype plot."
+            warnings.warn(
+                f"No SNPs were found below {snp_filter_min_maf} allele frequency. Omitting SNP genotype plot.",
+                stacklevel=2,
             )
         return figures, subplot_heights, n_snps_transcript
 
@@ -607,8 +607,9 @@ class AnophelesDipClustAnalysis(
             cnv_colorscale = cnv_params.colorscale_default
         if cohort_size and snp_transcript:
             cohort_size = None
-            print(
-                "Cohort size is not supported with amino acid heatmap. Overriding cohort size to None."
+            warnings.warn(
+                "Cohort size is not supported with amino acid heatmap. Overriding cohort size to None.",
+                stacklevel=2,
             )
 
         res = self.plot_diplotype_clustering(
@@ -797,6 +798,4 @@ class AnophelesDipClustAnalysis(
 
         if show:
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig

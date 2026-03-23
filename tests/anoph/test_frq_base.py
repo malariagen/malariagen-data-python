@@ -101,6 +101,40 @@ class TestPrepSamplesFilterUnassigned:
         assert df["taxon"].tolist() == original_values
 
 
+class TestPrepSamplesAreaByValidation:
+    """Tests for area_by validation in _prep_samples_for_cohort_grouping."""
+
+    def test_invalid_area_by_raises_value_error(self):
+        """A non-existent area_by column should raise ValueError, not KeyError."""
+        import pytest
+
+        df = _make_test_df()
+        with pytest.raises(ValueError, match="Invalid value for `area_by`"):
+            _prep_samples_for_cohort_grouping(
+                df_samples=df,
+                area_by="nonexistent_column",
+                period_by="year",
+                taxon_by="taxon",
+            )
+
+
+class TestPrepSamplesTaxonByValidation:
+    """Tests for taxon_by validation in _prep_samples_for_cohort_grouping."""
+
+    def test_invalid_taxon_by_raises_value_error(self):
+        """A non-existent taxon_by column should raise ValueError, not KeyError."""
+        import pytest
+
+        df = _make_test_df()
+        with pytest.raises(ValueError, match="Invalid value for `taxon_by`"):
+            _prep_samples_for_cohort_grouping(
+                df_samples=df,
+                area_by="admin1_iso",
+                period_by="year",
+                taxon_by="nonexistent_column",
+            )
+
+
 class TestPlotFrequenciesTimeSeriesMissingCI:
     """Tests for plot_frequencies_time_series when CI variables are absent.
 

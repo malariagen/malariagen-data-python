@@ -1,0 +1,5 @@
+cohort_id,cohort_size,country,country_alpha2,country_alpha3,taxon,year,admin1_name,admin1_iso,admin1_geoboundaries_shape_id,admin1_representative_longitude,admin1_representative_latitude
+AO-LUA_colu_2009,81,Angola,AO,AGO,coluzzii,2009,Luanda,AO-LUA,26408823B49174064004395,13.679075010193182,-9.592222213499952
+BF-01_arab_2008,1,Burkina Faso,BF,BFA,arabiensis,2008,Boucle du Mouhoun,BF-01,92566538B98190668782446,-3.592255305233366,12.479899304500035
+BF-01_colu_2008,4,Burkina Faso,BF,BFA,coluzzii,2008,Boucle du Mouhoun,BF-01,92566538B98190668782446,-3.592255305233366,12.479899304500035
+BF-02_colu_2011,18,Burkina Faso,BF,BFA,coluzzii,2011,Cascades,BF-02,92566538B44525923588019,-4.482809923408134,10.30846

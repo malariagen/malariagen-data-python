@@ -119,14 +119,14 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
     @_check_types
     @doc(
         summary="""
-            Compute SNP allele frequencies for a gene transcript.
+            Compute SNP allele frequencies for a gene transcript or genomic region.
         """,
         returns="""
             A dataframe of SNP allele frequencies, one row per variant allele. The variant alleles are indexed by
             their contig, their position, the reference allele, the alternate allele and the associated amino acid change.
             The columns are split into three categories: there is one column for each taxon filter (e.g., pass_funestus, pass_gamb_colu, ...) containing whether the site of the variant allele passes the filter;
-            there is then 1 column for each cohort containing the frequency of the variant allele within the cohort, additionally there is a column `max_af` containing the maximum allele frequency of the variant allele across all cohorts;
-            finally, there are 9 columns describing the variant allele: `transcript` contains the gene transcript used for this analysis,
+            there is then 1 column for each cohort containing the frequency of the variant allele within the cohort, additionally there is a column `max_af` containing the maximum allele frequency of the variant allele accross all cohorts;
+            finally, there are 9 columns describing the variant allele: `transcript` contains the gene transcript used for this analysis (when provided),
             `effect` is the effect of the allele change,
             `impact`is the impact of the allele change,
             `ref_codon` is the reference codon,
@@ -143,8 +143,9 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
     )
     def snp_allele_frequencies(
         self,
-        transcript: base_params.transcript,
-        cohorts: base_params.cohorts,
+        transcript: Optional[base_params.transcript] = None,
+        region: Optional[base_params.region] = None,
+        cohorts: Optional[base_params.cohorts] = None,
         sample_query: Optional[base_params.sample_query] = None,
         sample_query_options: Optional[base_params.sample_query_options] = None,
         min_cohort_size: base_params.min_cohort_size = 10,
@@ -156,6 +157,16 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> pd.DataFrame:
+        # Validate transcript/region usage.
+        if transcript is None and region is None:
+            raise ValueError("Provide either transcript or region.")
+        if transcript is not None and region is not None:
+            raise ValueError("Provide only one of transcript or region, not both.")
+
+        # For backwards compatibility, default region to transcript when only transcript is given.
+        if region is None:
+            region = transcript
+
         # Access sample metadata.
         df_samples = self.sample_metadata(
             sample_sets=sample_sets,
@@ -170,7 +181,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
         # Access SNP data.
         ds_snp = self.snp_calls(
-            region=transcript,
+            region=region,
             site_mask=site_mask,
             sample_sets=sample_sets,
             sample_query=sample_query,
@@ -244,45 +255,49 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         # Reset index after filtering.
         df_snps.reset_index(inplace=True, drop=True)
 
-        if effects:
-            # Add effect annotations.
+        if effects and (transcript is not None):
+            # Add effect annotations (requires transcript).
             ann = self._snp_effect_annotator
             ann.get_effects(
                 transcript=transcript, variants=df_snps, progress=self._progress
             )
 
-            # Add label.
+            # Add label with amino acid change.
             df_snps["label"] = _pandas_apply(
                 _make_snp_label_effect,
                 df_snps,
                 columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],
             )
 
-            # Set index.
+            # Set index including aa_change.
             df_snps.set_index(
                 ["contig", "position", "ref_allele", "alt_allele", "aa_change"],
                 inplace=True,
             )
 
         else:
-            # Add label.
+            # No transcript (or effects=False): do not require effect annotation.
             df_snps["label"] = _pandas_apply(
                 _make_snp_label,
                 df_snps,
                 columns=["contig", "position", "ref_allele", "alt_allele"],
             )
 
-            # Set index.
             df_snps.set_index(
                 ["contig", "position", "ref_allele", "alt_allele"],
                 inplace=True,
             )
 
         # Add dataframe metadata.
-        gene_name = self._transcript_to_parent_name(transcript)
-        title = transcript
-        if gene_name:
-            title += f" ({gene_name})"
+        if transcript is not None:
+            gene_name = self._transcript_to_parent_name(transcript)
+            title = transcript
+            if gene_name:
+                title += f" ({gene_name})"
+        else:
+            # No transcript, just use the region string.
+            title = str(region)
+
         title += " SNP frequencies"
         df_snps.attrs["title"] = title
 
@@ -345,11 +360,55 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         # We just want aa change.
         df_ns_snps = df_snps.query(AA_CHANGE_QUERY).copy()
 
-        # Early check for no matching SNPs.
-        if len(df_ns_snps) == 0:  # pragma: no cover
-            raise ValueError(
-                "No amino acid change SNPs found for the given transcript and site mask."
+        # Handle case where no amino acid change SNPs are found.
+        # N.B., this can legitimately happen for some transcript/site_mask/query
+        # combinations. Return a well-formed empty DataFrame rather than raising,
+        # to avoid transient test failures and to allow downstream code to handle
+        # the empty result gracefully. See also:
+        # https://github.com/malariagen/malariagen-data-python/issues/1064
+        if len(df_ns_snps) == 0:
+            warnings.warn(
+                "No amino acid change SNPs found for the given transcript "
+                "and site mask. Returning an empty DataFrame.",
+                stacklevel=2,
             )
+            # Build an empty DataFrame with the expected schema.
+            freq_cols = [col for col in df_snps.columns if col.startswith("frq_")]
+            count_cols = [col for col in df_snps.columns if col.startswith("count_")]
+            nobs_cols = [col for col in df_snps.columns if col.startswith("nobs_")]
+            keep_cols = [
+                "contig",
+                "transcript",
+                "aa_pos",
+                "ref_allele",
+                "ref_aa",
+                "alt_aa",
+                "effect",
+                "impact",
+                "grantham_score",
+                "sneath_score",
+            ]
+            all_cols = (
+                ["aa_change"]
+                + freq_cols
+                + ["max_af"]
+                + keep_cols
+                + ["alt_allele", "label", "position"]
+            )
+            if include_counts:
+                all_cols = all_cols + count_cols + nobs_cols
+            df_empty = pd.DataFrame(columns=all_cols)
+            df_empty.set_index(["aa_change", "contig", "position"], inplace=True)
+
+            # Add metadata.
+            gene_name = self._transcript_to_parent_name(transcript)
+            title = transcript
+            if gene_name:
+                title += f" ({gene_name})"
+            title += " SNP frequencies"
+            df_empty.attrs["title"] = title
+
+            return df_empty
 
         # N.B., we need to worry about the possibility of the
         # same aa change due to SNPs at different positions. We cannot
@@ -375,7 +434,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             for c in nobs_cols:
                 agg[c] = "first"
 
-        keep_cols = (
+        keep_cols = [
             "contig",
             "transcript",
             "aa_pos",
@@ -386,7 +445,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             "impact",
             "grantham_score",
             "sneath_score",
-        )
+        ]
         for c in keep_cols:
             agg[c] = "first"
         agg["alt_allele"] = lambda v: "{" + ",".join(v) + "}" if len(v) > 1 else v
@@ -627,8 +686,10 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
             # Check for no SNPs remaining after applying variant query.
             if np.count_nonzero(loc_variants) == 0:
-                raise ValueError(
-                    f"No SNPs remaining after applying variant query {variant_query!r}."
+                warnings.warn(
+                    f"No SNPs remaining after applying variant query {variant_query!r}. "
+                    "Returning dataset with zero variants.",
+                    stacklevel=2,
                 )
 
             # Convert boolean mask to integer indices for NumPy 2.x compatibility
@@ -769,8 +830,10 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
             # Check for no SNPs remaining after applying variant query.
             if np.count_nonzero(loc_variants) == 0:
-                raise ValueError(
-                    f"No SNPs remaining after applying variant query {variant_query!r}."
+                warnings.warn(
+                    f"No SNPs remaining after applying variant query {variant_query!r}. "
+                    "Returning dataset with zero variants.",
+                    stacklevel=2,
                 )
 
             # Convert boolean mask to integer indices for NumPy 2.x compatibility

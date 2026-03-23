@@ -69,7 +69,10 @@ sample_query: TypeAlias = Annotated[
     str,
     """
     A pandas query string to be evaluated against the sample metadata, to
-    select samples to be included in the returned data.
+    select samples to be included in the returned data. E.g.,
+    "country == 'Uganda'". If the query returns zero results, a warning
+    will be emitted with fuzzy-match suggestions for possible typos or
+    case mismatches.
     """,
 ]
 
@@ -184,6 +187,14 @@ max_cohort_size: TypeAlias = Annotated[
 random_seed: TypeAlias = Annotated[
     int,
     "Random seed used for reproducible down-sampling.",
+]
+
+gene: TypeAlias = Annotated[
+    str,
+    """
+    Gene identifier. Can be either a gene ID or gene name.
+    Gene names are matched case-insensitively.
+    """,
 ]
 
 transcript: TypeAlias = Annotated[
