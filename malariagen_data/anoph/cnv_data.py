@@ -757,6 +757,13 @@ class AnophelesCnvData(
             f"type == '{self._gff_gene_type}'", **sample_query_options
         )
 
+        # Handle empty case: raise clear error if no genes found in region.
+        if len(df_genes) == 0:
+            raise ValueError(
+                f"No genes of type '{self._gff_gene_type}' found in region {region}. "
+                f"Cannot compute gene CNV without genes."
+            )
+
         # Refine the region for CNV data to ensure coverage of all requested genes.
         cnv_region = Region(
             region.contig, df_genes["start"].min(), df_genes["end"].max()
