@@ -232,17 +232,17 @@ class PlasmodiumDataResource:
     def _subset_genome_sequence_region(
         self, genome, region, inline_array=True, chunks="native"
     ):
-        """Sebset reference genome sequence."""
+        """Subset reference genome sequence."""
         region = self._resolve_region(region)
         z = genome[region.contig]
 
         d = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
 
-        if region.start:
+        if region.start is not None:
             slice_start = region.start - 1
         else:
             slice_start = None
-        if region.end:
+        if region.end is not None:
             slice_stop = region.end
         else:
             slice_stop = None
