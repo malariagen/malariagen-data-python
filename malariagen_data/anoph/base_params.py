@@ -189,6 +189,14 @@ random_seed: TypeAlias = Annotated[
     "Random seed used for reproducible down-sampling.",
 ]
 
+gene: TypeAlias = Annotated[
+    str,
+    """
+    Gene identifier. Can be either a gene ID or gene name.
+    Gene names are matched case-insensitively.
+    """,
+]
+
 transcript: TypeAlias = Annotated[
     str,
     "Gene transcript identifier.",

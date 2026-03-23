@@ -330,6 +330,140 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
     @_check_types
     @doc(
+        summary="Get the canonical transcript for a gene.",
+        returns="""
+            The transcript ID for the canonical transcript of the specified gene.
+            The canonical transcript is the one with the highest number of
+            transcribed base pairs (sum of exon lengths).
+        """,
+    )
+    def canonical_transcript(
+        self,
+        gene: base_params.gene,
+    ) -> str:
+        """
+        Parameters
+        ----------
+        gene : str
+            A gene identifier. Can be either a gene ID or gene name.
+
+        Returns
+        -------
+        str
+            The transcript ID of the canonical transcript.
+
+        Raises
+        ------
+        ValueError
+            If the gene identifier is not found or if the gene has no transcripts.
+
+        Examples
+        --------
+        Get the canonical transcript for a gene by ID:
+
+        >>> import malariagen_data
+        >>> ag3 = malariagen_data.ag3(pre=False)
+        >>> canonical = ag3.canonical_transcript("AGAP004707")
+
+        Get the canonical transcript for a gene by name:
+
+        >>> canonical = ag3.canonical_transcript("Pvr")
+        """
+        debug = self._log.debug
+        debug(f"Looking up canonical transcript for gene '{gene}'")
+
+        # Load genome features once with required attributes
+        with self._spinner(desc="Load gene data"):
+            # Load required attributes (ordered for consistency with GFF3)
+            attributes = ("ID", "Parent", self._gff_gene_name_attribute)
+            df_features = self.genome_features(attributes=attributes)
+            debug(f"Loaded {len(df_features)} genome features")
+
+        # Filter for genes
+        df_genes = df_features[df_features["type"] == self._gff_gene_type]
+        name_attr = self._gff_gene_name_attribute
+
+        # Normalize input: strip whitespace
+        gene_normalized = gene.strip()
+
+        # Reject empty identifiers after normalization to avoid ambiguous matches
+        if not gene_normalized:
+            raise ValueError(
+                "Gene identifier is empty after stripping whitespace; please provide a valid gene ID or name."
+            )
+        # Try exact ID match first (case-sensitive)
+        debug(f"Attempting ID match for '{gene_normalized}'")
+        gene_id_match = df_genes[df_genes["ID"].str.strip() == gene_normalized]
+
+        if len(gene_id_match) == 1:
+            gene_id = gene_id_match.iloc[0]["ID"]
+            debug(f"Found ID match: {gene_id}")
+        elif len(gene_id_match) > 1:
+            # This should not happen (ID should be unique), but handling gracefully
+            raise ValueError(
+                f"Multiple features with ID '{gene}' found (data integrity issue)"
+            )
+        else:
+            # Trying name match (case-insensitive with whitespace handling)
+            debug("No ID match, attempting name match")
+            gene_name_match = df_genes[
+                df_genes[name_attr].fillna("").str.strip().str.lower()
+                == gene_normalized.lower()
+            ]
+
+            if len(gene_name_match) == 0:
+                raise ValueError(f"Gene '{gene}' not found (no matching ID or name)")
+            elif len(gene_name_match) > 1:
+                # Suggest which genes matched for better debugging
+                matching_ids = ", ".join(gene_name_match["ID"].values)
+                raise ValueError(
+                    f"Gene name '{gene}' is ambiguous (matches {len(gene_name_match)} genes: {matching_ids}). "
+                    f"Please use a specific gene ID instead."
+                )
+
+            gene_id = gene_name_match.iloc[0]["ID"]
+            debug(f"Found name match: {gene_id}")
+
+        # Get transcripts for the gene
+        debug(f"Finding transcripts for gene '{gene_id}'")
+        df_transcripts = self.genome_feature_children(
+            parent=gene_id, attributes=("ID",)
+        )
+        df_transcripts = df_transcripts[df_transcripts["type"] == "mRNA"]
+
+        if len(df_transcripts) == 0:
+            raise ValueError(f"Gene '{gene}' has no transcripts")
+
+        debug(f"Found {len(df_transcripts)} transcripts for gene {gene_id}")
+
+        # Calculate transcript lengths and find canonical
+        debug("Calculating transcript lengths for each transcript")
+        transcript_lengths = {}
+
+        for transcript_id in df_transcripts["ID"]:
+            # Get all exon children (genome_feature_children handles multi-parent exons)
+            df_exons = self.genome_feature_children(
+                parent=transcript_id, attributes=None
+            )
+            # Filter for exons only (important: exclude other feature types)
+            df_exons = df_exons[df_exons["type"] == "exon"].sort_values("start")
+
+            if len(df_exons) > 0:
+                # Calculate total transcribed length (1-based inclusive coordinates)
+                exon_lengths = (df_exons["end"] - df_exons["start"] + 1).sum()
+                transcript_lengths[transcript_id] = exon_lengths
+                debug(f"  {transcript_id}: {len(df_exons)} exons, {exon_lengths} bp")
+        if not transcript_lengths:
+            raise ValueError(f"Gene '{gene}' has no transcripts with exons")
+
+        # Find canonical (maximum length)
+        canonical = max(transcript_lengths, key=lambda tid: transcript_lengths[tid])
+        canonical_length = transcript_lengths[canonical]
+        debug(f"Canonical transcript: {canonical} with {canonical_length} bp")
+        return canonical
+
+    @_check_types
+    @doc(
         summary="Plot a genes track, using bokeh.",
     )
     def plot_genes(
