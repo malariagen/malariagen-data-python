@@ -1,4 +1,3 @@
-from abc import abstractmethod
 from typing import Any, Dict, Mapping, Optional, Tuple, Sequence
 
 import allel  # type: ignore
@@ -180,15 +179,47 @@ class AnophelesDataResource(
             surveillance_use_only=surveillance_use_only,
         )
 
-    @property
-    @abstractmethod
-    def _xpehh_gwss_cache_name(self):
-        raise NotImplementedError("Must override _xpehh_gwss_cache_name")
+    def _get_xpehh_gwss_cache_name(self):
+        """Safe resolver for xpehh gwss cache name.
 
-    @property
-    @abstractmethod
-    def _ihs_gwss_cache_name(self):
-        raise NotImplementedError("Must override _ihs_gwss_cache_name")
+        Subclasses may define _xpehh_gwss_cache_name as a class attribute.
+        This method safely retrieves it or returns a default if unavailable.
+        """
+        try:
+            # Try to get the cache name from the instance (respects MRO)
+            cache_name = getattr(self, "_xpehh_gwss_cache_name")
+            # Validate it's actually a string, not a descriptor or other object
+            if not isinstance(cache_name, str):
+                raise TypeError(
+                    f"_xpehh_gwss_cache_name must resolve to a string, "
+                    f"got {type(cache_name).__name__}"
+                )
+            return cache_name
+        except (AttributeError, TypeError):
+            # Fallback to a generic cache name if subclass hasn't defined one
+            # or if the attribute isn't a proper string
+            return "xpehh_gwss_v1"
+
+    def _get_ihs_gwss_cache_name(self):
+        """Safe resolver for ihs gwss cache name.
+
+        Subclasses may define _ihs_gwss_cache_name as a class attribute.
+        This method safely retrieves it or returns a default if unavailable.
+        """
+        try:
+            # Try to get the cache name from the instance (respects MRO)
+            cache_name = getattr(self, "_ihs_gwss_cache_name")
+            # Validate it's actually a string, not a descriptor or other object
+            if not isinstance(cache_name, str):
+                raise TypeError(
+                    f"_ihs_gwss_cache_name must resolve to a string, "
+                    f"got {type(cache_name).__name__}"
+                )
+            return cache_name
+        except (AttributeError, TypeError):
+            # Fallback to a generic cache name if subclass hasn't defined one
+            # or if the attribute isn't a proper string
+            return "ihs_gwss_v1"
 
     @staticmethod
     def _make_gene_cnv_label(gene_id, gene_name, cnv_type):
@@ -725,7 +756,7 @@ class AnophelesDataResource(
     ) -> Tuple[np.ndarray, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
-        name = self._ihs_gwss_cache_name
+        name = self._get_ihs_gwss_cache_name()
 
         params = dict(
             contig=contig,
@@ -1249,7 +1280,7 @@ class AnophelesDataResource(
     ) -> Tuple[np.ndarray, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
-        name = self._xpehh_gwss_cache_name
+        name = self._get_xpehh_gwss_cache_name()
 
         params = dict(
             contig=contig,
