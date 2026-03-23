@@ -431,44 +431,12 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
             effect = base_effect._replace(effect="CODON_CHANGE", impact="MODERATE")
 
         else:
-            # in-frame complex variation (mixed MNP + INDEL)
-            effect = _classify_inframe_complex_effect(
-                base_effect, ref_cds_start, ref_aa, alt_aa
+            # In-frame complex variation (MNP + INDEL combination)
+            # Note: Currently unreachable (SNP-only usage). Accurate classification
+            # would require frame-shift analysis across multiple sites.
+            effect = base_effect._replace(
+                effect="INFRAME_COMPLEX_VARIANT", impact="MODERATE"
             )
-
-    return effect
-
-
-def _classify_inframe_complex_effect(base_effect, ref_cds_start, ref_aa, alt_aa):
-    """
-    Classify the effect of an in-frame complex variant (mixed MNP + INDEL).
-
-    Parameters
-    ----------
-    base_effect : VariantEffect
-        The base effect namedtuple to update with effect and impact.
-    ref_cds_start : int
-        Position of the reference allele start within the CDS (0-based).
-    ref_aa : str
-        Reference amino acid sequence.
-    alt_aa : str
-        Alternate amino acid sequence.
-
-    Returns
-    -------
-    VariantEffect
-        Updated effect with effect and impact classification.
-    """
-    if ref_aa == alt_aa:
-        effect = base_effect._replace(effect="INFRAME_COMPLEX_SYNONYMOUS", impact="LOW")
-    elif ref_aa and ref_aa[0] == "M" and ref_cds_start == 0:
-        effect = base_effect._replace(effect="START_LOST", impact="HIGH")
-    elif ref_aa and "*" in ref_aa:
-        effect = base_effect._replace(effect="STOP_LOST", impact="HIGH")
-    elif alt_aa and "*" in alt_aa:
-        effect = base_effect._replace(effect="STOP_GAINED", impact="HIGH")
-    else:
-        effect = base_effect._replace(effect="INFRAME_COMPLEX", impact="MODERATE")
 
     return effect
 
