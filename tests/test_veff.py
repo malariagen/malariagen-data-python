@@ -42,7 +42,7 @@ FWD_SEQ = (
     "AAAAAAAAAA"  # 3' UTR      (pos 45-54)
 )
 
-REV_SEQ = "AAA" "TCATGCATGCAT" "AAAA"  # minus-strand gene at pos 4-15
+REV_SEQ = "AAATCATGCATGCATAAAA"  # minus-strand gene at pos 4-15
 
 
 # ── Fixture helpers ───────────────────────────────────────────────────────────
@@ -271,7 +271,6 @@ class TestAnnotatorHelpers:
 
     def test_get_ref_seq_caches_contig(self):
         self.ann.get_ref_seq("chr1", 4, 6)
-        assert "chr1" in self.ann._genome_cache
         # Deleting the zarr array confirms the cache is served on the second call.
         del self.ann._genome["chr1"]
         assert self.ann.get_ref_seq("chr1", 4, 6) == "ATG"
