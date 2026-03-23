@@ -1,4 +1,5 @@
 import os
+import warnings
 
 import json
 from contextlib import nullcontext
@@ -496,7 +497,20 @@ class AnophelesBase:
         return location
 
     def _surveillance_flags(self, sample_sets: List[str]):
-        raise NotImplementedError("Subclasses must implement `_surveillance_flags`.")
+        """Return surveillance flags for sample sets. Subclasses should override to
+        load real data; this base implementation returns empty data and warns.
+        """
+        warnings.warn(
+            "Surveillance flags not implemented for this resource; returning empty data.",
+            UserWarning,
+            stacklevel=2,
+        )
+        return pd.DataFrame(
+            {
+                "sample_id": pd.Series(dtype="object"),
+                "is_surveillance": pd.Series(dtype="boolean"),
+            }
+        )
 
     def _release_has_unrestricted_data(self, *, release: str):
         """Return `True` if the specified release has any unrestricted data. Otherwise return `False`."""
