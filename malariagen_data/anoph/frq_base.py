@@ -417,6 +417,14 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
                 `aa_allele_frequencies_advanced()` or
                 `gene_cnv_frequencies_advanced()`.
             """,
+            taxa="""
+                Taxon or list of taxa to include in the plot. If None,
+                all taxa are shown.
+            """,
+            areas="""
+                Area or list of areas to include in the plot. If None,
+                all areas are shown.
+            """,
             kwargs="Passed through to `px.line()`.",
         ),
         returns="""
