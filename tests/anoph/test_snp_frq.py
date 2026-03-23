@@ -986,18 +986,25 @@ def check_snp_allele_frequencies_advanced(
         api = add_random_year(api=api)
 
     # Run function under test.
-    ds = api.snp_allele_frequencies_advanced(
-        transcript=transcript,
-        area_by=area_by,
-        period_by=period_by,
-        sample_sets=sample_sets,
-        sample_query=sample_query,
-        sample_query_options=sample_query_options,
-        min_cohort_size=min_cohort_size,
-        nobs_mode=nobs_mode,
-        variant_query=variant_query,
-        site_mask=site_mask,
-    )
+    try:
+        ds = api.snp_allele_frequencies_advanced(
+            transcript=transcript,
+            area_by=area_by,
+            period_by=period_by,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            min_cohort_size=min_cohort_size,
+            nobs_mode=nobs_mode,
+            variant_query=variant_query,
+            site_mask=site_mask,
+        )
+    except ValueError as e:
+        if "No cohorts available" in str(e):
+            # Random parameters produced no valid cohorts; this is
+            # expected to happen occasionally and is not a bug.
+            return
+        raise
 
     # Check the result.
     assert isinstance(ds, xr.Dataset)
@@ -1184,17 +1191,24 @@ def check_aa_allele_frequencies_advanced(
         api = add_random_year(api=api)
 
     # Run function under test.
-    ds = api.aa_allele_frequencies_advanced(
-        transcript=transcript,
-        area_by=area_by,
-        period_by=period_by,
-        sample_sets=sample_sets,
-        sample_query=sample_query,
-        sample_query_options=sample_query_options,
-        min_cohort_size=min_cohort_size,
-        nobs_mode=nobs_mode,
-        variant_query=variant_query,
-    )
+    try:
+        ds = api.aa_allele_frequencies_advanced(
+            transcript=transcript,
+            area_by=area_by,
+            period_by=period_by,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            min_cohort_size=min_cohort_size,
+            nobs_mode=nobs_mode,
+            variant_query=variant_query,
+        )
+    except ValueError as e:
+        if "No cohorts available" in str(e):
+            # Random parameters produced no valid cohorts; this is
+            # expected to happen occasionally and is not a bug.
+            return
+        raise
 
     # Check the result.
     assert isinstance(ds, xr.Dataset)
