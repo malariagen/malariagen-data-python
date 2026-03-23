@@ -411,3 +411,28 @@ def test_sample_sets_no_terms_of_use(ag3_sim_fixture):
     finally:
         for mp, bp in zip(manifest_paths, backups):
             shutil.move(bp, mp)
+
+
+class TestSurveillanceFlagsBaseFallback:
+    """Tests for issue #1206: base _surveillance_flags graceful fallback."""
+
+    def test_surveillance_flags_base_returns_empty_and_warns(self, ag3_sim_api):
+        """Base implementation returns empty DataFrame with correct schema and warns."""
+        with pytest.warns(UserWarning, match="Surveillance flags not implemented"):
+            df = ag3_sim_api._surveillance_flags(sample_sets=["AG1000G-AO"])
+
+        assert isinstance(df, pd.DataFrame)
+        assert list(df.columns) == ["sample_id", "is_surveillance"]
+        assert df["sample_id"].dtype == object
+        assert str(df["is_surveillance"].dtype) == "boolean"
+        assert len(df) == 0
+
+    def test_sample_set_has_surveillance_data_returns_false_when_fallback(
+        self, ag3_sim_api
+    ):
+        """_sample_set_has_surveillance_data returns False when base fallback is used."""
+        with pytest.warns(UserWarning, match="Surveillance flags not implemented"):
+            result = ag3_sim_api._sample_set_has_surveillance_data(
+                sample_set="AG1000G-AO"
+            )
+        assert not result
