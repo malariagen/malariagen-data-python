@@ -180,9 +180,9 @@ def test_vcf_converter(fixture, api: VcfConverter, tmp_path):
             # Check CHROM is an actual contig name, not an integer index.
             vcf_chrom = fields[0]
             expected_chrom = contigs[contig_indices[i]]
-            assert vcf_chrom == expected_chrom, (
-                f"CHROM should be '{expected_chrom}' but got '{vcf_chrom}'"
-            )
+            assert (
+                vcf_chrom == expected_chrom
+            ), f"CHROM should be '{expected_chrom}' but got '{vcf_chrom}'"
 
             # Check REF is a proper string, not a byte artifact.
             ref = fields[3]
