@@ -23,9 +23,9 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
     def __init__(
         self,
         *,
-        gff_gene_type: str,
-        gff_gene_name_attribute: str,
-        gff_default_attributes: Tuple[str, ...],
+        gff_gene_type: Optional[str] = None,
+        gff_gene_name_attribute: Optional[str] = None,
+        gff_default_attributes: Optional[Tuple[str, ...]] = None,
         gene_names: Optional[Mapping[str, str]] = None,
         **kwargs,
     ):
@@ -34,16 +34,30 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-        # TODO Consider moving these parameters to configuration, as they could
-        # change if the GFF ever changed.
-        self._gff_gene_type = gff_gene_type
-        self._gff_gene_name_attribute = gff_gene_name_attribute
-        self._gff_default_attributes = gff_default_attributes
+        # Read GFF parameters from the JSON config, falling back to
+        # constructor args for backward compatibility.
+        config = self.config
+        self._gff_gene_type = config.get("GFF_GENE_TYPE", gff_gene_type or "gene")
+        self._gff_gene_name_attribute = config.get(
+            "GFF_GENE_NAME_ATTRIBUTE", gff_gene_name_attribute or "Name"
+        )
+        _default_attrs = config.get("GFF_DEFAULT_ATTRIBUTES", None)
+        if _default_attrs is not None:
+            self._gff_default_attributes = tuple(_default_attrs)
+        elif gff_default_attributes is not None:
+            self._gff_default_attributes = gff_default_attributes
+        else:
+            self._gff_default_attributes = ("ID", "Parent", "Name", "description")
 
         # Allow manual override of gene names.
-        if gene_names is None:
-            gene_names = dict()
-        self._gene_name_overrides = gene_names
+        # Read from config if available, falling back to constructor arg.
+        _gene_names = config.get("GENE_NAMES", None)
+        if _gene_names is not None:
+            self._gene_name_overrides = _gene_names
+        elif gene_names is not None:
+            self._gene_name_overrides = gene_names
+        else:
+            self._gene_name_overrides = dict()
 
         # Setup caches.
         self._cache_genome_features: Dict[Tuple[str, ...], pd.DataFrame] = dict()

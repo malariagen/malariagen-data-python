@@ -212,7 +212,6 @@ class Ag3(AnophelesDataResource):
             taxon_colors=TAXON_COLORS,
             aim_species_colors=AIM_SPECIES_COLORS,
             virtual_contigs=VIRTUAL_CONTIGS,
-            gene_names=GENE_NAMES,
             inversion_tag_path=INVERSION_TAG_PATH,
             unrestricted_use_only=unrestricted_use_only,
             surveillance_use_only=surveillance_use_only,
