@@ -431,9 +431,9 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
             effect = base_effect._replace(effect="CODON_CHANGE", impact="MODERATE")
 
         else:
-            # TODO in-frame complex variation (MNP + INDEL)
+            # in-frame complex variation (MNP + INDEL)
             effect = base_effect._replace(
-                effect="TODO in-frame complex variation (MNP + INDEL)", impact="UNKNOWN"
+                effect="INFRAME_COMPLEX_VARIANT", impact="MODERATE"
             )
 
     return effect
