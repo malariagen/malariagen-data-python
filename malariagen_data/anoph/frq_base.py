@@ -341,7 +341,11 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
             for j in range(1, idx_vals.shape[1]):
                 index_col = index_col + ", " + idx_vals[:, j]
         else:
-            assert isinstance(index, str)
+            if not isinstance(index, str):
+                raise TypeError(
+                    f"Expected index to be str or list, "
+                    f"got {type(index).__name__}: {index!r}"
+                )
             index_col = df[index].astype(str)
 
         # Check that index is unique.
@@ -412,6 +416,14 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
                 `snp_allele_frequencies_advanced()`,
                 `aa_allele_frequencies_advanced()` or
                 `gene_cnv_frequencies_advanced()`.
+            """,
+            taxa="""
+                Taxon or list of taxa to include in the plot. If None,
+                all taxa are shown.
+            """,
+            areas="""
+                Area or list of areas to include in the plot. If None,
+                all areas are shown.
             """,
             kwargs="Passed through to `px.line()`.",
         ),
@@ -588,7 +600,11 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
             ds_variant = ds.isel(variants=variant)
             variant_label = ds["variant_label"].values[variant]
         else:
-            assert isinstance(variant, str)
+            if not isinstance(variant, str):
+                raise TypeError(
+                    f"Expected variant to be int or str, "
+                    f"got {type(variant).__name__}: {variant!r}"
+                )
             ds_variant = ds.set_index(variants="variant_label").sel(variants=variant)
             variant_label = variant
 
