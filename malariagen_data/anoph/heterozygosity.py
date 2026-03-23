@@ -399,6 +399,27 @@ class AnophelesHetAnalysis(
     def _roh_hmm_cache_name(self):
         return "roh_hmm_v1"
 
+    def _get_roh_hmm_cache_name(self):
+        """Safely resolve the ROH HMM cache name.
+
+        Supports class attribute, property, or legacy method override.
+        Falls back to the default "roh_hmm_v1" if resolution fails.
+
+        See also: https://github.com/malariagen/malariagen-data-python/issues/1151
+        """
+        try:
+            name = self._roh_hmm_cache_name
+            # Handle legacy case where _roh_hmm_cache_name might be a
+            # callable method rather than a property or class attribute.
+            if callable(name):
+                name = name()
+            if isinstance(name, str) and len(name) > 0:
+                return name
+        except NotImplementedError:
+            pass
+        # Fallback to default.
+        return "roh_hmm_v1"
+
     @_check_types
     @doc(
         summary="Infer runs of homozygosity for a single sample over a genome region.",
@@ -420,7 +441,7 @@ class AnophelesHetAnalysis(
 
         resolved_region: Region = _parse_single_region(self, region)
 
-        name = self._roh_hmm_cache_name
+        name = self._get_roh_hmm_cache_name()
 
         params = dict(
             sample=sample,

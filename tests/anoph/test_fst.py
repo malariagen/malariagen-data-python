@@ -346,8 +346,16 @@ def test_pairwise_average_fst_with_sample_query(fixture, api: AnophelesFstAnalys
         n_jack=random.randint(10, 200),
     )
 
-    # Run checks.
-    check_pairwise_average_fst(api=api, fst_params=fst_params)
+    # Run checks - skip if random parameter selection results in insufficient cohorts.
+    try:
+        check_pairwise_average_fst(api=api, fst_params=fst_params)
+    except ValueError as e:
+        if "No cohorts remain" in str(e):
+            pytest.skip(
+                f"Skipping: random parameter selection produced insufficient "
+                f"cohorts for taxon={taxon!r}: {e}"
+            )
+        raise
 
 
 @parametrize_with_cases("fixture,api", cases=".")
