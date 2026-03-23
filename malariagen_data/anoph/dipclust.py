@@ -398,11 +398,7 @@ class AnophelesDipClustAnalysis(
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ):
         try:
-            # TODO The gene_cnv() method still needs to get migrated to the
-            # AnophelesCnvData class, so that it can be found in the class
-            # hierarchy. This will still work for the time being though,
-            # if called via the Ag3 or Af1 classes.
-            ds_cnv = self.gene_cnv(  # type: ignore
+            ds_cnv = self.gene_cnv(
                 region=cnv_region,
                 sample_sets=sample_sets,
                 sample_query=sample_query,
