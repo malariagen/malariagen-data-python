@@ -171,6 +171,7 @@ class PlinkConverter(
         output_dir: plink_params.output_dir,
         region: base_params.regions,
         overwrite: plink_params.overwrite = False,
+        out: Optional[plink_params.out] = None,
         n_snps: Optional[base_params.n_snps] = None,
         thin_offset: base_params.thin_offset = 0,
         sample_sets: Optional[base_params.sample_sets] = None,
@@ -195,31 +196,35 @@ class PlinkConverter(
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
     ):
-        # Include a compact hash for selection parameters that affect output
-        # content but are not suitable to place directly in the filename.
-        params_hash, _ = _hash_params(
-            dict(
-                sample_sets=sample_sets,
-                sample_query=sample_query,
-                sample_query_options=sample_query_options,
-                sample_indices=sample_indices,
-                site_mask=site_mask,
-                site_class=site_class,
-                cohort_size=cohort_size,
-                min_cohort_size=min_cohort_size,
-                max_cohort_size=max_cohort_size,
-                random_seed=random_seed,
+        # Use user-provided prefix or fall back to auto-generated default.
+        if out is not None:
+            plink_file_path = f"{output_dir}/{out}"
+        else:
+            # Include a compact hash for selection parameters that affect
+            # output content but are not suitable to place in the filename.
+            params_hash, _ = _hash_params(
+                dict(
+                    sample_sets=sample_sets,
+                    sample_query=sample_query,
+                    sample_query_options=sample_query_options,
+                    sample_indices=sample_indices,
+                    site_mask=site_mask,
+                    site_class=site_class,
+                    cohort_size=cohort_size,
+                    min_cohort_size=min_cohort_size,
+                    max_cohort_size=max_cohort_size,
+                    random_seed=random_seed,
+                )
             )
-        )
-        params_hash_short = params_hash[:8]
+            params_hash_short = params_hash[:8]
 
-        # Define output file path using key filtering and LD parameters,
-        # plus a short hash of selection parameters.
-        plink_file_path = (
-            f"{output_dir}/{region}.ld_pruned"
-            f".{n_snps}.{min_minor_ac}.{max_missing_an}"
-            f".{thin_offset}.{size}.{step}.{threshold}.{params_hash_short}"
-        )
+            # Define output file path using key filtering and LD parameters,
+            # plus a short hash of selection parameters.
+            plink_file_path = (
+                f"{output_dir}/{region}.ld_pruned"
+                f".{n_snps}.{min_minor_ac}.{max_missing_an}"
+                f".{thin_offset}.{size}.{step}.{threshold}.{params_hash_short}"
+            )
 
         bed_file_path = f"{plink_file_path}.bed"
 
