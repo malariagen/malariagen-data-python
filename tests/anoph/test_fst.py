@@ -249,16 +249,18 @@ def check_pairwise_average_fst(api: AnophelesFstAnalysis, fst_params):
 
     # Check plotting.
     if len(fst_df) > 0:
+        # Default: FST only.
         fig = api.plot_pairwise_average_fst(fst_df, show=False)
         assert isinstance(fig, go.Figure)
-        fig = api.plot_pairwise_average_fst(
-            fst_df, annotation="standard error", show=False
-        )
+        # FST + SE.
+        fig = api.plot_pairwise_average_fst(fst_df, show_se=True, show=False)
         assert isinstance(fig, go.Figure)
-        fig = api.plot_pairwise_average_fst(fst_df, annotation="Z score", show=False)
+        # FST + Z score.
+        fig = api.plot_pairwise_average_fst(fst_df, show_zscore=True, show=False)
         assert isinstance(fig, go.Figure)
+        # FST + SE + Z score.
         fig = api.plot_pairwise_average_fst(
-            fst_df, annotation="lower triangle", show=False
+            fst_df, show_se=True, show_zscore=True, show=False
         )
         assert isinstance(fig, go.Figure)
 
