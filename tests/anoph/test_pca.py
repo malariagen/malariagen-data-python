@@ -313,3 +313,52 @@ def test_pca_fit_exclude_samples(fixture, api: AnophelesPca):
         len(pca_df.query(f"sample_id in {exclude_samples} and not pca_fit"))
         == n_samples_excluded
     )
+
+
+# --- _jitter() determinism unit tests ---
+
+
+def test_jitter_determinism():
+    """_jitter with the same seed must produce identical results."""
+    from malariagen_data.util import _jitter
+
+    a = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+    fraction = 0.1
+
+    rng1 = np.random.default_rng(seed=42)
+    result1 = _jitter(a, fraction, random_state=rng1)
+
+    rng2 = np.random.default_rng(seed=42)
+    result2 = _jitter(a, fraction, random_state=rng2)
+
+    np.testing.assert_array_equal(result1, result2)
+
+
+def test_jitter_different_seeds():
+    """_jitter with different seeds must produce different results."""
+    from malariagen_data.util import _jitter
+
+    a = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+    fraction = 0.1
+
+    rng1 = np.random.default_rng(seed=42)
+    result1 = _jitter(a, fraction, random_state=rng1)
+
+    rng2 = np.random.default_rng(seed=99)
+    result2 = _jitter(a, fraction, random_state=rng2)
+
+    assert not np.array_equal(result1, result2)
+
+
+def test_jitter_no_global_rng_side_effect():
+    """_jitter with explicit random_state must not alter global RNG state."""
+    from malariagen_data.util import _jitter
+
+    np.random.seed(0)
+    state_before = np.random.get_state()[1].copy()
+
+    rng = np.random.default_rng(seed=42)
+    _jitter(np.array([1.0, 2.0, 3.0]), 0.1, random_state=rng)
+
+    state_after = np.random.get_state()[1].copy()
+    np.testing.assert_array_equal(state_before, state_after)
