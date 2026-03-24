@@ -570,6 +570,9 @@ class Region:
             and (self.end == other.end)
         )
 
+    def __repr__(self):
+        return f"Region({self._contig!r}, {self._start!r}, {self._end!r})"
+
     def __str__(self):
         out = self._contig
         if self._start is not None or self._end is not None:
@@ -927,7 +930,20 @@ def _jitter(a, fraction, random_state=np.random):
 
 
 class CacheMiss(Exception):
-    pass
+    """Raised when a requested item is not present in the cache."""
+
+    def __init__(self, key=None):
+        self.key = key
+        if key is not None:
+            message = f"Cache miss for key: {key!r}"
+        else:
+            message = "Cache miss: requested item not found in cache."
+        super().__init__(message)
+
+    def __repr__(self):
+        if self.key is not None:
+            return f"CacheMiss({self.key!r})"
+        return "CacheMiss()"
 
 
 class LoggingHelper:
@@ -1531,12 +1547,10 @@ def _apply_allele_mapping(x, mapping, max_allele):
 
 def _dask_apply_allele_mapping(v, mapping, max_allele):
     if not isinstance(v, da.Array):
-        raise TypeError(
-            f"Expected v to be a dask.array.Array, " f"got {type(v).__name__}"
-        )
+        raise TypeError(f"Expected v to be a dask.array.Array, got {type(v).__name__}")
     if not isinstance(mapping, np.ndarray):
         raise TypeError(
-            f"Expected mapping to be a numpy.ndarray, " f"got {type(mapping).__name__}"
+            f"Expected mapping to be a numpy.ndarray, got {type(mapping).__name__}"
         )
     assert v.ndim == 2
     assert mapping.ndim == 2
@@ -1558,12 +1572,10 @@ def _genotype_array_map_alleles(gt, mapping):
     # N.B., scikit-allel does not handle empty blocks well, so we
     # include some extra logic to handle that better.
     if not isinstance(gt, np.ndarray):
-        raise TypeError(
-            f"Expected gt to be a numpy.ndarray, " f"got {type(gt).__name__}"
-        )
+        raise TypeError(f"Expected gt to be a numpy.ndarray, got {type(gt).__name__}")
     if not isinstance(mapping, np.ndarray):
         raise TypeError(
-            f"Expected mapping to be a numpy.ndarray, " f"got {type(mapping).__name__}"
+            f"Expected mapping to be a numpy.ndarray, got {type(mapping).__name__}"
         )
     assert gt.ndim == 3
     assert mapping.ndim == 3
@@ -1585,11 +1597,11 @@ def _genotype_array_map_alleles(gt, mapping):
 def _dask_genotype_array_map_alleles(gt, mapping):
     if not isinstance(gt, da.Array):
         raise TypeError(
-            f"Expected gt to be a dask.array.Array, " f"got {type(gt).__name__}"
+            f"Expected gt to be a dask.array.Array, got {type(gt).__name__}"
         )
     if not isinstance(mapping, np.ndarray):
         raise TypeError(
-            f"Expected mapping to be a numpy.ndarray, " f"got {type(mapping).__name__}"
+            f"Expected mapping to be a numpy.ndarray, got {type(mapping).__name__}"
         )
     assert gt.ndim == 3
     assert mapping.ndim == 2
