@@ -361,7 +361,7 @@ def _dask_compress_dataarray(a, indexer, indexer_computed, dim):
 
 
 def _da_compress(
-    indexer: da.Array | np.ndarray,
+    indexer: Union[da.Array, np.ndarray],
     data: da.Array,
     axis: int,
     indexer_computed: Optional[np.ndarray] = None,
