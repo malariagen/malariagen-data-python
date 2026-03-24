@@ -187,7 +187,12 @@ def test_hap_frequencies_with_str_cohorts(
         return
 
     # Run the function under test.
-    df_hap = api.haplotypes_frequencies(**params)
+    try:
+        df_hap = api.haplotypes_frequencies(**params)
+    except ValueError as e:
+        if "No SNPs available for the given region" in str(e):
+            pytest.skip("Random region contained no SNPs")
+        raise
 
     check_plot_frequencies_heatmap(api, df_hap)
 

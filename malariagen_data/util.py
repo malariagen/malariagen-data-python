@@ -966,7 +966,9 @@ def _hash_params(params: Any) -> Tuple[str, str]:
 
 
 def _jitter(
-    a: Union[np.ndarray, pd.Series], fraction: float
+    a: Union[np.ndarray, pd.Series],
+    fraction: float,
+    random_state=np.random,
 ) -> Union[np.ndarray, pd.Series]:
     """Jitter data in `a` using the fraction `fraction`.
 
@@ -976,6 +978,10 @@ def _jitter(
         The input array or Series to add jitter to.
     fraction : float
         The fractional amount of the data range to use as the maximum noise scale.
+    random_state : numpy.random.Generator or module, optional
+        Random number generator to use. Accepts a ``numpy.random.Generator``
+        (from ``np.random.default_rng()``) or the ``numpy.random`` module.
+        Defaults to ``np.random`` (global RNG) for backward compatibility.
 
     Returns
     -------
@@ -987,11 +993,11 @@ def _jitter(
     The noise scale is calculated as `(a.max() - a.min()) * fraction`.
     If the range is 0 (all values are identical), the function returns `a` unchanged
     (because adding uniform(-0, 0) adds 0).
-    Note that this function uses a random number generator (`np.random.uniform`),
-    so results are non-deterministic unless a seed is set.
+    Prefer passing a local ``np.random.default_rng(seed=...)`` to avoid
+    mutating global RNG state and to ensure reproducibility.
     """
     r = a.max() - a.min()
-    return a + fraction * np.random.uniform(-r, r, a.shape)
+    return a + fraction * random_state.uniform(-r, r, a.shape)
 
 
 class CacheMiss(Exception):
