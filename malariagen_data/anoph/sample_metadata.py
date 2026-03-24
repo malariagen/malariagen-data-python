@@ -880,10 +880,10 @@ class AnophelesSampleMetadata(AnophelesBase):
 
     @_check_types
     @doc(
-        summary="List the unique species calls present in one or more sample sets.",
+        summary="List the unique AIM species calls present in one or more sample sets.",
         returns="A list of unique species call names.",
     )
-    def list_species_calls(
+    def list_aim_species_calls(
         self, sample_sets: Optional[base_params.sample_sets] = None
     ) -> List[str]:
         df_samples = self.sample_metadata(sample_sets=sample_sets)
@@ -1936,5 +1936,4 @@ def _locate_cohorts(*, cohorts, data, min_cohort_size):
             "No cohorts available for the given sample selection parameters and minimum cohort size."
         )
 
-    return coh_dict
     return coh_dict

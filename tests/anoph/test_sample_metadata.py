@@ -1649,9 +1649,9 @@ def test_list_taxons(fixture, api: AnophelesSampleMetadata):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_list_species_calls(fixture, api: AnophelesSampleMetadata):
+def test_list_aim_species_calls(fixture, api: AnophelesSampleMetadata):
     sample_sets = random.choice(api.releases)
-    species = api.list_species_calls(sample_sets=sample_sets)
+    species = api.list_aim_species_calls(sample_sets=sample_sets)
     assert isinstance(species, list)
 
     # Check consistency with sample_metadata
