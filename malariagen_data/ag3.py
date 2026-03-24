@@ -338,7 +338,7 @@ class Ag3(AnophelesDataResource):
         """
         return html
 
-    def cross_metadata(self):
+    def cross_metadata(self) -> pd.DataFrame:
         """Load a dataframe containing metadata about samples in colony crosses,
         including which samples are parents or progeny in which crosses.
 
@@ -346,6 +346,14 @@ class Ag3(AnophelesDataResource):
         -------
         df : pandas.DataFrame
             A dataframe of sample metadata for colony crosses.
+
+        Examples
+        --------
+        Access cross metadata:
+
+            >>> import malariagen_data
+            >>> ag3 = malariagen_data.Ag3()
+            >>> df = ag3.cross_metadata()
 
         """
         debug = self._log.debug
