@@ -897,10 +897,33 @@ def _hash_params(params):
     return h, s
 
 
-def _jitter(a, fraction):
-    """Jitter data in `a` using the fraction `f`."""
+def _jitter(a, fraction, random_state=np.random):
+    """Jitter data by adding uniform noise scaled by the data range.
+
+    Parameters
+    ----------
+    a : array-like
+        Input data to jitter. Can be a numpy array or pandas Series.
+    fraction : float
+        Controls the amplitude of the jitter relative to the data range.
+    random_state : numpy.random.Generator or module, optional
+        Random number generator to use. Accepts a ``numpy.random.Generator``
+        (from ``np.random.default_rng()``) or the ``numpy.random`` module.
+        Defaults to ``np.random`` (global RNG) for backward compatibility.
+
+    Returns
+    -------
+    array-like
+        Jittered copy of the input data with the same shape and type.
+
+    Notes
+    -----
+    Prefer passing a local ``np.random.default_rng(seed=...)`` to avoid
+    mutating global RNG state and to ensure reproducibility.
+
+    """
     r = a.max() - a.min()
-    return a + fraction * np.random.uniform(-r, r, a.shape)
+    return a + fraction * random_state.uniform(-r, r, a.shape)
 
 
 class CacheMiss(Exception):
