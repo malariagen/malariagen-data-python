@@ -134,7 +134,7 @@ class AnophelesBase:
             storage_options = dict()
         try:
             self._fs, self._base_path = _init_filesystem(self._url, **storage_options)
-        except Exception as exc:  # pragma: no cover
+        except (OSError, ImportError, ValueError) as exc:  # pragma: no cover
             raise IOError(
                 "An error occurred establishing a connection to the storage system. Please see the nested exception for more details."
             ) from exc
