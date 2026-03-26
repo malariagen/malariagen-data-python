@@ -25,7 +25,7 @@ API documentation
 
       *Anopheles funestus* subgroup.
 
-      .. image:: https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Anopheles_Funetus.jpg/640px-Anopheles_Funetus.jpg
+     .. image::_static/mi/Anopheles_funestus.jpg
 
    .. grid-item-card:: ``Amin1``
       :link: Amin1
@@ -33,7 +33,7 @@ API documentation
 
       *Anopheles minimus*.
 
-      .. image:: https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Anopheles_minimus_1.jpg/640px-Anopheles_minimus_1.jpg
+     .. image:: _static/mi/Anopheles_minimus.jpg
 
    .. grid-item-card:: ``Adir1``
       :link: Adir1

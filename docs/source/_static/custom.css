@@ -1,0 +1,5 @@
+/* Fix version switcher overflow */
+.bd-sidebar .version-switcher__menu {
+    max-height: 300px;
+    overflow-y: auto;
+}
