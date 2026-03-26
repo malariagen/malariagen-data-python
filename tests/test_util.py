@@ -23,6 +23,12 @@ def test_parse_region_contig(mock_resource):
     assert r.start is None
     assert r.end is None
 
+    r = _parse_single_region(mock_resource, Region("2L"))
+    assert r.contig == "2L"
+    assert r.start is None
+    assert r.end is None
+
+# String test
 def test_parse_region_interval(mock_resource):
     r = _parse_single_region(mock_resource, "2L:100-200")
     assert r.contig == "2L"
@@ -42,6 +48,7 @@ def test_parse_region_invalid_string(mock_resource):
         with pytest.raises(ValueError):
             _parse_single_region(mock_resource, region)
 
+# Mapping test
 def test_parse_region_invalid_dictionary(mock_resource):
     invalid_regions = [{}, 
                        {"start": 100, "end":200}, 
@@ -68,7 +75,42 @@ def test_parse_region_dictionary_only_end(mock_resource):
     assert r.contig == "2L"
     assert r.start is None
     assert r.end == 200
-            
+
+# Region instance test
+def test_parse_region_instance_interval(mock_resource):
+    r = _parse_single_region(mock_resource, Region("2L", start=100, end=200))
+    assert r.contig == "2L"
+    assert r.start == 100
+    assert r.end == 200
+
+def test_parse_region_instance_only_start(mock_resource):
+    r = _parse_single_region(mock_resource, Region("2L", start=200))
+    assert r.contig == "2L"
+    assert r.start == 200
+    assert r.end is None
+
+def test_parse_region_instance_only_end(mock_resource):
+    r = _parse_single_region(mock_resource, Region("2L", end=200))
+    assert r.contig == "2L"
+    assert r.start is None
+    assert r.end == 200
+
+def test_parse_region_invalid_instance(mock_resource):
+    invalid_regions = [Region(contig=""), 
+                       Region(contig="", start = 100, end = 200), 
+                       Region(contig="3L", start=-2, end=10), 
+                       Region(contig="X", start=10, end=-100), 
+                       Region(contig="2L", start=100, end=10), 
+                       Region(contig= "Invalid_contig", start=10, end=20), 
+                       Region(contig="2L", start="abc", end=10), 
+                       Region(contig="2R", start=100, end="bcd")
+                       ]
+    
+    for region in invalid_regions:
+        with pytest.raises(ValueError):
+            _parse_single_region(mock_resource, region)
+
+# Region type test
 def test_parse_region_invalid_type(mock_resource):
     invalid_types = [123456, ["2L:100-230"], ("2L:100-250",), True, False, 3.154]
     for types in invalid_types:
