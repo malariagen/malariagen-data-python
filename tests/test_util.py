@@ -50,15 +50,25 @@ def test_parse_region_invalid_dictionary(mock_resource):
                        {"contig":"2L", "start":100, "end":10}, 
                        {"contig": "Invalid_contig", "start":10, "end":20}, 
                        {"contig":"2L", "start":"abc", "end":10}, 
-                       {"contig":"2R", "start":100, "end":"bcd"}, 
-                       {"contig":"3R", "start":100}, 
-                       {"contig":"2L", "end":100}]
+                       {"contig":"2R", "start":100, "end":"bcd"}
+                       ]
     
     for region in invalid_regions:
         with pytest.raises(ValueError):
             _parse_single_region(mock_resource, region)
     
+def test_parse_region_dictionary_only_start(mock_resource):
+    r = _parse_single_region(mock_resource, {"contig": "2L", "start":200})
+    assert r.contig == "2L"
+    assert r.start == 200
+    assert r.end is None
 
+def test_parse_region_dictionary_only_end(mock_resource):
+    r = _parse_single_region(mock_resource, {"contig": "2L", "end":200})
+    assert r.contig == "2L"
+    assert r.start is None
+    assert r.end == 200
+            
 def test_parse_region_invalid_type(mock_resource):
     invalid_types = [123456, ["2L:100-230"], ("2L:100-250",), True, False, 3.154]
     for types in invalid_types:

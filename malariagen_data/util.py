@@ -694,16 +694,15 @@ def _parse_single_region(resource, region: single_region_param_type) -> Region:
         if contig not in _valid_contigs(resource):
             raise ValueError(f"Unknown contig {contig!r}.")
         
-        if (start is None) != (end is None):
-            raise ValueError(f"Both the start and end position must be either given or omitted.")
-        
-        if start is not None and end is not None:
+        if start is not None:
             if not isinstance(start, int) or start < 1:
                 raise ValueError(f"Invalid start position: {start!r}.")
-            
-            if not isinstance(end, int) or end < 1:
+
+        if end is not None:   
+            if not isinstance(end, int) or end < 1 or end > resource.genome_sequence(region=contig).shape[0]:
                 raise ValueError(f"Invalid end position: {end!r}.")
             
+        if start is not None and end is not None:    
             if start > end:
                 raise ValueError(f"End position must be greater than start position.")
         
