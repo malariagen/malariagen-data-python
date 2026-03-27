@@ -421,9 +421,7 @@ class AnophelesG123Analysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -506,9 +504,7 @@ class AnophelesG123Analysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -607,9 +603,7 @@ class AnophelesG123Analysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
 
 def _diplotype_frequencies(gt):

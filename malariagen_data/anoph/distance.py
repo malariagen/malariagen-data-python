@@ -614,6 +614,4 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig

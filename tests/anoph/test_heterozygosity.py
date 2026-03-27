@@ -186,6 +186,19 @@ def test_roh_hmm(fixture, api: AnophelesHetAnalysis):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
+def test_roh_hmm_cache_name_resolution(fixture, api: AnophelesHetAnalysis):
+    """Regression test for GH#1151: _roh_hmm_cache_name must resolve to a string.
+
+    Verifies that the cache name resolver handles class attributes, properties,
+    and legacy method overrides without raising NotImplementedError.
+    """
+    # The resolver should always return a non-empty string.
+    name = api._get_roh_hmm_cache_name()
+    assert isinstance(name, str), f"Expected str, got {type(name)}"
+    assert len(name) > 0, "Cache name must be non-empty"
+
+
+@parametrize_with_cases("fixture,api", cases=".")
 def test_plot_roh(fixture, api: AnophelesHetAnalysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
@@ -205,3 +218,58 @@ def test_plot_roh(fixture, api: AnophelesHetAnalysis):
 
     # Check results.
     assert isinstance(fig, bokeh.models.GridPlot)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_sample_count_het(fixture, api: AnophelesHetAnalysis):
+    # Set up test parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_set = random.choice(all_sample_sets)
+    df_samples = api.sample_metadata(sample_sets=sample_set)
+    sample = random.choice(df_samples["sample_id"].to_list())
+
+    het_params = dict(
+        sample=sample,
+        region=random.choice(api.contigs),
+        sample_set=sample_set,
+        window_size=20_000,
+    )
+
+    # Run function under test.
+    df = api.sample_count_het(**het_params)
+
+    # Check results.
+    assert isinstance(df, pd.DataFrame)
+    expected_columns = ["sample_id", "window_start", "window_stop", "heterozygosity"]
+    for col in expected_columns:
+        assert col in df.columns
+    assert len(df) > 0
+    assert (df["heterozygosity"] >= 0).all()
+    assert (df["heterozygosity"] <= 1).all()
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_cohort_heterozygosity(fixture, api: AnophelesHetAnalysis):
+    # Set up test parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_set = random.choice(all_sample_sets)
+
+    cohort_params = dict(
+        region=random.choice(api.contigs),
+        cohorts="taxon",
+        sample_sets=sample_set,
+        window_size=20_000,
+    )
+
+    # Run function under test.
+    df = api.cohort_heterozygosity(**cohort_params)
+
+    # Check results.
+    assert isinstance(df, pd.DataFrame)
+    expected_columns = ["cohort", "n_samples", "mean_heterozygosity"]
+    for col in expected_columns:
+        assert col in df.columns
+    assert len(df) > 0
+    assert (df["n_samples"] > 0).all()
+    assert (df["mean_heterozygosity"] >= 0).all()
+    assert (df["mean_heterozygosity"] <= 1).all()

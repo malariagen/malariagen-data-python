@@ -403,14 +403,21 @@ def test_allele_frequencies_with_str_cohorts(
     # Run the function under test.
     df_aa = api.aa_allele_frequencies(**params)
 
-    check_plot_frequencies_heatmap(api, df_aa)
+    # Handle the case where no amino acid change SNPs are found.
+    # In this case, aa_allele_frequencies returns an empty DataFrame
+    # instead of raising (see issue #1064).
+    if len(df_aa) > 0:
+        check_plot_frequencies_heatmap(api, df_aa)
 
-    # Standard checks.
-    check_aa_allele_frequencies(
-        df=df_aa,
-        cohort_labels=cohort_labels,
-        transcript=transcript,
-    )
+        # Standard checks.
+        check_aa_allele_frequencies(
+            df=df_aa,
+            cohort_labels=cohort_labels,
+            transcript=transcript,
+        )
+    else:
+        assert isinstance(df_aa, pd.DataFrame)
+        assert df_aa.index.names == ["aa_change", "contig", "position"]
 
 
 @pytest.mark.parametrize("min_cohort_size", [0, 10, 100])
@@ -531,14 +538,22 @@ def test_allele_frequencies_with_str_cohorts_and_sample_query(
     # Run the function under test.
     df_aa = api.aa_allele_frequencies(**params)
 
-    check_plot_frequencies_heatmap(api, df_aa)
+    # Handle the case where no amino acid change SNPs are found.
+    # In this case, aa_allele_frequencies returns an empty DataFrame
+    # instead of raising (see issue #1064).
+    if len(df_aa) > 0:
+        check_plot_frequencies_heatmap(api, df_aa)
 
-    # Standard checks.
-    check_aa_allele_frequencies(
-        df=df_aa,
-        cohort_labels=cohort_labels,
-        transcript=transcript,
-    )
+        # Standard checks.
+        check_aa_allele_frequencies(
+            df=df_aa,
+            cohort_labels=cohort_labels,
+            transcript=transcript,
+        )
+    else:
+        # Verify the empty DataFrame has the expected structure.
+        assert isinstance(df_aa, pd.DataFrame)
+        assert df_aa.index.names == ["aa_change", "contig", "position"]
 
 
 @parametrize_with_cases(
@@ -604,14 +619,21 @@ def test_allele_frequencies_with_str_cohorts_and_sample_query_options(
     # Run the function under test.
     df_aa = api.aa_allele_frequencies(**params)
 
-    check_plot_frequencies_heatmap(api, df_aa)
+    # Handle the case where no amino acid change SNPs are found.
+    # In this case, aa_allele_frequencies returns an empty DataFrame
+    # instead of raising (see issue #1064).
+    if len(df_aa) > 0:
+        check_plot_frequencies_heatmap(api, df_aa)
 
-    # Standard checks.
-    check_aa_allele_frequencies(
-        df=df_aa,
-        cohort_labels=cohort_labels,
-        transcript=transcript,
-    )
+        # Standard checks.
+        check_aa_allele_frequencies(
+            df=df_aa,
+            cohort_labels=cohort_labels,
+            transcript=transcript,
+        )
+    else:
+        assert isinstance(df_aa, pd.DataFrame)
+        assert df_aa.index.names == ["aa_change", "contig", "position"]
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -1498,24 +1520,29 @@ def test_allele_frequencies_advanced_with_variant_query(
         variant_query=variant_query,
     )
 
-    # Test a query that should fail.
+    # Test a query that should warn and return empty.
     variant_query = "effect == 'foobar'"
-    with pytest.raises(ValueError):
-        api.snp_allele_frequencies_advanced(
+    with pytest.warns(UserWarning):
+        ds_snp = api.snp_allele_frequencies_advanced(
             transcript=transcript,
             sample_sets=all_sample_sets,
             area_by=area_by,
             period_by=period_by,
             variant_query=variant_query,
+            min_cohort_size=0,
         )
-    with pytest.raises(ValueError):
-        api.aa_allele_frequencies_advanced(
+        assert ds_snp.sizes["variants"] == 0
+
+    with pytest.warns(UserWarning):
+        ds_aa = api.aa_allele_frequencies_advanced(
             transcript=transcript,
             sample_sets=all_sample_sets,
             area_by=area_by,
             period_by=period_by,
             variant_query=variant_query,
+            min_cohort_size=0,
         )
+        assert ds_aa.sizes["variants"] == 0
 
 
 @pytest.mark.parametrize("nobs_mode", ["called", "fixed"])

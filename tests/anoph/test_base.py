@@ -288,6 +288,21 @@ def test_logging_helper_no_duplicate_output():
     ), f"Duplicate log output: 'sentinel' appeared {output.count('sentinel')} times"
 
 
+def test_logging_helper_set_level_updates_logger():
+    # Regression test: set_level() must update the logger level, not just the
+    # handler level. Without fixing the logger, the logger itself would filter
+    # out DEBUG messages before they ever reached the handler.
+    logger_name = "test_logging_helper_set_level_updates_logger"
+    out = io.StringIO()
+    helper = LoggingHelper(name=logger_name, out=out, debug=False)
+    helper.set_level(logging.DEBUG)
+    helper.debug("should appear")
+    output = out.getvalue()
+    assert (
+        "should appear" in output
+    ), "set_level(DEBUG) had no effect: debug message was silently dropped"
+
+
 def _strip_terms_of_use_from_manifest(manifest_path):
     """Rewrite a manifest TSV file without terms-of-use columns."""
     df = pd.read_csv(manifest_path, sep="\t")
