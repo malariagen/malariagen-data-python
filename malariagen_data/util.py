@@ -311,7 +311,11 @@ def _dask_compress_dataset(ds, indexer, dim):
         # the underlying data
         indexer_computed = indexer.compute()
     else:
-        assert isinstance(indexer, np.ndarray)
+        if not isinstance(indexer, np.ndarray):
+            raise TypeError(
+                f"Expected indexer to be a dask.array.Array or numpy.ndarray, "
+                f"got {type(indexer).__name__}"
+            )
         indexer_computed = indexer
 
     coords = dict()
@@ -357,7 +361,7 @@ def _dask_compress_dataarray(a, indexer, indexer_computed, dim):
 
 
 def _da_compress(
-    indexer: da.Array | np.ndarray,
+    indexer: Union[da.Array, np.ndarray],
     data: da.Array,
     axis: int,
     indexer_computed: Optional[np.ndarray] = None,
@@ -375,7 +379,11 @@ def _da_compress(
 
     # Load the indexer temporarily for chunk size computations.
     if indexer_computed is None:
-        assert isinstance(indexer, da.Array)
+        if not isinstance(indexer, da.Array):
+            raise TypeError(
+                f"Expected indexer to be a dask.array.Array, "
+                f"got {type(indexer).__name__}"
+            )
         indexer_computed = indexer.compute()
 
     # Ensure indexer and data are chunked in the same way.
@@ -494,6 +502,25 @@ def _init_filesystem(url, **kwargs):
     # Process the URL using fsspec.
     fs, path = url_to_fs(url, **storage_options)
 
+    # Decode URL-encoded paths for local filesystems.
+    protocol = getattr(fs, "protocol", None)
+    if isinstance(protocol, str):
+        protocols = {protocol}
+    elif isinstance(protocol, (tuple, list)):
+        protocols = set(protocol)
+    else:
+        protocols = set()
+
+    is_local = (
+        bool(protocols.intersection({"file", "local"}))
+        or fs.__class__.__name__ == "LocalFileSystem"
+    )
+
+    if is_local:
+        from urllib.parse import unquote
+
+        path = unquote(path)
+
     # Path compatibility, fsspec/gcsfs behaviour varies between versions.
     while path.endswith("/"):
         path = path[:-1]
@@ -542,6 +569,9 @@ class Region:
             and (self.start == other.start)
             and (self.end == other.end)
         )
+
+    def __repr__(self):
+        return f"Region({self._contig!r}, {self._start!r}, {self._end!r})"
 
     def __str__(self):
         out = self._contig
@@ -646,7 +676,11 @@ def _parse_single_region(resource, region: single_region_param_type) -> Region:
             end=region.get("end"),
         )
 
-    assert isinstance(region, str)
+    if not isinstance(region, str):
+        raise TypeError(
+            f"Expected region to be a mapping or str, "
+            f"got {type(region).__name__}: {region!r}"
+        )
 
     # check if region is a whole contig
     if region in _valid_contigs(resource):
@@ -855,9 +889,7 @@ def _value_error(
     value,
     expectation,
 ):
-    message = (
-        f"Bad value for parameter {name}; expected {expectation}, " f"found {value!r}"
-    )
+    message = f"Bad value for parameter {name}; expected {expectation}, found {value!r}"
     raise ValueError(message)
 
 
@@ -868,14 +900,50 @@ def _hash_params(params):
     return h, s
 
 
-def _jitter(a, fraction):
-    """Jitter data in `a` using the fraction `f`."""
+def _jitter(a, fraction, random_state=np.random):
+    """Jitter data by adding uniform noise scaled by the data range.
+
+    Parameters
+    ----------
+    a : array-like
+        Input data to jitter. Can be a numpy array or pandas Series.
+    fraction : float
+        Controls the amplitude of the jitter relative to the data range.
+    random_state : numpy.random.Generator or module, optional
+        Random number generator to use. Accepts a ``numpy.random.Generator``
+        (from ``np.random.default_rng()``) or the ``numpy.random`` module.
+        Defaults to ``np.random`` (global RNG) for backward compatibility.
+
+    Returns
+    -------
+    array-like
+        Jittered copy of the input data with the same shape and type.
+
+    Notes
+    -----
+    Prefer passing a local ``np.random.default_rng(seed=...)`` to avoid
+    mutating global RNG state and to ensure reproducibility.
+
+    """
     r = a.max() - a.min()
-    return a + fraction * np.random.uniform(-r, r, a.shape)
+    return a + fraction * random_state.uniform(-r, r, a.shape)
 
 
 class CacheMiss(Exception):
-    pass
+    """Raised when a requested item is not present in the cache."""
+
+    def __init__(self, key=None):
+        self.key = key
+        if key is not None:
+            message = f"Cache miss for key: {key!r}"
+        else:
+            message = "Cache miss: requested item not found in cache."
+        super().__init__(message)
+
+    def __repr__(self):
+        if self.key is not None:
+            return f"CacheMiss({self.key!r})"
+        return "CacheMiss()"
 
 
 class LoggingHelper:
@@ -935,6 +1003,7 @@ class LoggingHelper:
         self.flush()
 
     def set_level(self, level):
+        self._logger.setLevel(level)
         if self._handler is not None:
             self._handler.setLevel(level)
 
@@ -1477,8 +1546,12 @@ def _apply_allele_mapping(x, mapping, max_allele):
 
 
 def _dask_apply_allele_mapping(v, mapping, max_allele):
-    assert isinstance(v, da.Array)
-    assert isinstance(mapping, np.ndarray)
+    if not isinstance(v, da.Array):
+        raise TypeError(f"Expected v to be a dask.array.Array, got {type(v).__name__}")
+    if not isinstance(mapping, np.ndarray):
+        raise TypeError(
+            f"Expected mapping to be a numpy.ndarray, got {type(mapping).__name__}"
+        )
     assert v.ndim == 2
     assert mapping.ndim == 2
     assert v.shape[0] == mapping.shape[0]
@@ -1498,8 +1571,12 @@ def _genotype_array_map_alleles(gt, mapping):
     # Transform genotype calls via an allele mapping.
     # N.B., scikit-allel does not handle empty blocks well, so we
     # include some extra logic to handle that better.
-    assert isinstance(gt, np.ndarray)
-    assert isinstance(mapping, np.ndarray)
+    if not isinstance(gt, np.ndarray):
+        raise TypeError(f"Expected gt to be a numpy.ndarray, got {type(gt).__name__}")
+    if not isinstance(mapping, np.ndarray):
+        raise TypeError(
+            f"Expected mapping to be a numpy.ndarray, got {type(mapping).__name__}"
+        )
     assert gt.ndim == 3
     assert mapping.ndim == 3
     assert gt.shape[0] == mapping.shape[0]
@@ -1518,8 +1595,14 @@ def _genotype_array_map_alleles(gt, mapping):
 
 
 def _dask_genotype_array_map_alleles(gt, mapping):
-    assert isinstance(gt, da.Array)
-    assert isinstance(mapping, np.ndarray)
+    if not isinstance(gt, da.Array):
+        raise TypeError(
+            f"Expected gt to be a dask.array.Array, got {type(gt).__name__}"
+        )
+    if not isinstance(mapping, np.ndarray):
+        raise TypeError(
+            f"Expected mapping to be a numpy.ndarray, got {type(mapping).__name__}"
+        )
     assert gt.ndim == 3
     assert mapping.ndim == 2
     assert gt.shape[0] == mapping.shape[0]

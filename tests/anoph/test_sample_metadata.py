@@ -1446,6 +1446,47 @@ def cohort_data_expected_columns():
     }
 
 
+def cohort_data_admin1_year_expected_columns():
+    return {
+        "cohort_id": "O",
+        "cohort_size": "i",
+        "country": "O",
+        "country_alpha2": "O",
+        "country_alpha3": "O",
+        "taxon": "O",
+        "year": "i",
+        "admin1_name": "O",
+        "admin1_iso": "O",
+        "admin1_geoboundaries_shape_id": "O",
+        "admin1_representative_longitude": "f",
+        "admin1_representative_latitude": "f",
+    }
+
+
+def cohort_data_admin2_month_expected_columns():
+    return {
+        "cohort_id": "O",
+        "cohort_size": "i",
+        "country": "O",
+        "country_alpha2": "O",
+        "country_alpha3": "O",
+        "taxon": "O",
+        "year": "i",
+        "quarter": "i",
+        "month": "i",
+        "admin1_name": "O",
+        "admin1_iso": "O",
+        "admin1_geoboundaries_shape_id": "O",
+        "admin1_representative_longitude": "f",
+        "admin1_representative_latitude": "f",
+        "admin2_name": "O",
+        "admin2_iso": "O",
+        "admin2_geoboundaries_shape_id": "O",
+        "admin2_representative_longitude": "f",
+        "admin2_representative_latitude": "f",
+    }
+
+
 def validate_cohort_data(df, expected_columns):
     # Check column names.
     # Note: insertion order in dictionary keys is guaranteed since Python 3.7
@@ -1465,3 +1506,129 @@ def test_cohort_data(fixture, api):
     df_cohorts = api.cohorts(cohort_name)
     # Check output.
     validate_cohort_data(df_cohorts, cohort_data_expected_columns())
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_sample_metadata_warns_on_zero_results_with_suggestions(
+    fixture, api: AnophelesSampleMetadata
+):
+    """Test that a UserWarning with fuzzy suggestions is raised when a query
+    returns 0 results due to a typo or case mismatch.
+
+    Regression test for https://github.com/malariagen/malariagen-data-python/issues/1083
+    """
+    # Get a valid country name from the metadata so we can construct
+    # a deliberately wrong-cased query.
+    df_all = api.sample_metadata()
+    if "country" not in df_all.columns or df_all["country"].dropna().empty:
+        pytest.skip("No 'country' column with data in this fixture.")
+
+    # Pick an actual country value and change its case.
+    real_country = df_all["country"].dropna().iloc[0]
+    wrong_case_country = real_country.lower()
+    # If lowercasing didn't actually change the string, use upper instead.
+    if wrong_case_country == real_country:
+        wrong_case_country = real_country.upper()
+
+    # The wrong-cased query should emit a UserWarning with fuzzy suggestions.
+    with pytest.warns(UserWarning, match="Did you mean"):
+        df = api.sample_metadata(sample_query=f"country == '{wrong_case_country}'")
+    assert len(df) == 0
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_sample_metadata_no_warning_on_valid_query(
+    fixture, api: AnophelesSampleMetadata
+):
+    """Test that no spurious warning is emitted when a valid query returns results."""
+    df_all = api.sample_metadata()
+    if "country" not in df_all.columns or df_all["country"].dropna().empty:
+        pytest.skip("No 'country' column with data in this fixture.")
+
+    real_country = df_all["country"].dropna().iloc[0]
+
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", UserWarning)
+        df = api.sample_metadata(sample_query=f"country == '{real_country}'")
+    assert len(df) > 0
+
+
+@parametrize_with_cases("fixture,api", cases=case_ag3_sim)
+def test_cohort_data_admin1_year(fixture, api):
+    df_cohorts = api.cohorts("admin1_year")
+    validate_cohort_data(df_cohorts, cohort_data_admin1_year_expected_columns())
+
+
+@parametrize_with_cases("fixture,api", cases=case_ag3_sim)
+def test_cohort_data_admin2_month(fixture, api):
+    df_cohorts = api.cohorts("admin2_month")
+    validate_cohort_data(df_cohorts, cohort_data_admin2_month_expected_columns())
+
+
+@parametrize_with_cases("fixture,api", cases=case_ag3_sim)
+def test_cohort_data_invalid_cohort_set(fixture, api):
+    with pytest.raises(ValueError, match="is not a valid cohort set"):
+        api.cohorts("invalid_name")
+
+
+@parametrize_with_cases("fixture,api", cases=case_ag3_sim)
+def test_cohort_data_with_query(fixture, api):
+    df_all = api.cohorts("admin1_month")
+    df_filtered = api.cohorts("admin1_month", query="country == 'Burkina Faso'")
+    assert len(df_filtered) > 0
+    assert (df_filtered["country"] == "Burkina Faso").all()
+    assert len(df_filtered) < len(df_all)
+
+
+@parametrize_with_cases("fixture,api", cases=case_ag3_sim)
+def test_cohort_data_cached(fixture, api):
+    df1 = api.cohorts("admin1_month")
+    df2 = api.cohorts("admin1_month")
+    assert_frame_equal(df1, df2)
+
+
+# ------------------------------------------------------------------
+# Tests for cohort_geometries()
+# ------------------------------------------------------------------
+
+
+@parametrize_with_cases("fixture,api", cases=case_ag3_sim)
+def test_cohort_geometries(fixture, api):
+    """Test that GeoJSON geometry can be loaded for a valid cohort set."""
+    geojson = api.cohort_geometries("admin1_month")
+    assert isinstance(geojson, dict)
+    assert geojson["type"] == "FeatureCollection"
+    assert "features" in geojson
+    assert len(geojson["features"]) > 0
+    for feature in geojson["features"]:
+        assert feature["type"] == "Feature"
+        assert "geometry" in feature
+        assert "properties" in feature
+        assert "coordinates" in feature["geometry"]
+
+
+@parametrize_with_cases("fixture,api", cases=case_ag3_sim)
+def test_cohort_geometries_admin1_year(fixture, api):
+    """Test that GeoJSON geometry can be loaded for admin1_year."""
+    geojson = api.cohort_geometries("admin1_year")
+    assert isinstance(geojson, dict)
+    assert geojson["type"] == "FeatureCollection"
+    assert len(geojson["features"]) > 0
+
+
+@parametrize_with_cases("fixture,api", cases=case_ag3_sim)
+def test_cohort_geometries_invalid_cohort_set(fixture, api):
+    """Test that an invalid cohort_set raises ValueError."""
+    with suppress_type_checks():
+        with pytest.raises(ValueError, match="not a valid cohort set"):
+            api.cohort_geometries("invalid_set")
+
+
+@parametrize_with_cases("fixture,api", cases=case_ag3_sim)
+def test_cohort_geometries_cached(fixture, api):
+    """Test that the second call returns the same cached object."""
+    g1 = api.cohort_geometries("admin1_month")
+    g2 = api.cohort_geometries("admin1_month")
+    assert g1 is g2

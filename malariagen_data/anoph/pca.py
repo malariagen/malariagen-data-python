@@ -359,9 +359,7 @@ class AnophelesPca(
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -401,9 +399,9 @@ class AnophelesPca(
 
         # Apply jitter if desired - helps spread out points when tightly clustered.
         if jitter_frac:
-            np.random.seed(random_seed)
-            data[x] = _jitter(data[x], jitter_frac)
-            data[y] = _jitter(data[y], jitter_frac)
+            rng = np.random.default_rng(seed=random_seed)
+            data[x] = _jitter(data[x], jitter_frac, random_state=rng)
+            data[y] = _jitter(data[y], jitter_frac, random_state=rng)
 
         # Convenience variables.
         # Prevent lint error (mypy): Unsupported operand types for + ("Series[Any]" and "str")
@@ -467,9 +465,7 @@ class AnophelesPca(
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -507,10 +503,10 @@ class AnophelesPca(
 
         # Apply jitter if desired - helps spread out points when tightly clustered.
         if jitter_frac:
-            np.random.seed(random_seed)
-            data[x] = _jitter(data[x], jitter_frac)
-            data[y] = _jitter(data[y], jitter_frac)
-            data[z] = _jitter(data[z], jitter_frac)
+            rng = np.random.default_rng(seed=random_seed)
+            data[x] = _jitter(data[x], jitter_frac, random_state=rng)
+            data[y] = _jitter(data[y], jitter_frac, random_state=rng)
+            data[z] = _jitter(data[z], jitter_frac, random_state=rng)
 
         # Convenience variables.
         # Prevent lint error (mypy): Unsupported operand types for + ("Series[Any]" and "str")
@@ -572,6 +568,4 @@ class AnophelesPca(
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig
