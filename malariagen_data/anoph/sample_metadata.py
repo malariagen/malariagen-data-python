@@ -1864,7 +1864,7 @@ def _locate_cohorts(*, cohorts, data, min_cohort_size):
         for coh, query in cohorts.items():
             try:
                 loc_coh = data.eval(query).values
-            except Exception as e:
+            except (KeyError, NameError, SyntaxError, TypeError, AttributeError) as e:
                 raise ValueError(
                     f"Invalid query for cohort {coh!r}: {query!r}. Error: {e}"
                 ) from e
