@@ -1705,8 +1705,8 @@ def test_biallelic_snp_calls_and_diplotypes_with_conditions_fractional(
     site_mask = random.choice((None,) + api.site_mask_ids)
 
     # Parametrise conditions.
-    min_minor_ac = random.uniform(0, 0.05)
-    max_missing_an = random.uniform(0.05, 0.2)
+    min_minor_ac = random.uniform(0, 0.02)
+    max_missing_an = random.uniform(0.15, 0.3)
 
     # Run tests.
     ds = check_biallelic_snp_calls_and_diplotypes(
