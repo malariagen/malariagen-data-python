@@ -241,6 +241,10 @@ class AnophelesDataResource(
         ac = allel.AlleleCountsArray(ac)
         n = ac.sum(axis=1).max()  # number of chromosomes sampled
         n_sites = min(n_sites, ac.shape[0])  # number of sites
+
+        # if n_jack>n_sites then block_length becomes 0 which breaks jackknife logic
+        if n_jack >= n_sites:
+            raise ValueError("n_jack must be smaller than number of sites")
         block_length = n_sites // n_jack  # number of sites in each block
         n_sites_j = n_sites - block_length  # number of sites in each jackknife resample
 
@@ -271,7 +275,12 @@ class AnophelesDataResource(
         theta_w_data = theta_w_abs_data / n_sites
         d_data = theta_pi_abs_data - theta_w_abs_data
         d_stdev_data = np.sqrt((e1 * S_data) + (e2 * S_data * (S_data - 1)))
-        tajima_d_data = d_data / d_stdev_data
+
+        # added this to avoid divide by 0 error
+        if d_stdev_data == 0:
+            tajima_d_data = np.nan
+        else:
+            tajima_d_data = d_data / d_stdev_data
 
         debug("set up for jackknife resampling")
         jack_theta_pi = []
@@ -305,7 +314,12 @@ class AnophelesDataResource(
             # tajima_d
             d_j = theta_pi_abs_j - theta_w_abs_j
             d_stdev_j = np.sqrt((e1 * S_j) + (e2 * S_j * (S_j - 1)))
-            tajima_d_j = d_j / d_stdev_j
+
+            # added this to avoid divide by 0 error
+            if d_stdev_j == 0:
+                tajima_d_j = np.nan
+            else:
+                tajima_d_j = d_j / d_stdev_j
             jack_tajima_d.append(tajima_d_j)
 
         # calculate jackknife stats
@@ -406,7 +420,10 @@ class AnophelesDataResource(
 
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "cohort_diversity_stats_v1"
+
+        # Use a version constant so cache entries can be safely invalidated if computation logic changes.
+        COHORT_VERSION = "v1"
+        name = f"cohort_diversity_stats_{COHORT_VERSION}"
 
         debug("process cohort parameter")
         cohort_query = None
