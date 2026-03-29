@@ -25,5 +25,6 @@ out: TypeAlias = Annotated[
     and ``{output_dir}/{out}.fam``. If not provided, a default prefix is
     generated from the SNP selection parameters (region, n_snps,
     min_minor_ac, max_missing_an, thin_offset).
+
     """,
 ]
