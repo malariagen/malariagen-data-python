@@ -79,7 +79,7 @@ class PlinkConverter(
         random_seed: base_params.random_seed = 42,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
-        output_name: Optional[plink_params.output_name] = None,
+        out: Optional[plink_params.out] = None,
         phenotypes: Optional[plink_params.phenotypes] = None,
     ):
         # Check that either sample_query xor sample_indices are provided.
@@ -87,9 +87,9 @@ class PlinkConverter(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
-        # Define output files
-        if output_name is not None:
-            plink_file_path = f"{output_dir}/{output_name}"
+        # Use user-provided prefix or fall back to auto-generated default
+        if out is not None:
+            plink_file_path = f"{output_dir}/{out}"
         else:
             n_snps_label = n_snps if n_snps is not None else "all"
             plink_file_path = f"{output_dir}/{region}.{n_snps_label}.{min_minor_ac}.{max_missing_an}.{thin_offset}"

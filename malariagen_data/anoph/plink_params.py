@@ -19,11 +19,14 @@ output_dir: TypeAlias = Annotated[
     """,
 ]
 
-output_name: TypeAlias = Annotated[
+out: TypeAlias = Annotated[
     str,
     """
-    A custom name for the output PLINK files (without file extension).
-    If not provided, a default name is generated from the analysis parameters.
+    A string specifying the output file path prefix. The PLINK output files
+    will be written as ``{output_dir}/{out}.bed``, ``{output_dir}/{out}.bim``,
+    and ``{output_dir}/{out}.fam``. If not provided, a default prefix is
+    generated from the SNP selection parameters (region, n_snps,
+    min_minor_ac, max_missing_an, thin_offset).
     """,
 ]
 

@@ -114,3 +114,18 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = ["bokeh", "bokeh.*"]
 follow_imports = "skip"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+norecursedirs = [".git", ".venv", "venv", "*.egg-info", "build", "dist"]
+addopts = "--tb=short --ignore=tests/integration"
+filterwarnings = [
+    "ignore::DeprecationWarning:numpy",
+    "ignore::DeprecationWarning:dask",
+    "ignore::PendingDeprecationWarning:numcodecs",
+    "ignore::UserWarning:zarr",
+    "ignore::DeprecationWarning:pandas",
+]

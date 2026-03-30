@@ -810,9 +810,7 @@ class AnophelesCnvData(
 
         if show:
             bkplt.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -884,9 +882,7 @@ class AnophelesCnvData(
 
         if show:
             bkplt.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -1028,9 +1024,7 @@ class AnophelesCnvData(
 
         if show:
             bkplt.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -1100,6 +1094,4 @@ class AnophelesCnvData(
 
         if show:
             bkplt.show(fig)
-            return None
-        else:
-            return fig
+        return fig

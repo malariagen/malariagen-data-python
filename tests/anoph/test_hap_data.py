@@ -1,5 +1,3 @@
-import random
-
 import dask.array as da
 import numpy as np
 import pytest
@@ -322,9 +320,9 @@ def test_haplotypes_with_sample_sets_param(fixture, api: AnophelesHapData):
     all_releases = api.releases
     parametrize_sample_sets = [
         None,
-        random.choice(all_sample_sets),
-        random.sample(all_sample_sets, 2),
-        random.choice(all_releases),
+        str(np.random.choice(all_sample_sets)),
+        np.random.choice(all_sample_sets, size=2, replace=False).tolist(),
+        np.random.choice(all_releases),
     ]
 
     # Run tests.
@@ -342,7 +340,7 @@ def test_haplotypes_with_sample_sets_param(fixture, api: AnophelesHapData):
 def test_haplotypes_with_region_param(fixture, api: AnophelesHapData):
     # Fixed parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
+    sample_sets = str(np.random.choice(all_sample_sets))
     analysis = api.phasing_analysis_ids[0]
 
     # Parametrize region.
@@ -352,7 +350,7 @@ def test_haplotypes_with_region_param(fixture, api: AnophelesHapData):
         contig,
         fixture.random_region_str(),
         [fixture.random_region_str(), fixture.random_region_str()],
-        random.choice(df_gff["ID"].dropna().to_list()),
+        np.random.choice(df_gff["ID"].dropna().to_list()),
     ]
 
     # Run tests.
@@ -370,7 +368,7 @@ def test_haplotypes_with_region_param(fixture, api: AnophelesHapData):
 def test_haplotypes_with_analysis_param(fixture, api: AnophelesHapData):
     # Fixed parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
+    sample_sets = str(np.random.choice(all_sample_sets))
     region = fixture.random_region_str()
 
     # Parametrize analysis.
@@ -395,7 +393,7 @@ def test_haplotypes_with_sample_query_param(
 
     # Fixed parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
+    sample_sets = str(np.random.choice(all_sample_sets))
     region = fixture.random_region_str()
     analysis = api.phasing_analysis_ids[0]
 
@@ -422,7 +420,7 @@ def test_haplotypes_with_sample_query_options_param(
 
     # Fixed parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
+    sample_sets = str(np.random.choice(all_sample_sets))
     region = fixture.random_region_str()
     analysis = api.phasing_analysis_ids[0]
     sample_query_options = {
@@ -461,12 +459,16 @@ def test_haplotypes_with_cohort_size_param(
 
     # Fixed parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
+    sample_sets = str(np.random.choice(all_sample_sets))
     region = fixture.random_region_str()
     analysis = api.phasing_analysis_ids[0]
 
     # Parametrize over cohort_size.
-    parametrize_cohort_size = [random.randint(1, 10), random.randint(10, 50), 1_000]
+    parametrize_cohort_size = [
+        int(np.random.randint(1, 11)),
+        int(np.random.randint(10, 51)),
+        1_000,
+    ]
     for cohort_size in parametrize_cohort_size:
         check_haplotypes(
             fixture=fixture,
@@ -487,14 +489,14 @@ def test_haplotypes_with_min_cohort_size_param(
 
     # Fixed parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
+    sample_sets = str(np.random.choice(all_sample_sets))
     region = fixture.random_region_str()
     analysis = api.phasing_analysis_ids[0]
 
     # Parametrize over min_cohort_size.
     parametrize_min_cohort_size = [
-        random.randint(1, 10),
-        random.randint(10, 50),
+        int(np.random.randint(1, 11)),
+        int(np.random.randint(10, 51)),
         1_000,
     ]
     for min_cohort_size in parametrize_min_cohort_size:
@@ -517,14 +519,14 @@ def test_haplotypes_with_max_cohort_size_param(
 
     # Fixed parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
+    sample_sets = str(np.random.choice(all_sample_sets))
     region = fixture.random_region_str()
     analysis = api.phasing_analysis_ids[0]
 
     # Parametrize over max_cohort_size.
     parametrize_max_cohort_size = [
-        random.randint(1, 10),
-        random.randint(10, 50),
+        int(np.random.randint(1, 11)),
+        int(np.random.randint(10, 51)),
         1_000,
     ]
     for max_cohort_size in parametrize_max_cohort_size:
@@ -655,7 +657,7 @@ def test_haplotype_sites(fixture, api: AnophelesHapData):
 
     # Test with genome feature ID.
     df_gff = api.genome_features(attributes=["ID"])
-    region = random.choice(df_gff["ID"].dropna().to_list())
+    region = str(np.random.choice(df_gff["ID"].dropna().to_list()))
     check_haplotype_sites(api=api, region=region)
 
 
