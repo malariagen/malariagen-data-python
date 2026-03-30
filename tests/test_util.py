@@ -2,8 +2,9 @@
 
 import pytest
 
-from malariagen_data.util import CacheMiss, Region
+from unittest.mock import MagicMock, patch
 
+from malariagen_data.util import CacheMiss, Region, _get_file_stats
 
 # ---------------------------------------------------------------------------
 # Region
@@ -61,3 +62,42 @@ def test_cache_miss_is_exception():
         raise CacheMiss("lookup_key")
     assert "lookup_key" in str(exc_info.value)
     assert repr(exc_info.value) == "CacheMiss('lookup_key')"
+
+def test_get_file_stats_local(tmp_path):
+    # Setup a local test file
+    content = b"test content"
+    p = tmp_path / "test.txt"
+    p.write_bytes(content)
+
+    # Test retrieval
+    stats = _get_file_stats(str(p))
+
+    assert stats["size"] == len(content)
+    assert isinstance(stats["mtime"], (float, int))
+    assert stats["protocol"] in ["file", "local"]
+    assert stats["path"] == str(p)
+
+def test_get_file_stats_missing_size():
+    # Mock filesystem to return None for size
+    mock_fs = MagicMock()
+    mock_fs.info.return_value = {"size": None}
+    mock_fs.protocol = "gs"
+
+    with patch("malariagen_data.util._init_filesystem", return_value=(mock_fs, "dummy/path")):
+        with pytest.raises(ValueError, match="Could not determine size for file"):
+            _get_file_stats("gs://bucket/file")
+
+def test_get_file_stats_protocol_normalization():
+    # Mock filesystem with a list of protocols (common in fsspec)
+    mock_fs = MagicMock()
+    mock_fs.info.return_value = {"size": 100, "mtime": 123.4}
+    mock_fs.protocol = ("s3", "s3a")
+
+    with patch("malariagen_data.util._init_filesystem", return_value=(mock_fs, "dummy/path")):
+        stats = _get_file_stats("s3://bucket/file")
+        assert stats["protocol"] == "s3"
+
+def test_get_file_stats_file_not_found():
+    # Verify standard FileNotFoundError propagation
+    with pytest.raises(FileNotFoundError):
+        _get_file_stats("non_existent_file_9999.txt")

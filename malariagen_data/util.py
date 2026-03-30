@@ -537,6 +537,38 @@ def _init_zarr_store(fs, path):
 # some subtle bugs where instances where treated as normal tuples. So to avoid
 # confusion, create a dedicated class.
 
+def _get_file_stats(url: str, **kwargs) -> Dict[str, Any]:
+    """Get metadata for a file at a given URL or path.
+    
+    Parameters
+    ----------
+    url : str
+        The URL or path to the file.
+    **kwargs : dict
+        Additional arguments passed to _init_filesystem.
+        
+    Returns
+    -------
+    Dict[str, Any]
+        A dictionary containing file statistics: size, mtime, protocol, and path.
+    """
+    fs, path = _init_filesystem(url, **kwargs)
+    info = fs.info(path)
+    
+    size = info.get("size")
+    if size is None:
+        raise ValueError(f"Could not determine size for file: {url}")
+    
+    protocol = fs.protocol
+    if isinstance(protocol, (list, tuple)):
+        protocol = protocol[0]
+        
+    return {
+        "size": int(size),
+        "mtime": info.get("mtime"),
+        "protocol": protocol,
+        "path": path,
+    }
 
 class Region:
     """A region of a reference genome, i.e., a contig or contig interval."""
