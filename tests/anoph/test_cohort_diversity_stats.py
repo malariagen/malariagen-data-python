@@ -1,5 +1,4 @@
-import random
-
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -22,7 +21,7 @@ def ag3_sim_api(ag3_sim_fixture, tmp_path):
 def test_cohort_diversity_stats_uses_cache(ag3_sim_api, monkeypatch):
     api = ag3_sim_api
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_set = random.choice(all_sample_sets)
+    sample_set = str(np.random.choice(all_sample_sets))
     df_samples = api.sample_metadata(sample_sets=[sample_set])
     cohort_sample_ids = df_samples["sample_id"].head(10).to_list()
     cohort_size = min(5, len(cohort_sample_ids))
@@ -32,7 +31,7 @@ def test_cohort_diversity_stats_uses_cache(ag3_sim_api, monkeypatch):
     params = dict(
         cohort=("cache_test", f"sample_id in {cohort_sample_ids!r}"),
         cohort_size=cohort_size,
-        region=random.choice(api.contigs),
+        region=str(np.random.choice(api.contigs)),
         sample_sets=[sample_set],
         random_seed=42,
         n_jack=10,

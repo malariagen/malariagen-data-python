@@ -3,7 +3,6 @@ import plotly.graph_objects as go  # type: ignore
 
 import numpy as np
 import pandas as pd
-import random
 
 
 def check_plot_frequencies_heatmap(api, frq_df):
@@ -41,7 +40,7 @@ def check_plot_frequencies_time_series_with_taxa(api, ds):
     ds = ds.isel(variants=slice(0, 100))
 
     taxa = list(ds.cohort_taxon.to_dataframe()["cohort_taxon"].unique())
-    taxon = random.choice(taxa)
+    taxon = str(np.random.choice(taxa))
 
     # Plot with taxon.
     fig = api.plot_frequencies_time_series(ds, show=False, taxa=taxon)
@@ -66,8 +65,12 @@ def check_plot_frequencies_time_series_with_areas(api, ds):
 
     # Pick a random area and areas from valid areas.
     cohorts_areas = df_cohorts["cohort_area"].dropna().unique().tolist()
-    area = random.choice(cohorts_areas)
-    areas = random.sample(cohorts_areas, random.randint(1, len(cohorts_areas)))
+    area = np.random.choice(cohorts_areas)
+    areas = np.random.choice(
+        cohorts_areas,
+        size=int(np.random.randint(1, len(cohorts_areas) + 1)),
+        replace=False,
+    ).tolist()
 
     # Plot with area.
     fig = api.plot_frequencies_time_series(ds, show=False, areas=area)
@@ -105,7 +108,9 @@ def add_random_year(*, api):
     # Otherwise we'll get multiple columns with different suffixes, e.g. 'random_year_x' and 'random_year_y'.
     if "random_year" not in sample_metadata_df.columns:
         # Avoid "ValueError: No cohorts available" by selecting only a few different years at random.
-        selected_years = random.sample(range(1900, 2100), 3)
+        selected_years = np.random.choice(
+            range(1900, 2100), size=3, replace=False
+        ).tolist()
         random_years_as_list = np.random.choice(selected_years, len(sample_metadata_df))
         random_years_as_period_index = pd.PeriodIndex(random_years_as_list, freq="Y")
         extra_metadata_df = pd.DataFrame(

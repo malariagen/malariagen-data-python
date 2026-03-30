@@ -1,4 +1,4 @@
-import random
+import numpy as np
 import pytest
 from pytest_cases import parametrize_with_cases
 
@@ -88,9 +88,9 @@ def test_plot_haplotype_clustering(fixture, api: AnophelesHapClustAnalysis):
     sample_queries = (None, "sex_call == 'F'")
     hapclust_params = dict(
         region=fixture.random_region_str(region_size=5000),
-        sample_sets=[random.choice(all_sample_sets)],
-        linkage_method=random.choice(linkage_methods),
-        sample_query=random.choice(sample_queries),
+        sample_sets=[str(np.random.choice(all_sample_sets))],
+        linkage_method=str(np.random.choice(linkage_methods)),
+        sample_query=np.random.choice(list(sample_queries)),  # type: ignore
         show=False,
     )
 
@@ -105,7 +105,7 @@ def test_plot_haplotype_sharing_arc(fixture, api: AnophelesHapClustAnalysis):
         fig = api.plot_haplotype_sharing_arc(
             region=fixture.random_region_str(region_size=5000),
             cohort_col="country",
-            sample_sets=[random.choice(all_sample_sets)],
+            sample_sets=[str(np.random.choice(all_sample_sets))],
             metric=metric,
             show=False,
         )
@@ -119,7 +119,7 @@ def test_plot_haplotype_sharing_chord(fixture, api: AnophelesHapClustAnalysis):
         fig = api.plot_haplotype_sharing_chord(
             region=fixture.random_region_str(region_size=5000),
             cohort_col="country",
-            sample_sets=[random.choice(all_sample_sets)],
+            sample_sets=[str(np.random.choice(all_sample_sets))],
             metric=metric,
             show=False,
         )

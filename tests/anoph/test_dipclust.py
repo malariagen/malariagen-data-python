@@ -1,4 +1,4 @@
-import random
+import numpy as np
 import pytest
 from pytest_cases import parametrize_with_cases
 
@@ -14,7 +14,7 @@ def random_transcripts_contig(*, api, contig, n):
     n = min(n, len(transcript_ids))
     if n == 0:
         pytest.skip(f"No mRNA transcripts found for contig '{contig}'")
-    transcripts = random.sample(transcript_ids, n)
+    transcripts = np.random.choice(transcript_ids, size=n, replace=False).tolist()
     return transcripts
 
 
@@ -102,8 +102,8 @@ def test_plot_diplotype_clustering(
     )
     dipclust_params = dict(
         region=fixture.random_region_str(region_size=5000),
-        sample_sets=[random.choice(all_sample_sets)],
-        linkage_method=random.choice(linkage_methods),
+        sample_sets=[str(np.random.choice(all_sample_sets))],
+        linkage_method=str(np.random.choice(linkage_methods)),
         distance_metric=distance_metric,
         sample_query=sample_query,
         show=False,
@@ -140,8 +140,8 @@ def test_plot_diplotype_clustering_advanced(
     )
     dipclust_params = dict(
         region=fixture.random_region_str(region_size=5000),
-        sample_sets=[random.choice(all_sample_sets)],
-        linkage_method=random.choice(linkage_methods),
+        sample_sets=[str(np.random.choice(all_sample_sets))],
+        linkage_method=str(np.random.choice(linkage_methods)),
         distance_metric=distance_metric,
         sample_query=sample_query,
         show=False,
@@ -181,8 +181,8 @@ def test_plot_diplotype_clustering_advanced_with_transcript(
     dipclust_params = dict(
         region=contig,
         snp_transcript=transcripts,
-        sample_sets=[random.choice(all_sample_sets)],
-        linkage_method=random.choice(linkage_methods),
+        sample_sets=[str(np.random.choice(all_sample_sets))],
+        linkage_method=str(np.random.choice(linkage_methods)),
         distance_metric="cityblock",
         sample_query=sample_query,
         show=False,
@@ -220,8 +220,8 @@ def test_plot_diplotype_clustering_advanced_with_cnv_region(
     dipclust_params = dict(
         region=region,
         cnv_region=region,
-        sample_sets=[random.choice(all_sample_sets)],
-        linkage_method=random.choice(linkage_methods),
+        sample_sets=[str(np.random.choice(all_sample_sets))],
+        linkage_method=str(np.random.choice(linkage_methods)),
         distance_metric="cityblock",
         sample_query=sample_query,
         show=False,

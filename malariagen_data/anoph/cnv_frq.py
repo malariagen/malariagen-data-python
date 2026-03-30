@@ -632,6 +632,15 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
             columns=["gene_id", "gene_name", "cnv_type"],
         )
 
+        debug("sort variants for deterministic ordering")
+        sort_index = df_variants.sort_values(
+            ["contig", "start", "cnv_type"]
+        ).index.values
+        df_variants = df_variants.iloc[sort_index].reset_index(drop=True)
+        count = count[sort_index]
+        nobs = nobs[sort_index]
+        frequency = frequency[sort_index]
+
         debug("build the output dataset")
         ds_out = xr.Dataset()
 
