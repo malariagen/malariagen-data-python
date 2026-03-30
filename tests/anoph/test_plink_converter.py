@@ -1,4 +1,5 @@
 import numpy as np
+import random
 import pytest
 from pytest_cases import parametrize_with_cases
 
@@ -209,9 +210,7 @@ def test_plink_converter_custom_output_name(fixture, api: PlinkConverter, tmp_pa
 
     # Call with custom output name.
     custom_name = "my_custom_output"
-    plink_params = dict(
-        output_dir=str(tmp_path), out=custom_name, **data_params
-    )
+    plink_params = dict(output_dir=str(tmp_path), out=custom_name, **data_params)
     result = api.biallelic_snps_to_plink(**plink_params)
 
     assert result == f"{str(tmp_path)}/{custom_name}"
@@ -286,9 +285,7 @@ def test_plink_converter_no_sex_call(fixture, api: PlinkConverter, tmp_path):
         return df.drop(columns=["sex_call"], errors="ignore")
 
     with patch.object(api, "sample_metadata", side_effect=mock_sample_metadata):
-        plink_params = dict(
-            output_dir=str(tmp_path), out="no_sex_test", **data_params
-        )
+        plink_params = dict(output_dir=str(tmp_path), out="no_sex_test", **data_params)
         result = api.biallelic_snps_to_plink(**plink_params)
 
     assert os.path.exists(f"{result}.bed")
