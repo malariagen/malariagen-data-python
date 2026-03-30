@@ -259,3 +259,40 @@ def test_plink_converter_phenotypes(fixture, api: PlinkConverter, tmp_path):
             # Phenotype is the 6th column (index 5).
             pheno_val = float(fields[5])
             assert pheno_val == 2.0, f"Expected phenotype 2.0, got {pheno_val}"
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_plink_converter_no_sex_call(fixture, api: PlinkConverter, tmp_path):
+    """Test that plink converter works when sex_call column is missing."""
+    from unittest.mock import patch
+
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+
+    data_params = dict(
+        region=random.choice(api.contigs),
+        sample_sets=random.sample(all_sample_sets, 2),
+        site_mask=random.choice((None,) + api.site_mask_ids),
+        min_minor_ac=1,
+        max_missing_an=1,
+        thin_offset=0,
+        random_seed=42,
+    )
+
+    # Patch sample_metadata to return a DataFrame without sex_call column.
+    original_sample_metadata = api.sample_metadata
+
+    def mock_sample_metadata(**kwargs):
+        df = original_sample_metadata(**kwargs)
+        return df.drop(columns=["sex_call"], errors="ignore")
+
+    with patch.object(api, "sample_metadata", side_effect=mock_sample_metadata):
+        plink_params = dict(
+            output_dir=str(tmp_path), output_name="no_sex_test", **data_params
+        )
+        result = api.biallelic_snps_to_plink(**plink_params)
+
+    assert os.path.exists(f"{result}.bed")
+
+    # All sex values should be 0 (unknown) since sex_call was missing.
+    bed = bed_reader.open_bed(f"{result}.bed")
+    assert all(s == 0 for s in bed.sex)
