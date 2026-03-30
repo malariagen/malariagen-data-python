@@ -13,6 +13,8 @@ from textwrap import dedent, fill
 from typing import IO, Dict, Hashable, List, Mapping, Optional, Tuple, Union, Callable
 from urllib.parse import unquote_plus
 from numpy.testing import assert_allclose, assert_array_equal
+import numpy as np
+
 
 try:
     from google import colab  # type: ignore
@@ -1696,3 +1698,70 @@ def _distributed_client():
     except ValueError:
         client = None
     return client
+
+
+def compute_missing_rate(gt_array: np.ndarray) -> float:
+    """Compute proportion of missing genotype calls (-1)."""
+    return np.mean(gt_array == -1)
+
+
+def compute_informative_sites(gt_array: np.ndarray) -> int:
+    """Count sites with at least one non-missing allele."""
+    return int(np.sum(np.any(gt_array != -1, axis=1)))
+
+
+def summarize_chromosome(root, sample: str, chrom: str, n_sites: int = 10000) -> dict:
+    """
+    Summarize genotype data for a given chromosome.
+
+    Parameters
+    ----------
+    root : zarr.Group
+        Zarr root group.
+    sample : str
+        Sample identifier.
+    chrom : str
+        Chromosome name.
+    n_sites : int
+        Number of variants to sample.
+
+    Returns
+    -------
+    dict
+        Summary statistics.
+    """
+    gt = root[f"{sample}/{chrom}/calldata/GT"][:n_sites, 0, :]
+
+    return {
+        "missing_rate": compute_missing_rate(gt),
+        "informative_sites": compute_informative_sites(gt),
+        "n_sites": gt.shape[0],
+    }
+
+
+def summarize_sample(root, sample: str, n_sites: int = 10000) -> dict:
+    """
+    Summarize all chromosomes for a given sample.
+
+    Parameters
+    ----------
+    root : zarr.Group
+        Zarr root group.
+    sample : str
+        Sample identifier.
+
+    Returns
+    -------
+    dict
+        Dictionary with chromosome-level summaries.
+    """
+    chromosomes = list(root[sample].keys())
+
+    summary = {}
+    for chrom in chromosomes:
+        try:
+            summary[chrom] = summarize_chromosome(root, sample, chrom, n_sites)
+        except Exception:
+            continue
+
+    return summary
