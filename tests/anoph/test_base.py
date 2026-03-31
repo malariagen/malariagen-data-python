@@ -8,6 +8,7 @@ from pandas.testing import assert_frame_equal
 from pytest_cases import parametrize_with_cases
 
 from malariagen_data import af1 as _af1
+from malariagen_data import afar1 as _afar1
 from malariagen_data import ag3 as _ag3
 from malariagen_data import adir1 as _adir1
 from malariagen_data.anoph.base import AnophelesBase
@@ -88,6 +89,22 @@ def case_adir1_sim(adir1_sim_fixture, adir1_sim_api):
 
 def case_amin1_sim(amin1_sim_fixture, amin1_sim_api):
     return amin1_sim_fixture, amin1_sim_api
+
+
+@pytest.fixture
+def afar1_sim_api(afar1_sim_fixture):
+    return AnophelesBase(
+        url=afar1_sim_fixture.url,
+        public_url=afar1_sim_fixture.url,
+        config_path=_afar1.CONFIG_PATH,
+        major_version_number=_afar1.MAJOR_VERSION_NUMBER,
+        major_version_path=_afar1.MAJOR_VERSION_PATH,
+        pre=False,
+    )
+
+
+def case_afar1_sim(afar1_sim_fixture, afar1_sim_api):
+    return afar1_sim_fixture, afar1_sim_api
 
 
 @parametrize_with_cases("fixture,api", cases=".")

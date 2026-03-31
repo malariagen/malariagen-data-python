@@ -1,0 +1,31 @@
+sample_id,country_ISO,adm1_name,adm1_ISO,adm2_name,taxon,cohort_admin1_year,cohort_admin1_month,cohort_admin1_quarter,cohort_admin2_year,cohort_admin2_month,cohort_admin2_quarter
+VBS20001-5100STDY8400001,PNG,Madang Province,PG-MPL,Madang,farauti,PG-MPL_fara_2020,PG-MPL_fara_2020_03,PG-MPL_fara_2020_Q1,PG-MPL_Madang_fara_2020,PG-MPL_Madang_fara_2020_03,PG-MPL_Madang_fara_2020_Q1
+VBS20002-5100STDY8400002,PNG,Madang Province,PG-MPL,Madang,farauti,PG-MPL_fara_2020,PG-MPL_fara_2020_03,PG-MPL_fara_2020_Q1,PG-MPL_Madang_fara_2020,PG-MPL_Madang_fara_2020_03,PG-MPL_Madang_fara_2020_Q1
+VBS20003-5100STDY8400003,PNG,Madang Province,PG-MPL,Madang,farauti,PG-MPL_fara_2020,PG-MPL_fara_2020_04,PG-MPL_fara_2020_Q2,PG-MPL_Madang_fara_2020,PG-MPL_Madang_fara_2020_04,PG-MPL_Madang_fara_2020_Q2
+VBS20004-5100STDY8400004,PNG,Madang Province,PG-MPL,Madang,farauti,PG-MPL_fara_2020,PG-MPL_fara_2020_04,PG-MPL_fara_2020_Q2,PG-MPL_Madang_fara_2020,PG-MPL_Madang_fara_2020_04,PG-MPL_Madang_fara_2020_Q2
+VBS20005-5100STDY8400005,PNG,Madang Province,PG-MPL,Madang,farauti,PG-MPL_fara_2020,PG-MPL_fara_2020_05,PG-MPL_fara_2020_Q2,PG-MPL_Madang_fara_2020,PG-MPL_Madang_fara_2020_05,PG-MPL_Madang_fara_2020_Q2
+VBS20006-5100STDY8400006,PNG,Madang Province,PG-MPL,Madang,farauti,PG-MPL_fara_2020,PG-MPL_fara_2020_06,PG-MPL_fara_2020_Q2,PG-MPL_Madang_fara_2020,PG-MPL_Madang_fara_2020_06,PG-MPL_Madang_fara_2020_Q2
+VBS20007-5100STDY8400007,PNG,Morobe Province,PG-MPM,Lae,farauti,PG-MPM_fara_2020,PG-MPM_fara_2020_03,PG-MPM_fara_2020_Q1,PG-MPM_Lae_fara_2020,PG-MPM_Lae_fara_2020_03,PG-MPM_Lae_fara_2020_Q1
+VBS20008-5100STDY8400008,PNG,Morobe Province,PG-MPM,Lae,farauti,PG-MPM_fara_2020,PG-MPM_fara_2020_04,PG-MPM_fara_2020_Q2,PG-MPM_Lae_fara_2020,PG-MPM_Lae_fara_2020_04,PG-MPM_Lae_fara_2020_Q2
+VBS20009-5100STDY8400009,PNG,Morobe Province,PG-MPM,Lae,farauti,PG-MPM_fara_2020,PG-MPM_fara_2020_05,PG-MPM_fara_2020_Q2,PG-MPM_Lae_fara_2020,PG-MPM_Lae_fara_2020_05,PG-MPM_Lae_fara_2020_Q2
+VBS20010-5100STDY8400010,PNG,Morobe Province,PG-MPM,Lae,farauti,PG-MPM_fara_2020,PG-MPM_fara_2020_06,PG-MPM_fara_2020_Q2,PG-MPM_Lae_fara_2020,PG-MPM_Lae_fara_2020_06,PG-MPM_Lae_fara_2020_Q2
+VBS20011-5100STDY8400011,PNG,Morobe Province,PG-MPM,Lae,farauti,PG-MPM_fara_2020,PG-MPM_fara_2020_07,PG-MPM_fara_2020_Q3,PG-MPM_Lae_fara_2020,PG-MPM_Lae_fara_2020_07,PG-MPM_Lae_fara_2020_Q3
+VBS20012-5100STDY8400012,PNG,Morobe Province,PG-MPM,Lae,farauti,PG-MPM_fara_2020,PG-MPM_fara_2020_08,PG-MPM_fara_2020_Q3,PG-MPM_Lae_fara_2020,PG-MPM_Lae_fara_2020_08,PG-MPM_Lae_fara_2020_Q3
+VBS20013-5100STDY8400013,PNG,East Sepik Province,PG-ESW,Wewak,farauti,PG-ESW_fara_2020,PG-ESW_fara_2020_03,PG-ESW_fara_2020_Q1,PG-ESW_Wewak_fara_2020,PG-ESW_Wewak_fara_2020_03,PG-ESW_Wewak_fara_2020_Q1
+VBS20014-5100STDY8400014,PNG,East Sepik Province,PG-ESW,Wewak,farauti,PG-ESW_fara_2020,PG-ESW_fara_2020_04,PG-ESW_fara_2020_Q2,PG-ESW_Wewak_fara_2020,PG-ESW_Wewak_fara_2020_04,PG-ESW_Wewak_fara_2020_Q2
+VBS20015-5100STDY8400015,PNG,East Sepik Province,PG-ESW,Wewak,farauti,PG-ESW_fara_2020,PG-ESW_fara_2020_05,PG-ESW_fara_2020_Q2,PG-ESW_Wewak_fara_2020,PG-ESW_Wewak_fara_2020_05,PG-ESW_Wewak_fara_2020_Q2
+VBS20016-5100STDY8400016,PNG,East Sepik Province,PG-ESW,Wewak,farauti,PG-ESW_fara_2020,PG-ESW_fara_2020_06,PG-ESW_fara_2020_Q2,PG-ESW_Wewak_fara_2020,PG-ESW_Wewak_fara_2020_06,PG-ESW_Wewak_fara_2020_Q2
+VBS20017-5100STDY8400017,SLB,Guadalcanal Province,SB-GU,Honiara,farauti,SB-GU_fara_2021,SB-GU_fara_2021_01,SB-GU_fara_2021_Q1,SB-GU_Honiara_fara_2021,SB-GU_Honiara_fara_2021_01,SB-GU_Honiara_fara_2021_Q1
+VBS20018-5100STDY8400018,SLB,Guadalcanal Province,SB-GU,Honiara,farauti,SB-GU_fara_2021,SB-GU_fara_2021_02,SB-GU_fara_2021_Q1,SB-GU_Honiara_fara_2021,SB-GU_Honiara_fara_2021_02,SB-GU_Honiara_fara_2021_Q1
+VBS20019-5100STDY8400019,SLB,Guadalcanal Province,SB-GU,Honiara,farauti,SB-GU_fara_2021,SB-GU_fara_2021_03,SB-GU_fara_2021_Q1,SB-GU_Honiara_fara_2021,SB-GU_Honiara_fara_2021_03,SB-GU_Honiara_fara_2021_Q1
+VBS20020-5100STDY8400020,SLB,Guadalcanal Province,SB-GU,Honiara,farauti,SB-GU_fara_2021,SB-GU_fara_2021_04,SB-GU_fara_2021_Q2,SB-GU_Honiara_fara_2021,SB-GU_Honiara_fara_2021_04,SB-GU_Honiara_fara_2021_Q2
+VBS20021-5100STDY8400021,SLB,Guadalcanal Province,SB-GU,Honiara,farauti,SB-GU_fara_2021,SB-GU_fara_2021_05,SB-GU_fara_2021_Q2,SB-GU_Honiara_fara_2021,SB-GU_Honiara_fara_2021_05,SB-GU_Honiara_fara_2021_Q2
+VBS20022-5100STDY8400022,SLB,Guadalcanal Province,SB-GU,Honiara,farauti,SB-GU_fara_2021,SB-GU_fara_2021_06,SB-GU_fara_2021_Q2,SB-GU_Honiara_fara_2021,SB-GU_Honiara_fara_2021_06,SB-GU_Honiara_fara_2021_Q2
+VBS20023-5100STDY8400023,SLB,Malaita Province,SB-ML,Auki,farauti,SB-ML_fara_2021,SB-ML_fara_2021_01,SB-ML_fara_2021_Q1,SB-ML_Auki_fara_2021,SB-ML_Auki_fara_2021_01,SB-ML_Auki_fara_2021_Q1
+VBS20024-5100STDY8400024,SLB,Malaita Province,SB-ML,Auki,farauti,SB-ML_fara_2021,SB-ML_fara_2021_02,SB-ML_fara_2021_Q1,SB-ML_Auki_fara_2021,SB-ML_Auki_fara_2021_02,SB-ML_Auki_fara_2021_Q1
+VBS20025-5100STDY8400025,SLB,Malaita Province,SB-ML,Auki,farauti,SB-ML_fara_2021,SB-ML_fara_2021_03,SB-ML_fara_2021_Q1,SB-ML_Auki_fara_2021,SB-ML_Auki_fara_2021_03,SB-ML_Auki_fara_2021_Q1
+VBS20026-5100STDY8400026,SLB,Malaita Province,SB-ML,Auki,farauti,SB-ML_fara_2021,SB-ML_fara_2021_04,SB-ML_fara_2021_Q2,SB-ML_Auki_fara_2021,SB-ML_Auki_fara_2021_04,SB-ML_Auki_fara_2021_Q2
+VBS20027-5100STDY8400027,SLB,Malaita Province,SB-ML,Auki,farauti,SB-ML_fara_2021,SB-ML_fara_2021_05,SB-ML_fara_2021_Q2,SB-ML_Auki_fara_2021,SB-ML_Auki_fara_2021_05,SB-ML_Auki_fara_2021_Q2
+VBS20028-5100STDY8400028,SLB,Malaita Province,SB-ML,Auki,farauti,SB-ML_fara_2021,SB-ML_fara_2021_06,SB-ML_fara_2021_Q2,SB-ML_Auki_fara_2021,SB-ML_Auki_fara_2021_06,SB-ML_Auki_fara_2021_Q2
+VBS20029-5100STDY8400029,VUT,Shefa Province,VU-SEE,Port Vila,farauti,VU-SEE_fara_2021,VU-SEE_fara_2021_01,VU-SEE_fara_2021_Q1,VU-SEE_Port-Vila_fara_2021,VU-SEE_Port-Vila_fara_2021_01,VU-SEE_Port-Vila_fara_2021_Q1
+VBS20030-5100STDY8400030,VUT,Shefa Province,VU-SEE,Port Vila,farauti,VU-SEE_fara_2021,VU-SEE_fara_2021_02,VU-SEE_fara_2021_Q1,VU-SEE_Port-Vila_fara_2021,VU-SEE_Port-Vila_fara_2021_02,VU-SEE_Port-Vila_fara_2021_Q1

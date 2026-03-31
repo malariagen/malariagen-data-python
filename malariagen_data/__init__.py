@@ -2,6 +2,7 @@
 from .adar1 import Adar1
 from .adir1 import Adir1
 from .af1 import Af1
+from .afar1 import Afar1
 from .ag3 import Ag3
 from .amin1 import Amin1
 from .anopheles import AnophelesDataResource, Region
