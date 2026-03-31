@@ -95,8 +95,6 @@ AIM_METADATA_DTYPE = {
     "aim_species": "object",
 }
 
-XPEHH_GWSS_CACHE_NAME = "ag3_xpehh_gwss_v1"
-IHS_GWSS_CACHE_NAME = "ag3_ihs_gwss_v1"
 ROH_HMM_CACHE_NAME = "ag3_roh_hmm_v1"
 
 
