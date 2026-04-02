@@ -799,7 +799,7 @@ class AnophelesSnpData(
         try:
             loc_ann = self._cache_locate_site_class[cache_key]
 
-        except KeyError as exc:
+        except KeyError:
             # Access site annotations data.
             ds_ann = self._site_annotations_raw(
                 contig=region.contig,
