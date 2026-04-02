@@ -923,7 +923,7 @@ class AnophelesSnpData(
                 ) | ((seq_cls == SEQ_CLS_DOWNSTREAM) & (seq_relpos_start > 10_000))
 
             else:
-                raise NotImplementedError(site_class) from exc
+                raise NotImplementedError(site_class)
 
             # N.B., site annotations data are provided for every position in the genome. We need to
             # therefore subset to SNP positions.
