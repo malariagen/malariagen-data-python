@@ -1,7 +1,5 @@
-import warnings
 from typing import Optional, Dict, Any
 import numpy as np
-import pandas as pd
 import scipy.stats
 
 from numpydoc_decorator import doc  # type: ignore
@@ -9,9 +7,10 @@ from numpydoc_decorator import doc  # type: ignore
 from . import base_params, phenotype_params
 from ..util import _check_types, Region
 
+
 class AnophelesAssociationAnalysis:
     """
-    Provides methods for testing statistical associations between 
+    Provides methods for testing statistical associations between
     specific variants and phenotypic traits.
     Inherited by AnophelesDataResource subclasses (e.g., Ag3).
     """
@@ -72,23 +71,25 @@ class AnophelesAssociationAnalysis:
         # (Alternatively, users can embed these in sample_query)
         valid_indices = np.ones(ds.sizes["samples"], dtype=bool)
         if insecticide is not None:
-            valid_indices &= (ds["insecticide"].values == insecticide)
+            valid_indices &= ds["insecticide"].values == insecticide
         if dose is not None:
-            valid_indices &= (ds["dose"].values == dose)
+            valid_indices &= ds["dose"].values == dose
         if phenotype is not None:
-            valid_indices &= (ds["phenotype"].values.astype(str) == str(phenotype))
+            valid_indices &= ds["phenotype"].values.astype(str) == str(phenotype)
 
         # Check if the variant_position exists in the extracted region
         var_positions = ds["variant_position"].values
-        pos_mask = (var_positions == position)
+        pos_mask = var_positions == position
         if not np.any(pos_mask):
-            raise ValueError(f"Variant position {position} not found in region {region}.")
-        
+            raise ValueError(
+                f"Variant position {position} not found in region {region}."
+            )
+
         # Sub-select data arrays
         phenos = ds["phenotype_binary"].values[valid_indices]
         # shape is (variants, samples, ploidy)
         # Select specifically the row for `position`
-        gt = ds["call_genotype"].values[pos_mask][0] # shape (samples, ploidy)
+        gt = ds["call_genotype"].values[pos_mask][0]  # shape (samples, ploidy)
         gt = gt[valid_indices]
 
         # Ignore missing phenotypes (NaN) and missing calls (-1)
@@ -99,10 +100,10 @@ class AnophelesAssociationAnalysis:
         # Define 2x2 categorical buckets
         # "Has Alt": True if any allele in the genotype call is > 0 (e.g. 0/1 or 1/1)
         has_alt = (gt_valid > 0).any(axis=1)
-        has_ref = ~has_alt # (i.e. entirely 0/0)
+        has_ref = ~has_alt  # (i.e. entirely 0/0)
 
-        pheno_positive = (phenos_valid == 1)
-        pheno_negative = (phenos_valid == 0)
+        pheno_positive = phenos_valid == 1
+        pheno_negative = phenos_valid == 0
 
         # Build Contingency Table:
         #           Alt     Ref
@@ -114,8 +115,8 @@ class AnophelesAssociationAnalysis:
         d = np.sum(pheno_negative & has_ref)
 
         table = [[a, b], [c, d]]
-        res = scipy.stats.fisher_exact(table, alternative='two-sided')
-        
+        res = scipy.stats.fisher_exact(table, alternative="two-sided")
+
         # In newer scipy versions (1.7+): res.statistic is OR, res.pvalue is P-val
         # Support older/newer scipy return tuples safely
         odds_ratio = res[0]
