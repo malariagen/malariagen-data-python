@@ -61,6 +61,7 @@ dash-cytoscape = ">=1.0.0"
 numpydoc_decorator = ">=2.1.0"
 typing_extensions = "*"
 typeguard = ">=4.0.0"
+pydantic = ">=2.0.0"
 protopunica = ">=0.14.8.post2"
 # accelerate plotly - https://plotly.com/python/renderers/#performance
 orjson = "*"
@@ -114,3 +115,18 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = ["bokeh", "bokeh.*"]
 follow_imports = "skip"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+norecursedirs = [".git", ".venv", "venv", "*.egg-info", "build", "dist"]
+addopts = "--tb=short --ignore=tests/integration"
+filterwarnings = [
+    "ignore::DeprecationWarning:numpy",
+    "ignore::DeprecationWarning:dask",
+    "ignore::PendingDeprecationWarning:numcodecs",
+    "ignore::UserWarning:zarr",
+    "ignore::DeprecationWarning:pandas",
+]

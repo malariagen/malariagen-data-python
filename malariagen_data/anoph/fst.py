@@ -257,9 +257,7 @@ class AnophelesFstAnalysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -345,9 +343,7 @@ class AnophelesFstAnalysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -590,6 +586,4 @@ class AnophelesFstAnalysis(
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig

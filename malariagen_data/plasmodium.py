@@ -62,7 +62,9 @@ class PlasmodiumDataResource:
         if self._cache_sample_metadata is None:
             path = os.path.join(self._path, self.CONF["metadata_path"])
             with self._fs.open(path) as f:
-                self._cache_sample_metadata = pd.read_csv(f, sep="\t", na_values="")
+                self._cache_sample_metadata = pd.read_csv(
+                    f, sep="\t", na_values="", low_memory=False
+                )
         return self._cache_sample_metadata
 
     def _open_variant_calls_zarr(self):

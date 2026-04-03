@@ -10,6 +10,7 @@ from ..util import (
     single_contig_param_type,
     single_region_param_type,
     chunks_param_type,
+    Region,
 )
 
 contig: TypeAlias = Annotated[
@@ -47,6 +48,8 @@ regions: TypeAlias = Annotated[
     """,
 ]
 
+regions_tuple: TypeAlias = Tuple[Region, ...]
+
 release: TypeAlias = Annotated[
     Union[str, Sequence[str]],
     "Release version identifier.",
@@ -64,6 +67,8 @@ sample_sets: TypeAlias = Annotated[
     release.
     """,
 ]
+
+sample_sets_tuple: TypeAlias = Tuple[sample_set, ...]
 
 sample_query: TypeAlias = Annotated[
     str,
@@ -93,6 +98,8 @@ sample_indices: TypeAlias = Annotated[
     both.
     """,
 ]
+
+sample_indices_tuple: TypeAlias = Tuple[int, ...]
 
 sample: TypeAlias = Annotated[
     Union[str, int],
@@ -187,6 +194,14 @@ max_cohort_size: TypeAlias = Annotated[
 random_seed: TypeAlias = Annotated[
     int,
     "Random seed used for reproducible down-sampling.",
+]
+
+gene: TypeAlias = Annotated[
+    str,
+    """
+    Gene identifier. Can be either a gene ID or gene name.
+    Gene names are matched case-insensitively.
+    """,
 ]
 
 transcript: TypeAlias = Annotated[

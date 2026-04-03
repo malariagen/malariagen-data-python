@@ -1,5 +1,3 @@
-import random
-
 import numpy as np
 import plotly.graph_objects as go  # type: ignore
 import pytest
@@ -104,7 +102,7 @@ def check_biallelic_diplotype_pairwise_distance(*, api, data_params, metric):
     ds = api.biallelic_snp_calls(**data_params)
     n_samples = ds.sizes["samples"]
     n_snps_available = ds.sizes["variants"]
-    n_snps = random.randint(4, n_snps_available)
+    n_snps = int(np.random.randint(4, n_snps_available + 1))
 
     # Run the distance computation.
     dist, samples, n_snps_used = api.biallelic_diplotype_pairwise_distances(
@@ -146,9 +144,9 @@ def test_biallelic_diplotype_pairwise_distance_with_metric(
 ):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     data_params = dict(
-        region=random.choice(api.contigs),
-        sample_sets=random.sample(all_sample_sets, 2),
-        site_mask=random.choice((None,) + api.site_mask_ids),
+        region=str(np.random.choice(api.contigs)),
+        sample_sets=np.random.choice(all_sample_sets, size=2, replace=False).tolist(),
+        site_mask=np.random.choice(list(api.site_mask_ids) + [None]),
         min_minor_ac=pca_params.min_minor_ac_default,
         max_missing_an=pca_params.max_missing_an_default,
     )
@@ -166,7 +164,7 @@ def check_njt(*, api, data_params, metric, algorithm):
     ds = api.biallelic_snp_calls(**data_params)
     n_samples = ds.sizes["samples"]
     n_snps_available = ds.sizes["variants"]
-    n_snps = random.randint(4, n_snps_available)
+    n_snps = int(np.random.randint(4, n_snps_available + 1))
 
     # Run the distance computation.
     Z, samples, n_snps_used = api.njt(
@@ -195,14 +193,14 @@ def check_njt(*, api, data_params, metric, algorithm):
 def test_njt_with_metric(fixture, api: AnophelesDistanceAnalysis):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     data_params = dict(
-        region=random.choice(api.contigs),
-        sample_sets=random.sample(all_sample_sets, 2),
-        site_mask=random.choice((None,) + api.site_mask_ids),
+        region=str(np.random.choice(api.contigs)),
+        sample_sets=np.random.choice(all_sample_sets, size=2, replace=False).tolist(),
+        site_mask=np.random.choice(list(api.site_mask_ids) + [None]),
         min_minor_ac=pca_params.min_minor_ac_default,
         max_missing_an=pca_params.max_missing_an_default,
     )
     parametrize_metric = "cityblock", "euclidean", "sqeuclidean"
-    algorithm = random.choice(["dynamic", "rapid", "canonical"])
+    algorithm = str(np.random.choice(["dynamic", "rapid", "canonical"]))
     for metric in parametrize_metric:
         check_njt(
             api=api,
@@ -216,13 +214,13 @@ def test_njt_with_metric(fixture, api: AnophelesDistanceAnalysis):
 def test_njt_with_algorithm(fixture, api: AnophelesDistanceAnalysis):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     data_params = dict(
-        region=random.choice(api.contigs),
-        sample_sets=random.sample(all_sample_sets, 2),
-        site_mask=random.choice((None,) + api.site_mask_ids),
+        region=str(np.random.choice(api.contigs)),
+        sample_sets=np.random.choice(all_sample_sets, size=2, replace=False).tolist(),
+        site_mask=np.random.choice(list(api.site_mask_ids) + [None]),
         min_minor_ac=pca_params.min_minor_ac_default,
         max_missing_an=pca_params.max_missing_an_default,
     )
-    metric = random.choice(["cityblock", "euclidean", "sqeuclidean"])
+    metric = str(np.random.choice(["cityblock", "euclidean", "sqeuclidean"]))
     parametrize_algorithm = "dynamic", "rapid", "canonical"
     for algorithm in parametrize_algorithm:
         check_njt(
@@ -237,14 +235,14 @@ def test_njt_with_algorithm(fixture, api: AnophelesDistanceAnalysis):
 def test_plot_njt(fixture, api: AnophelesDistanceAnalysis):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     data_params = dict(
-        region=random.choice(api.contigs),
-        sample_sets=random.sample(all_sample_sets, 2),
-        site_mask=random.choice((None,) + api.site_mask_ids),
+        region=str(np.random.choice(api.contigs)),
+        sample_sets=np.random.choice(all_sample_sets, size=2, replace=False).tolist(),
+        site_mask=np.random.choice(list(api.site_mask_ids) + [None]),
         min_minor_ac=pca_params.min_minor_ac_default,
         max_missing_an=pca_params.max_missing_an_default,
     )
-    metric = random.choice(["cityblock", "euclidean", "sqeuclidean"])
-    algorithm = random.choice(["dynamic", "rapid", "canonical"])
+    metric = str(np.random.choice(["cityblock", "euclidean", "sqeuclidean"]))
+    algorithm = str(np.random.choice(["dynamic", "rapid", "canonical"]))
     custom_cohorts = {
         "male": "sex_call == 'M'",
         "female": "sex_call == 'F'",
@@ -255,7 +253,7 @@ def test_plot_njt(fixture, api: AnophelesDistanceAnalysis):
     # Check available data.
     ds = api.biallelic_snp_calls(**data_params)
     n_snps_available = ds.sizes["variants"]
-    n_snps = random.randint(4, n_snps_available)
+    n_snps = int(np.random.randint(4, n_snps_available + 1))
 
     # Exercise the function.
     for color, symbol in zip(colors, symbols):
@@ -279,10 +277,12 @@ def test_njt_not_enough_snps(fixture, api: AnophelesDistanceAnalysis):
         match="Unable to construct neighbour-joining tree|Not enough SNPs",
     ):
         api.njt(
-            region=random.choice(api.contigs),
+            region=str(np.random.choice(api.contigs)),
             n_snps=1_000_000_000,  # impossibly high to guarantee failure
-            sample_sets=random.sample(all_sample_sets, 1),
-            site_mask=random.choice((None,) + api.site_mask_ids),
+            sample_sets=np.random.choice(
+                all_sample_sets, size=1, replace=False
+            ).tolist(),
+            site_mask=np.random.choice(list(api.site_mask_ids) + [None]),
             min_minor_ac=pca_params.min_minor_ac_default,
             max_missing_an=pca_params.max_missing_an_default,
         )
