@@ -5,10 +5,11 @@ import scipy.stats
 from numpydoc_decorator import doc  # type: ignore
 
 from . import base_params, phenotype_params
+from .phenotypes import AnophelesPhenotypeData
 from ..util import _check_types, Region
 
 
-class AnophelesAssociationAnalysis:
+class AnophelesAssociationAnalysis(AnophelesPhenotypeData):
     """
     Provides methods for testing statistical associations between
     specific variants and phenotypic traits.
