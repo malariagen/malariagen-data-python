@@ -7,7 +7,7 @@ import scipy.stats
 from numpydoc_decorator import doc  # type: ignore
 
 from . import base_params, phenotype_params
-from ..util import _check_types
+from ..util import _check_types, Region
 
 class AnophelesAssociationAnalysis:
     """
@@ -49,10 +49,14 @@ class AnophelesAssociationAnalysis:
         Fisher's Exact Test to determine the statistical association between possessing
         an alternate allele and the phenotype.
         """
-        # Fetch the merged multidimensional xarray for the whole region
-        # We process 'phenotype' constraints via sample_query internally or fetch raw
+        # Parse the region to ensure we only pull the exact variant coordinate
+        # Fetching an entire chromosome of SNPs (e.g., '2L') would be extremely slow!
+        r = Region(region)
+        target_region = f"{r.contig}:{position}-{position}"
+
+        # Fetch the merged multidimensional xarray for the target coordinate
         ds = self.phenotypes_with_snps(
-            region=region,
+            region=target_region,
             sample_sets=sample_sets,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
