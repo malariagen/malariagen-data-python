@@ -1,6 +1,6 @@
 {
-    "default_url": "gs://pf8-release/" ,
-    "metadata_path": "metadata/Pf8_samples.txt",
+    "default_url": "gs://pf9-release/" ,
+    "metadata_path": "metadata/Pf9_samples.txt",
     "reference_path": "reference/PlasmoDB-54-Pfalciparum3D7-Genome.zarr/",
     "reference_contigs": [
       "Pf3D7_01_v3",

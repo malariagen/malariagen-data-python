@@ -7,6 +7,7 @@ from .amin1 import Amin1
 from .anopheles import AnophelesDataResource, Region
 from .pf7 import Pf7
 from .pf8 import Pf8
+from .pf9 import Pf9
 from .pv4 import Pv4
 from .util import SiteClass
 

@@ -4,60 +4,75 @@ import pandas as pd
 import pytest
 import xarray
 
-from malariagen_data.pf8 import Pf8
+from malariagen_data.pf9 import Pf9
 
 
-def setup_pf8(url="simplecache::gs://pf8-release/", **storage_kwargs):
+def setup_pf9(url="simplecache::gs://pf9-release/", **storage_kwargs):
     if url.startswith("simplecache::"):
         storage_kwargs["simplecache"] = dict(cache_storage="gcs_cache")
-    return Pf8(url, **storage_kwargs)
+    return Pf9(url, **storage_kwargs)
 
 
 @pytest.mark.parametrize(
     "url",
     [
-        "gs://pf8-release/",
-        "gcs://pf8-release/",
-        "gs://pf8-release",
-        "gcs://pf8-release",
-        "simplecache::gs://pf8-release/",
-        "simplecache::gcs://pf8-release/",
+        "gs://pf9-release/",
+        "gcs://pf9-release/",
+        "gs://pf9-release",
+        "gcs://pf9-release",
+        "simplecache::gs://pf9-release/",
+        "simplecache::gcs://pf9-release/",
     ],
 )
 def test_sample_metadata(url):
-    pf8 = setup_pf8(url)
-    df_samples = pf8.sample_metadata()
+    pf9 = setup_pf9(url)
+    df_samples = pf9.sample_metadata()
 
     expected_cols = (
         "Sample",
         "Study",
         "Country",
         "Admin level 1",
+        "Admin level 2",
+        "Curated location",
         "Country latitude",
         "Country longitude",
         "Admin level 1 latitude",
         "Admin level 1 longitude",
+        "Admin level 2 latitude",
+        "Admin level 2 longitude",
+        "Location latitude",
+        "Location longitude",
         "Year",
-        "ENA",
+        "Month",
+        "Day",
+        "Source ENA accession",
+        "Alternative ID",
         "All samples same case",
         "Population",
         "% callable",
         "QC pass",
         "Exclusion reason",
         "Sample type",
-        "Sample was in Pf7",
+        "Sample was in Pf8",
+        "MalariaGEN ENA project accession",
+        "MalariaGEN ENA experiment accession",
+        "MalariaGEN ENA sample accession",
+        "MalariaGEN ENA run accession",
+        "MalariaGEN ENA CRAM URL",
+        "MalariaGEN ENA FASTQ URL",
     )
 
     assert tuple(df_samples.columns) == expected_cols
-    expected_len = 33325
+    expected_len = 53973
     assert len(df_samples) == expected_len
 
 
 @pytest.mark.parametrize("extended", [True, False])
 def test_variant_calls(extended):
-    pf8 = setup_pf8()
+    pf9 = setup_pf9()
 
-    ds = pf8.variant_calls(extended=extended)
+    ds = pf9.variant_calls(extended=extended)
     assert isinstance(ds, xarray.Dataset)
 
     # check fields
@@ -151,7 +166,6 @@ def test_variant_calls(extended):
             "variant_RegionType",
             "variant_SOR",
             "variant_VQSLOD",
-            #   "variant_altlen",  # altlen is incomplete in Pf8 zarr.
             "variant_culprit",
             "variant_set",
         }
@@ -195,7 +209,6 @@ def test_variant_calls(extended):
             "variant_AS_SOR",
             "variant_MLEAC",
             "variant_MLEAF",
-            #   "variant_altlen",
         ]
     else:
         expected_data_vars = {
@@ -222,7 +235,7 @@ def test_variant_calls(extended):
     assert set(ds.dims) == dimensions
 
     # check dim lengths
-    df_samples = pf8.sample_metadata()
+    df_samples = pf9.sample_metadata()
     n_samples = len(df_samples)
     n_variants = ds.sizes["variants"]
     assert ds.sizes["samples"] == n_samples
@@ -298,9 +311,9 @@ def test_variant_calls(extended):
     ],
 )
 def test_genome_sequence(region):
-    pf8 = setup_pf8()
+    pf9 = setup_pf9()
 
-    seq = pf8.genome_sequence(region=region)
+    seq = pf9.genome_sequence(region=region)
     assert isinstance(seq, da.Array)
     assert seq.dtype == "|S1"
 
@@ -314,7 +327,7 @@ def test_genome_sequence(region):
     ],
 )
 def test_genome_features(attributes):
-    pf8 = setup_pf8()
+    pf9 = setup_pf9()
 
     default_columns = [
         "contig",
@@ -327,7 +340,7 @@ def test_genome_features(attributes):
         "phase",
     ]
     # check fields
-    df = pf8.genome_features(attributes=attributes)
+    df = pf9.genome_features(attributes=attributes)
     assert isinstance(df, pd.DataFrame)
     if attributes == "*":
         additional_columns = [
