@@ -121,10 +121,6 @@ def _build_cohorts_from_sample_grouping(*, group_samples_by_cohort, min_cohort_s
     cohort_period_end = df_cohorts["period"].apply(lambda v: v.end_time)
     df_cohorts["period_start"] = cohort_period_start
     df_cohorts["period_end"] = cohort_period_end
-    # Create a label using the normalized "taxon" column.
-    df_cohorts["label"] = df_cohorts.apply(
-        lambda v: f"{v.area}_{v.taxon[:4]}_{v.period}", axis="columns"
-    )
     # Vectorized extraction of period start/end times.
     period = df_cohorts["period"]
     if pd.api.types.is_period_dtype(period.dtype):
@@ -139,25 +135,12 @@ def _build_cohorts_from_sample_grouping(*, group_samples_by_cohort, min_cohort_s
             lambda v: v.end_time if pd.notna(v) else pd.NaT
         )
 
-    # Create a label that is similar to the cohort metadata,
-    # although this won't be perfect.
-    # Vectorized string operations
-    if taxon_by == frq_params.taxon_by_default:
-        # Default case: area_taxon_short_period
-        area_str = df_cohorts["area"].astype(str)
-        taxon_short = df_cohorts[taxon_by].astype(str).str.slice(0, 4)
-        period_str = df_cohorts["period"].astype(str)
-        df_cohorts["label"] = area_str + "_" + taxon_short + "_" + period_str
-    else:
-        # Non-default case: replace non-alphanumeric characters with underscores
-        area_str = df_cohorts["area"].astype(str)
-        taxon_clean = (
-            df_cohorts[taxon_by]
-            .astype(str)
-            .str.replace(r"[^A-Za-z0-9]+", "_", regex=True)
-        )
-        period_str = df_cohorts["period"].astype(str)
-        df_cohorts["label"] = area_str + "_" + taxon_clean + "_" + period_str
+    # Create a label using the normalized "taxon" column.
+    # Vectorized string operations for better performance
+    area_str = df_cohorts["area"].astype(str)
+    taxon_short = df_cohorts["taxon"].astype(str).str.slice(0, 4)
+    period_str = df_cohorts["period"].astype(str)
+    df_cohorts["label"] = area_str + "_" + taxon_short + "_" + period_str
 
     # Apply minimum cohort size.
     df_cohorts = df_cohorts.query(f"size >= {min_cohort_size}").reset_index(drop=True)
