@@ -1,4 +1,4 @@
-import random
+import numpy as np
 import pytest
 from pytest_cases import parametrize_with_cases
 
@@ -103,13 +103,13 @@ def test_plink_converter(fixture, api: PlinkConverter, tmp_path):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
 
     data_params = dict(
-        region=random.choice(api.contigs),
-        sample_sets=random.sample(all_sample_sets, 2),
-        site_mask=random.choice((None,) + api.site_mask_ids),
+        region=str(np.random.choice(api.contigs)),
+        sample_sets=np.random.choice(all_sample_sets, size=2, replace=False).tolist(),
+        site_mask=np.random.choice(list(api.site_mask_ids) + [None]),
         min_minor_ac=1,
         max_missing_an=1,
         thin_offset=1,
-        random_seed=random.randint(1, 2000),
+        random_seed=int(np.random.randint(1, 2001)),
     )
 
     # Load a ds containing the randomly generated samples and regions to get the number of available snps to subset from.
@@ -118,7 +118,7 @@ def test_plink_converter(fixture, api: PlinkConverter, tmp_path):
     )
 
     n_snps_available = ds.sizes["variants"]
-    n_snps = random.randint(1, n_snps_available)
+    n_snps = int(np.random.randint(1, n_snps_available + 1))
 
     # Define plink params.
     plink_params = dict(output_dir=str(tmp_path), n_snps=n_snps, **data_params)

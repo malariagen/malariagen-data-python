@@ -1,4 +1,3 @@
-from abc import abstractmethod
 from typing import Any, Dict, Mapping, Optional, Tuple, Sequence
 
 import allel  # type: ignore
@@ -36,6 +35,8 @@ from .anoph.distance import AnophelesDistanceAnalysis
 from .anoph.sample_metadata import AnophelesSampleMetadata
 from .anoph.snp_data import AnophelesSnpData
 from .anoph.to_plink import PlinkConverter
+from .anoph.ld import AnophelesLdAnalysis
+from .anoph.to_vcf import SnpVcfExporter
 from .anoph.g123 import AnophelesG123Analysis
 from .anoph.fst import AnophelesFstAnalysis
 from .anoph.h12 import AnophelesH12Analysis
@@ -88,6 +89,8 @@ class AnophelesDataResource(
     AnophelesDistanceAnalysis,
     AnophelesPca,
     PlinkConverter,
+    AnophelesLdAnalysis,
+    SnpVcfExporter,
     AnophelesIgv,
     AnophelesKaryotypeAnalysis,
     AnophelesAimData,
@@ -180,15 +183,47 @@ class AnophelesDataResource(
             surveillance_use_only=surveillance_use_only,
         )
 
-    @property
-    @abstractmethod
-    def _xpehh_gwss_cache_name(self):
-        raise NotImplementedError("Must override _xpehh_gwss_cache_name")
+    def _get_xpehh_gwss_cache_name(self):
+        """Safely resolve the xpehh gwss cache name.
 
-    @property
-    @abstractmethod
-    def _ihs_gwss_cache_name(self):
-        raise NotImplementedError("Must override _ihs_gwss_cache_name")
+        Supports class attribute, property, or legacy method override.
+        Falls back to the default "xpehh_gwss_v1" if resolution fails.
+
+        See also: https://github.com/malariagen/malariagen-data-python/issues/1151
+        """
+        try:
+            name = self._xpehh_gwss_cache_name
+            # Handle legacy case where _xpehh_gwss_cache_name might be a
+            # callable method rather than a property or class attribute.
+            if callable(name):
+                name = name()
+            if isinstance(name, str) and len(name) > 0:
+                return name
+        except NotImplementedError:
+            pass
+        # Fallback to default.
+        return "xpehh_gwss_v1"
+
+    def _get_ihs_gwss_cache_name(self):
+        """Safely resolve the ihs gwss cache name.
+
+        Supports class attribute, property, or legacy method override.
+        Falls back to the default "ihs_gwss_v1" if resolution fails.
+
+        See also: https://github.com/malariagen/malariagen-data-python/issues/1151
+        """
+        try:
+            name = self._ihs_gwss_cache_name
+            # Handle legacy case where _ihs_gwss_cache_name might be a
+            # callable method rather than a property or class attribute.
+            if callable(name):
+                name = name()
+            if isinstance(name, str) and len(name) > 0:
+                return name
+        except NotImplementedError:
+            pass
+        # Fallback to default.
+        return "ihs_gwss_v1"
 
     @staticmethod
     def _make_gene_cnv_label(gene_id, gene_name, cnv_type):
@@ -252,7 +287,11 @@ class AnophelesDataResource(
             block_stop = block_start + block_length
             loc_j = np.ones(n_sites, dtype=bool)
             loc_j[block_start:block_stop] = False
-            assert np.count_nonzero(loc_j) == n_sites_j
+            if np.count_nonzero(loc_j) != n_sites_j:
+                raise RuntimeError(
+                    f"Internal error in jackknife resampling: expected {n_sites_j} "
+                    f"sites after block deletion, got {np.count_nonzero(loc_j)}"
+                )
 
             # resample data and compute statistics
 
@@ -683,9 +722,7 @@ class AnophelesDataResource(
             fig2.show(renderer=renderer)
             fig3.show(renderer=renderer)
             fig4.show(renderer=renderer)
-            return None
-        else:
-            return (fig1, fig2, fig3, fig4)
+        return (fig1, fig2, fig3, fig4)
 
     @_check_types
     @doc(
@@ -727,7 +764,7 @@ class AnophelesDataResource(
     ) -> Tuple[np.ndarray, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
-        name = "roh"
+        name = self._get_ihs_gwss_cache_name()
 
         params = dict(
             contig=contig,
@@ -1006,9 +1043,7 @@ class AnophelesDataResource(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -1109,9 +1144,7 @@ class AnophelesDataResource(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @doc(
         summary="Run and plot iHS GWSS data.",
@@ -1216,9 +1249,7 @@ class AnophelesDataResource(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -1257,7 +1288,7 @@ class AnophelesDataResource(
     ) -> Tuple[np.ndarray, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
-        name = self._xpehh_gwss_cache_name
+        name = self._get_xpehh_gwss_cache_name()
 
         params = dict(
             contig=contig,
@@ -1538,9 +1569,7 @@ class AnophelesDataResource(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -1857,6 +1886,8 @@ class AnophelesDataResource(
             boxSelectionEnabled=True,
             # prevent accidentally zooming out to oblivion
             minZoom=0.1,
+            # lower scroll wheel zoom sensitivity to prevent accidental zooming when trying to navigate large graphs
+            wheelSensitivity=0.1,
         )
 
         debug("create dash app")

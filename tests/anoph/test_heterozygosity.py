@@ -1,6 +1,5 @@
-import random
-
 import bokeh.models
+import numpy as np
 import pandas as pd
 import pytest
 from pytest_cases import parametrize_with_cases
@@ -113,13 +112,13 @@ def case_amin1_sim(amin1_sim_fixture, amin1_sim_api):
 def test_plot_heterozygosity_track(fixture, api: AnophelesHetAnalysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_set = random.choice(all_sample_sets)
+    sample_set = str(np.random.choice(all_sample_sets))
     df_samples = api.sample_metadata(sample_sets=sample_set)
-    sample = random.choice(df_samples["sample_id"].to_list())
+    sample = str(np.random.choice(df_samples["sample_id"].to_list()))
 
     het_params = dict(
         sample=sample,
-        region=random.choice(api.contigs),
+        region=str(np.random.choice(api.contigs)),
         sample_set=sample_set,
         window_size=20_000,
     )
@@ -135,13 +134,13 @@ def test_plot_heterozygosity_track(fixture, api: AnophelesHetAnalysis):
 def test_plot_heterozygosity(fixture, api: AnophelesHetAnalysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_set = random.choice(all_sample_sets)
+    sample_set = str(np.random.choice(all_sample_sets))
     df_samples = api.sample_metadata(sample_sets=sample_set)
-    sample = random.choice(df_samples["sample_id"].to_list())
+    sample = str(np.random.choice(df_samples["sample_id"].to_list()))
 
     het_params = dict(
         sample=sample,
-        region=random.choice(api.contigs),
+        region=str(np.random.choice(api.contigs)),
         sample_set=sample_set,
         window_size=20_000,
     )
@@ -157,13 +156,13 @@ def test_plot_heterozygosity(fixture, api: AnophelesHetAnalysis):
 def test_roh_hmm(fixture, api: AnophelesHetAnalysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_set = random.choice(all_sample_sets)
+    sample_set = str(np.random.choice(all_sample_sets))
     df_samples = api.sample_metadata(sample_sets=sample_set)
-    sample = random.choice(df_samples["sample_id"].to_list())
+    sample = str(np.random.choice(df_samples["sample_id"].to_list()))
 
     roh_params = dict(
         sample=sample,
-        region=random.choice(api.contigs),
+        region=str(np.random.choice(api.contigs)),
         sample_set=sample_set,
         window_size=20_000,
     )
@@ -186,16 +185,29 @@ def test_roh_hmm(fixture, api: AnophelesHetAnalysis):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
+def test_roh_hmm_cache_name_resolution(fixture, api: AnophelesHetAnalysis):
+    """Regression test for GH#1151: _roh_hmm_cache_name must resolve to a string.
+
+    Verifies that the cache name resolver handles class attributes, properties,
+    and legacy method overrides without raising NotImplementedError.
+    """
+    # The resolver should always return a non-empty string.
+    name = api._get_roh_hmm_cache_name()
+    assert isinstance(name, str), f"Expected str, got {type(name)}"
+    assert len(name) > 0, "Cache name must be non-empty"
+
+
+@parametrize_with_cases("fixture,api", cases=".")
 def test_plot_roh(fixture, api: AnophelesHetAnalysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_set = random.choice(all_sample_sets)
+    sample_set = str(np.random.choice(all_sample_sets))
     df_samples = api.sample_metadata(sample_sets=sample_set)
-    sample = random.choice(df_samples["sample_id"].to_list())
+    sample = str(np.random.choice(df_samples["sample_id"].to_list()))
 
     roh_params = dict(
         sample=sample,
-        region=random.choice(api.contigs),
+        region=str(np.random.choice(api.contigs)),
         sample_set=sample_set,
         window_size=20_000,
     )
@@ -205,3 +217,130 @@ def test_plot_roh(fixture, api: AnophelesHetAnalysis):
 
     # Check results.
     assert isinstance(fig, bokeh.models.GridPlot)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_sample_count_het(fixture, api: AnophelesHetAnalysis):
+    # Set up test parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_set = str(np.random.choice(all_sample_sets))
+    df_samples = api.sample_metadata(sample_sets=sample_set)
+    sample = str(np.random.choice(df_samples["sample_id"].to_list()))
+
+    het_params = dict(
+        sample=sample,
+        region=str(np.random.choice(api.contigs)),
+        sample_set=sample_set,
+        window_size=20_000,
+    )
+
+    # Run function under test.
+    df = api.sample_count_het(**het_params)
+
+    # Check results.
+    assert isinstance(df, pd.DataFrame)
+    expected_columns = ["sample_id", "window_start", "window_stop", "heterozygosity"]
+    for col in expected_columns:
+        assert col in df.columns
+    assert len(df) > 0
+    assert (df["heterozygosity"] >= 0).all()
+    assert (df["heterozygosity"] <= 1).all()
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_cohort_heterozygosity(fixture, api: AnophelesHetAnalysis):
+    # Set up test parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_set = str(np.random.choice(all_sample_sets))
+
+    cohort_params = dict(
+        region=str(np.random.choice(api.contigs)),
+        cohorts="taxon",
+        sample_sets=sample_set,
+        window_size=20_000,
+    )
+
+    # Run function under test.
+    df = api.cohort_heterozygosity(**cohort_params)
+
+    # Check results.
+    assert isinstance(df, pd.DataFrame)
+    expected_columns = ["cohort", "n_samples", "mean_heterozygosity"]
+    for col in expected_columns:
+        assert col in df.columns
+    assert len(df) > 0
+    assert (df["n_samples"] > 0).all()
+    assert (df["mean_heterozygosity"] >= 0).all()
+    assert (df["mean_heterozygosity"] <= 1).all()
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_cohort_count_het_regression(fixture, api: AnophelesHetAnalysis):
+    """Regression test: cohort method produces identical results to sequential method.
+
+    This test verifies that the cohort_count_het() method produces
+    numerically identical heterozygosity values as the sequential per-sample approach.
+    """
+    from malariagen_data.util import _parse_single_region
+    from malariagen_data.anoph import base_params
+
+    # Set up test parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_set = str(np.random.choice(all_sample_sets))
+    region = str(np.random.choice(api.contigs))
+    window_size = 20_000
+
+    # Get sample metadata for a small cohort
+    df_samples = api.sample_metadata(sample_sets=sample_set)
+    # Use a small, non-trivial subset of samples (fixed random_state for reproducibility)
+    df_cohort_samples = df_samples.sample(
+        n=min(3, len(df_samples)), random_state=0
+    ).reset_index(drop=True)
+
+    # Parse region once
+    region_prepped = _parse_single_region(api, region)
+
+    # Method 1: use vectorized method
+    cohort_results = api.cohort_count_het(
+        region=region_prepped,
+        df_cohort_samples=df_cohort_samples,
+        sample_sets=sample_set,
+        window_size=window_size,
+        site_mask=api._default_site_mask,
+        chunks=base_params.native_chunks,
+        inline_array=True,
+    )
+
+    # Method 2: compute using the traditional sequential method for comparison
+    sequential_results = {}
+
+    for sample_id in df_cohort_samples["sample_id"]:
+        df_het = api.sample_count_het(
+            sample=sample_id,
+            region=region_prepped,
+            window_size=window_size,
+            site_mask=api._default_site_mask,
+            sample_set=sample_set,
+        )
+        sequential_results[sample_id] = df_het["heterozygosity"].values
+
+    # Verify both methods produce identical results
+    for sample_id in df_cohort_samples["sample_id"]:
+        windows, counts = cohort_results[sample_id]
+
+        # Convert cohort counts to heterozygosity
+        cohort_het = counts / window_size
+
+        # Get sequential heterozygosity
+        sequential_het = sequential_results[sample_id]
+
+        # Check shapes match
+        assert (
+            len(cohort_het) == len(sequential_het)
+        ), f"Shape mismatch for sample {sample_id}: cohort={len(cohort_het)}, sequential={len(sequential_het)}"
+
+        # Check values are numerically identical (within floating point precision)
+        assert np.allclose(cohort_het, sequential_het, rtol=1e-10), (
+            f"Values differ for sample {sample_id}. "
+            f"Max difference: {np.max(np.abs(cohort_het - sequential_het))}"
+        )

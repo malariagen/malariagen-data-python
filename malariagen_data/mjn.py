@@ -77,7 +77,8 @@ def _minimum_spanning_network(dist, max_dist=None):
 def _pairwise_haplotype_distance(h, metric="hamming"):
     import scipy.spatial
 
-    assert metric in ["hamming", "jaccard"]
+    if metric not in ("hamming", "jaccard"):
+        raise ValueError(f"metric must be 'hamming' or 'jaccard', got {metric!r}")
     dist = scipy.spatial.distance.pdist(h.T, metric=metric)
     dist *= h.shape[0]
     dist = scipy.spatial.distance.squareform(dist)

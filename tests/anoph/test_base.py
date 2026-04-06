@@ -288,6 +288,21 @@ def test_logging_helper_no_duplicate_output():
     ), f"Duplicate log output: 'sentinel' appeared {output.count('sentinel')} times"
 
 
+def test_logging_helper_set_level_updates_logger():
+    # Regression test: set_level() must update the logger level, not just the
+    # handler level. Without fixing the logger, the logger itself would filter
+    # out DEBUG messages before they ever reached the handler.
+    logger_name = "test_logging_helper_set_level_updates_logger"
+    out = io.StringIO()
+    helper = LoggingHelper(name=logger_name, out=out, debug=False)
+    helper.set_level(logging.DEBUG)
+    helper.debug("should appear")
+    output = out.getvalue()
+    assert (
+        "should appear" in output
+    ), "set_level(DEBUG) had no effect: debug message was silently dropped"
+
+
 def _strip_terms_of_use_from_manifest(manifest_path):
     """Rewrite a manifest TSV file without terms-of-use columns."""
     df = pd.read_csv(manifest_path, sep="\t")
@@ -396,3 +411,28 @@ def test_sample_sets_no_terms_of_use(ag3_sim_fixture):
     finally:
         for mp, bp in zip(manifest_paths, backups):
             shutil.move(bp, mp)
+
+
+class TestSurveillanceFlagsBaseFallback:
+    """Tests for issue #1206: base _surveillance_flags graceful fallback."""
+
+    def test_surveillance_flags_base_returns_empty_and_warns(self, ag3_sim_api):
+        """Base implementation returns empty DataFrame with correct schema and warns."""
+        with pytest.warns(UserWarning, match="Surveillance flags not implemented"):
+            df = ag3_sim_api._surveillance_flags(sample_sets=["AG1000G-AO"])
+
+        assert isinstance(df, pd.DataFrame)
+        assert list(df.columns) == ["sample_id", "is_surveillance"]
+        assert df["sample_id"].dtype == object
+        assert pd.api.types.is_bool_dtype(df["is_surveillance"])
+        assert len(df) == 0
+
+    def test_sample_set_has_surveillance_data_returns_false_when_fallback(
+        self, ag3_sim_api
+    ):
+        """_sample_set_has_surveillance_data returns False when base fallback is used."""
+        with pytest.warns(UserWarning, match="Surveillance flags not implemented"):
+            result = ag3_sim_api._sample_set_has_surveillance_data(
+                sample_set="AG1000G-AO"
+            )
+        assert not result

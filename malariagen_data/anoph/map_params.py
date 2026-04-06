@@ -42,7 +42,7 @@ def get_basemap_abbrevs() -> dict:
         for key, provider_fn in _basemap_abbrev_candidates.items():
             try:
                 _basemap_abbrevs[key] = provider_fn()
-            except Exception:
+            except (ImportError, AttributeError):
                 warnings.warn(
                     f"Basemap provider {key!r} is not available and will be skipped.",
                     stacklevel=2,

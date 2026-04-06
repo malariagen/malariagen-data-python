@@ -246,23 +246,37 @@ class AnophelesPca(
             if max_missing_an is not None and max_missing_an > 0:
                 gn_fit = gn_fit.astype(float)
                 gn = gn.astype(float)
+
                 for arr in [gn_fit, gn]:
                     missing_mask = arr == -127
 
                     if imputation_method == "most_common":
-                        # For each site, find the most common non-missing value.
-                        site_modes = []
-                        for row in arr:
-                            non_missing = row[row != -127]
-                            if len(non_missing) == 0:
-                                site_modes.append(0)
-                            else:
-                                values, counts = np.unique(
-                                    non_missing, return_counts=True
-                                )
-                                site_modes.append(values[np.argmax(counts)])
-                        site_modes = np.array(site_modes)
-                        fill_values = np.take(site_modes, np.where(missing_mask)[0])
+                        # Vectorized computation of mode per site (row)
+                        valid = ~missing_mask
+
+                        # Count occurrences of 0, 1, 2 per row
+                        # gn is produced by to_n_ref() so values are guaranteed to be
+                        # 0, 1, or 2 (ref allele count for biallelic sites), with -127
+                        # for missing calls.
+                        counts = np.stack(
+                            [
+                                np.sum((arr == 0) & valid, axis=1),
+                                np.sum((arr == 1) & valid, axis=1),
+                                np.sum((arr == 2) & valid, axis=1),
+                            ],
+                            axis=1,
+                        )
+
+                        # Determine mode per row
+                        site_modes = np.argmax(counts, axis=1)
+
+                        # Handle rows where all values are missing
+                        all_missing = ~valid.any(axis=1)
+                        site_modes[all_missing] = 0
+
+                        # Fill missing values
+                        fill_values = site_modes[np.where(missing_mask)[0]]
+
                     elif imputation_method == "mean":
                         site_means = np.where(
                             np.all(missing_mask, axis=1, keepdims=True),
@@ -359,9 +373,7 @@ class AnophelesPca(
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -401,9 +413,9 @@ class AnophelesPca(
 
         # Apply jitter if desired - helps spread out points when tightly clustered.
         if jitter_frac:
-            np.random.seed(random_seed)
-            data[x] = _jitter(data[x], jitter_frac)
-            data[y] = _jitter(data[y], jitter_frac)
+            rng = np.random.default_rng(seed=random_seed)
+            data[x] = _jitter(data[x], jitter_frac, random_state=rng)
+            data[y] = _jitter(data[y], jitter_frac, random_state=rng)
 
         # Convenience variables.
         # Prevent lint error (mypy): Unsupported operand types for + ("Series[Any]" and "str")
@@ -467,9 +479,7 @@ class AnophelesPca(
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -507,10 +517,10 @@ class AnophelesPca(
 
         # Apply jitter if desired - helps spread out points when tightly clustered.
         if jitter_frac:
-            np.random.seed(random_seed)
-            data[x] = _jitter(data[x], jitter_frac)
-            data[y] = _jitter(data[y], jitter_frac)
-            data[z] = _jitter(data[z], jitter_frac)
+            rng = np.random.default_rng(seed=random_seed)
+            data[x] = _jitter(data[x], jitter_frac, random_state=rng)
+            data[y] = _jitter(data[y], jitter_frac, random_state=rng)
+            data[z] = _jitter(data[z], jitter_frac, random_state=rng)
 
         # Convenience variables.
         # Prevent lint error (mypy): Unsupported operand types for + ("Series[Any]" and "str")
@@ -572,6 +582,4 @@ class AnophelesPca(
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig
