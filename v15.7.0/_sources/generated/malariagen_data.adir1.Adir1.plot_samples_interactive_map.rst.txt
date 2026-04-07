@@ -1,0 +1,6 @@
+﻿malariagen\_data.adir1.Adir1.plot\_samples\_interactive\_map
+============================================================
+
+.. currentmodule:: malariagen_data.adir1
+
+.. automethod:: Adir1.plot_samples_interactive_map

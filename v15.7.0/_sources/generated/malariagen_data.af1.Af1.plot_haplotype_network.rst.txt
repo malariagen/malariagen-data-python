@@ -1,0 +1,6 @@
+﻿malariagen\_data.af1.Af1.plot\_haplotype\_network
+=================================================
+
+.. currentmodule:: malariagen_data.af1
+
+.. automethod:: Af1.plot_haplotype_network
