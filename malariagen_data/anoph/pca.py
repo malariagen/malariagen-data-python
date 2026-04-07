@@ -44,6 +44,14 @@ class AnophelesPca(
             `random_seed`.
 
         """,
+        parameters=dict(
+            imputation_method="""
+                Method to use for imputing missing genotype calls. Options are
+                'most_common' (replace missing calls with the most common genotype at each site,
+                the default), 'mean' (replace missing calls with the
+                mean value at each site), or 'zero' (replace missing calls with zero).
+            """,
+        ),
         returns=("df_pca", "evr"),
         notes="""
             This computation may take some time to run, depending on your computing
@@ -69,6 +77,7 @@ class AnophelesPca(
         max_missing_an: Optional[
             base_params.max_missing_an
         ] = pca_params.max_missing_an_default,
+        imputation_method: pca_params.imputation_method = pca_params.imputation_method_default,
         cohort_size: Optional[base_params.cohort_size] = None,
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
@@ -80,7 +89,7 @@ class AnophelesPca(
     ) -> Tuple[pca_params.df_pca, pca_params.evr]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "pca_v5"
+        name = "pca_v8"
 
         # Check that either sample_query xor sample_indices are provided.
         base_params._validate_sample_selection_params(
@@ -121,6 +130,7 @@ class AnophelesPca(
             site_class=site_class,
             min_minor_ac=min_minor_ac,
             max_missing_an=max_missing_an,
+            imputation_method=imputation_method,
             n_components=n_components,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
@@ -152,7 +162,7 @@ class AnophelesPca(
         # df_pca.index = df_pca.index.astype(str)
 
         # Name the DataFrame's columns as PC1, PC2, etc.
-        df_pca.columns = pd.Index([f"PC{i+1}" for i in range(coords.shape[1])])
+        df_pca.columns = pd.Index([f"PC{i + 1}" for i in range(coords.shape[1])])
 
         # Load the sample metadata.
         df_samples = self.sample_metadata(
@@ -185,6 +195,7 @@ class AnophelesPca(
         site_class,
         min_minor_ac,
         max_missing_an,
+        imputation_method="most_common",
         n_components,
         cohort_size,
         min_cohort_size,
@@ -230,6 +241,64 @@ class AnophelesPca(
             else:
                 loc_keep_fit = np.ones(len(samples), dtype=bool)
                 gn_fit = gn
+
+            # Impute missing calls (-127) using the chosen imputation method.
+            if max_missing_an is not None and max_missing_an > 0:
+                gn_fit = gn_fit.astype(float)
+                gn = gn.astype(float)
+
+                for arr in [gn_fit, gn]:
+                    missing_mask = arr == -127
+
+                    if imputation_method == "most_common":
+                        # Vectorized computation of mode per site (row)
+                        valid = ~missing_mask
+
+                        # Count occurrences of 0, 1, 2 per row
+                        # gn is produced by to_n_ref() so values are guaranteed to be
+                        # 0, 1, or 2 (ref allele count for biallelic sites), with -127
+                        # for missing calls.
+                        counts = np.stack(
+                            [
+                                np.sum((arr == 0) & valid, axis=1),
+                                np.sum((arr == 1) & valid, axis=1),
+                                np.sum((arr == 2) & valid, axis=1),
+                            ],
+                            axis=1,
+                        )
+
+                        # Determine mode per row
+                        site_modes = np.argmax(counts, axis=1)
+
+                        # Handle rows where all values are missing
+                        all_missing = ~valid.any(axis=1)
+                        site_modes[all_missing] = 0
+
+                        # Fill missing values
+                        fill_values = site_modes[np.where(missing_mask)[0]]
+
+                    elif imputation_method == "mean":
+                        site_means = np.where(
+                            np.all(missing_mask, axis=1, keepdims=True),
+                            0,
+                            np.nanmean(
+                                np.where(missing_mask, np.nan, arr),
+                                axis=1,
+                                keepdims=True,
+                            ),
+                        )
+                        fill_values = np.take(
+                            site_means.flatten(), np.where(missing_mask)[0]
+                        )
+                    elif imputation_method == "zero":
+                        fill_values = 0
+                    else:
+                        raise ValueError(
+                            f"Unknown imputation_method: {imputation_method!r}. "
+                            "Choose from 'most_common', 'mean' or 'zero'."
+                        )
+
+                    arr[missing_mask] = fill_values
 
             # Remove any sites where all genotypes are identical.
             loc_var = np.any(gn_fit != gn_fit[:, 0, np.newaxis], axis=1)
@@ -304,9 +373,7 @@ class AnophelesPca(
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -346,9 +413,9 @@ class AnophelesPca(
 
         # Apply jitter if desired - helps spread out points when tightly clustered.
         if jitter_frac:
-            np.random.seed(random_seed)
-            data[x] = _jitter(data[x], jitter_frac)
-            data[y] = _jitter(data[y], jitter_frac)
+            rng = np.random.default_rng(seed=random_seed)
+            data[x] = _jitter(data[x], jitter_frac, random_state=rng)
+            data[y] = _jitter(data[y], jitter_frac, random_state=rng)
 
         # Convenience variables.
         # Prevent lint error (mypy): Unsupported operand types for + ("Series[Any]" and "str")
@@ -412,9 +479,7 @@ class AnophelesPca(
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -452,10 +517,10 @@ class AnophelesPca(
 
         # Apply jitter if desired - helps spread out points when tightly clustered.
         if jitter_frac:
-            np.random.seed(random_seed)
-            data[x] = _jitter(data[x], jitter_frac)
-            data[y] = _jitter(data[y], jitter_frac)
-            data[z] = _jitter(data[z], jitter_frac)
+            rng = np.random.default_rng(seed=random_seed)
+            data[x] = _jitter(data[x], jitter_frac, random_state=rng)
+            data[y] = _jitter(data[y], jitter_frac, random_state=rng)
+            data[z] = _jitter(data[z], jitter_frac, random_state=rng)
 
         # Convenience variables.
         # Prevent lint error (mypy): Unsupported operand types for + ("Series[Any]" and "str")
@@ -517,6 +582,4 @@ class AnophelesPca(
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig

@@ -90,7 +90,11 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         inline_array,
     ):
         # Sanity check.
-        assert isinstance(region, Region)
+        if not isinstance(region, Region):
+            raise TypeError(
+                f"Expected region to be a Region object, "
+                f"got {type(region).__name__}: {region!r}"
+            )
 
         # Access genes within the region of interest.
         df_genome_features = self.genome_features(region=region)
@@ -260,7 +264,11 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         debug = self._log.debug
 
         debug("sanity check - this function is one region at a time")
-        assert isinstance(region, Region)
+        if not isinstance(region, Region):
+            raise TypeError(
+                f"Expected region to be a Region object, "
+                f"got {type(region).__name__}: {region!r}"
+            )
 
         debug("get gene copy number data")
         ds_cnv = self.gene_cnv(
@@ -446,6 +454,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         taxon_by: frq_params.taxon_by = frq_params.taxon_by_default,
+        filter_unassigned: Optional[frq_params.filter_unassigned] = None,
     ) -> xr.Dataset:
         regions: List[Region] = _parse_multi_region(self, region)
         del region
@@ -468,6 +477,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
                     chunks=chunks,
                     inline_array=inline_array,
                     taxon_by=taxon_by,
+                    filter_unassigned=filter_unassigned,
                 )
                 for r in regions
             ],
@@ -497,11 +507,16 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         chunks,
         inline_array,
         taxon_by,
+        filter_unassigned,
     ):
         debug = self._log.debug
 
         debug("sanity check - here we deal with one region only")
-        assert isinstance(region, Region)
+        if not isinstance(region, Region):
+            raise TypeError(
+                f"Expected region to be a Region object, "
+                f"got {type(region).__name__}: {region!r}"
+            )
 
         debug("access gene CNV calls")
         ds_cnv = self.gene_cnv(
@@ -527,6 +542,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
             area_by=area_by,
             period_by=period_by,
             taxon_by=taxon_by,
+            filter_unassigned=filter_unassigned,
         )
 
         debug("group samples to make cohorts")
@@ -581,8 +597,12 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
             if nobs_mode == "called":
                 nobs[:, cohort_index] = np.repeat(cohort_n_called, 2)
             else:
-                assert nobs_mode == "fixed"
-                nobs[:, cohort_index] = cohort.size * 2
+                if nobs_mode != "fixed":
+                    raise RuntimeError(
+                        f"Internal error: expected nobs_mode='fixed', got {nobs_mode!r}. "
+                        "This should not happen; please open a GitHub issue."
+                    )
+                nobs[:, cohort_index] = cohort.size
 
         debug("compute frequency")
         with np.errstate(divide="ignore", invalid="ignore"):
@@ -615,6 +635,15 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
             df_variants,
             columns=["gene_id", "gene_name", "cnv_type"],
         )
+
+        debug("sort variants for deterministic ordering")
+        sort_index = df_variants.sort_values(
+            ["contig", "start", "cnv_type"]
+        ).index.values
+        df_variants = df_variants.iloc[sort_index].reset_index(drop=True)
+        count = count[sort_index]
+        nobs = nobs[sort_index]
+        frequency = frequency[sort_index]
 
         debug("build the output dataset")
         ds_out = xr.Dataset()

@@ -1,4 +1,3 @@
-import random
 import pytest
 from pytest_cases import parametrize_with_cases
 import numpy as np
@@ -151,9 +150,9 @@ def test_g123_gwss_with_default_sites(fixture, api: AnophelesG123Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     g123_params = dict(
-        contig=random.choice(api.contigs),
-        sample_sets=[random.choice(all_sample_sets)],
-        window_size=random.randint(100, 500),
+        contig=str(np.random.choice(api.contigs)),
+        sample_sets=[str(np.random.choice(all_sample_sets))],
+        window_size=int(np.random.randint(100, 501)),
         min_cohort_size=10,
     )
 
@@ -170,10 +169,10 @@ def test_g123_gwss_with_phased_sites(fixture, api: AnophelesG123Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     g123_params = dict(
-        contig=random.choice(api.contigs),
-        sites=random.choice(api.phasing_analysis_ids),
-        sample_sets=[random.choice(all_sample_sets)],
-        window_size=random.randint(100, 500),
+        contig=str(np.random.choice(api.contigs)),
+        sites=str(np.random.choice(api.phasing_analysis_ids)),
+        sample_sets=[str(np.random.choice(all_sample_sets))],
+        window_size=int(np.random.randint(100, 501)),
         min_cohort_size=10,
     )
 
@@ -186,11 +185,11 @@ def test_g123_gwss_with_segregating_sites(fixture, api: AnophelesG123Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     g123_params = dict(
-        contig=random.choice(api.contigs),
+        contig=str(np.random.choice(api.contigs)),
         sites="segregating",
-        site_mask=random.choice(api.site_mask_ids),
-        sample_sets=[random.choice(all_sample_sets)],
-        window_size=random.randint(100, 500),
+        site_mask=str(np.random.choice(api.site_mask_ids)),
+        sample_sets=[str(np.random.choice(all_sample_sets))],
+        window_size=int(np.random.randint(100, 501)),
         min_cohort_size=10,
     )
 
@@ -203,11 +202,11 @@ def test_g123_gwss_with_all_sites(fixture, api: AnophelesG123Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     g123_params = dict(
-        contig=random.choice(api.contigs),
+        contig=str(np.random.choice(api.contigs)),
         sites="all",
         site_mask=None,
-        sample_sets=[random.choice(all_sample_sets)],
-        window_size=random.randint(100, 500),
+        sample_sets=[str(np.random.choice(all_sample_sets))],
+        window_size=int(np.random.randint(100, 501)),
         min_cohort_size=10,
     )
 
@@ -220,9 +219,9 @@ def test_g123_gwss_with_bad_sites(fixture, api: AnophelesG123Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     g123_params = dict(
-        contig=random.choice(api.contigs),
-        sample_sets=[random.choice(all_sample_sets)],
-        window_size=random.randint(100, 500),
+        contig=str(np.random.choice(api.contigs)),
+        sample_sets=[str(np.random.choice(all_sample_sets))],
+        window_size=int(np.random.randint(100, 501)),
         min_cohort_size=10,
         sites="foobar",
     )
@@ -240,12 +239,15 @@ def test_g123_calibration(fixture, api: AnophelesG123Analysis):
 
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    window_sizes = np.random.randint(100, 500, size=random.randint(2, 5)).tolist()
-    window_sizes = sorted([int(x) for x in window_sizes])
+    window_sizes = sorted(
+        np.random.choice(
+            range(100, 500), size=int(np.random.randint(2, 6)), replace=False
+        ).tolist()
+    )
     g123_params = dict(
-        contig=random.choice(api.contigs),
-        sites=random.choice(api.phasing_analysis_ids),
-        sample_sets=[random.choice(all_sample_sets)],
+        contig=str(np.random.choice(api.contigs)),
+        sites=str(np.random.choice(api.phasing_analysis_ids)),
+        sample_sets=[str(np.random.choice(all_sample_sets))],
         min_cohort_size=10,
         window_sizes=window_sizes,
     )
@@ -266,3 +268,10 @@ def test_g123_calibration(fixture, api: AnophelesG123Analysis):
     # Run plotting function.
     fig = api.plot_g123_calibration(**g123_params, show=False)
     assert isinstance(fig, bokeh.models.Plot)
+
+
+def test_garud_g123_empty_window():
+    import numpy as np
+    from malariagen_data.anoph.g123 import _garud_g123
+
+    assert np.isnan(_garud_g123(np.empty((0, 0), dtype=int)))
