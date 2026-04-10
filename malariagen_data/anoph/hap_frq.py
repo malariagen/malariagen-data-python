@@ -177,7 +177,9 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
         )
 
         # Group samples to make cohorts.
-        group_samples_by_cohort = df_samples.groupby(["cohort_taxon", "cohort_area", "cohort_period"])
+        group_samples_by_cohort = df_samples.groupby(
+            ["cohort_taxon", "cohort_area", "cohort_period"]
+        )
 
         # Build cohorts dataframe.
         df_cohorts = _build_cohorts_from_sample_grouping(

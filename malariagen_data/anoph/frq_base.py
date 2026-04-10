@@ -122,7 +122,7 @@ def _build_cohorts_from_sample_grouping(*, group_samples_by_cohort, min_cohort_s
             "cohort_area": "area",
             "cohort_period": "period",
         },
-        inplace=True
+        inplace=True,
     )
 
     # Add cohort helper variables.
