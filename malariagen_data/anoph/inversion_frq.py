@@ -256,10 +256,7 @@ class AnophelesInversionFrequencyAnalysis(
             # Variant labels
             ds_tmp["variant_label"] = (
                 "variants",
-                [
-                    f"{inversion}_{allele}"
-                    for allele in ["hom_ref", "het", "hom_alt"]
-                ],
+                [f"{inversion}_{allele}" for allele in ["hom_ref", "het", "hom_alt"]],
             )
 
             # Event variables.

@@ -31,7 +31,7 @@ def ag3_sim_api(ag3_sim_fixture):
         results_cache=ag3_sim_fixture.results_cache_path.as_posix(),
         taxon_colors=_ag3.TAXON_COLORS,
     )
-    
+
     api._test_karyotype_tag_path = ag3_sim_fixture.karyotype_tag_path
     return api
 
@@ -39,12 +39,15 @@ def ag3_sim_api(ag3_sim_fixture):
 @pytest.fixture(autouse=True)
 def mock_load_inversion_tags():
     from unittest.mock import patch
-    
+
     def mock_load(self, inversion):
         df_tag_snps = pd.read_csv(self._test_karyotype_tag_path, sep=",")
         return df_tag_snps.query(f"inversion == '{inversion}'").reset_index()
 
-    with patch("malariagen_data.anoph.karyotype.AnophelesKaryotypeAnalysis.load_inversion_tags", new=mock_load):
+    with patch(
+        "malariagen_data.anoph.karyotype.AnophelesKaryotypeAnalysis.load_inversion_tags",
+        new=mock_load,
+    ):
         yield
 
 
@@ -69,7 +72,7 @@ def test_inversion_frequencies(ag3_sim_api):
     assert isinstance(df2, pd.DataFrame)
     assert "2La" in df2["inversion"].values
     assert "2Rb" in df2["inversion"].values
-    assert len(df2) == 2 * len(df) # Two inversions compared to one
+    assert len(df2) == 2 * len(df)  # Two inversions compared to one
 
     # Test with include_counts = True
     df_counts = ag3_sim_api.inversion_frequencies(
@@ -102,7 +105,7 @@ def test_inversion_frequencies_advanced(ag3_sim_api):
     assert "event_frequency" in ds
     assert "event_count" in ds
     assert "event_nobs" in ds
-    assert len(ds.variants) == 3 # hom_ref, het, hom_alt
+    assert len(ds.variants) == 3  # hom_ref, het, hom_alt
     assert "2La_hom_ref" in ds.variant_label.values
 
     # Test valid list of inversions
@@ -113,10 +116,10 @@ def test_inversion_frequencies_advanced(ag3_sim_api):
         sample_sets="3.0",
     )
     assert isinstance(ds2, xr.Dataset)
-    assert len(ds2.variants) == 6 # 3 for 2La, 3 for 2Rb
+    assert len(ds2.variants) == 6  # 3 for 2La, 3 for 2Rb
     assert "2La_hom_ref" in ds2.variant_label.values
     assert "2Rb_hom_ref" in ds2.variant_label.values
-    
+
     # Test confidence intervals
     ds_ci = ag3_sim_api.inversion_frequencies_advanced(
         inversions="2La",
