@@ -77,11 +77,11 @@ def _prep_samples_for_cohort_grouping(
                     f"Invalid values in {period_by!r} column. Must be either pandas.Period or null."
                 )
 
-        # Copy the specified period_by column to a new "period" column.
-        df_samples["period"] = df_samples[period_by]
+        # Copy the specified period_by column to a new "cohort_period" column.
+        df_samples["cohort_period"] = df_samples[period_by]
     else:
         # Use the vectorized period creation function.
-        df_samples["period"] = period_by_func_vectorized(df_samples)
+        df_samples["cohort_period"] = period_by_func_vectorized(df_samples)
 
     # Validate area_by.
     if area_by not in df_samples.columns:
@@ -90,14 +90,13 @@ def _prep_samples_for_cohort_grouping(
             f"Must be the name of an existing column in the sample metadata."
         )
 
-    # Copy the specified area_by column to a new "area" column.
-    df_samples["area"] = df_samples[area_by]
+    # Copy the specified area_by column to a new "cohort_area" column.
+    df_samples["cohort_area"] = df_samples[area_by]
 
-    # Copy the specified taxon_by column to a new "taxon" column,
+    # Copy the specified taxon_by column to a new "cohort_taxon" column,
     # normalizing it like area_by and period_by.
     # See: https://github.com/malariagen/malariagen-data-python/issues/808
-    if taxon_by != "taxon":
-        df_samples["taxon"] = df_samples[taxon_by]
+    df_samples["cohort_taxon"] = df_samples[taxon_by]
 
     return df_samples
 
@@ -115,6 +114,16 @@ def _build_cohorts_from_sample_grouping(*, group_samples_by_cohort, min_cohort_s
     )
     # Reset index so that the index fields are included as columns.
     df_cohorts = df_cohorts.reset_index()
+
+    # Rename cohort_ fields back to standard fields to maintain API compatibility
+    df_cohorts.rename(
+        columns={
+            "cohort_taxon": "taxon",
+            "cohort_area": "area",
+            "cohort_period": "period",
+        },
+        inplace=True
+    )
 
     # Add cohort helper variables.
     cohort_period_start = df_cohorts["period"].apply(lambda v: v.start_time)
