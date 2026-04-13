@@ -58,7 +58,11 @@ class AnophelesHapData(
     def _prep_phasing_analysis_param(self, *, analysis: hap_params.analysis) -> str:
         if analysis == base_params.DEFAULT:
             # Use whatever is the default phasing analysis for this data resource.
-            assert self._default_phasing_analysis is not None
+            if self._default_phasing_analysis is None:
+                raise RuntimeError(
+                    "No default phasing analysis configured. "
+                    "Please specify the 'analysis' parameter explicitly."
+                )
             return self._default_phasing_analysis
         elif analysis in self.phasing_analysis_ids:
             return analysis
@@ -118,7 +122,11 @@ class AnophelesHapData(
 
         # Handle contig in the reference genome.
         else:
-            assert contig in self.contigs
+            if contig not in self.contigs:
+                raise ValueError(
+                    f"Contig {contig!r} not found. "
+                    f"Available contigs: {self.contigs}"
+                )
             root = self.open_haplotype_sites(analysis=analysis)
             z = root[f"{contig}/variants/{field}"]
             ret = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
@@ -251,7 +259,11 @@ class AnophelesHapData(
 
         # Handle contig in the reference genome.
         else:
-            assert contig in self.contigs
+            if contig not in self.contigs:
+                raise ValueError(
+                    f"Contig {contig!r} not found. "
+                    f"Available contigs: {self.contigs}"
+                )
 
             # Open haplotypes zarr.
             root = self.open_haplotypes(sample_set=sample_set, analysis=analysis)

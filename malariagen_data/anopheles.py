@@ -289,7 +289,11 @@ class AnophelesDataResource(
             block_stop = block_start + block_length
             loc_j = np.ones(n_sites, dtype=bool)
             loc_j[block_start:block_stop] = False
-            assert np.count_nonzero(loc_j) == n_sites_j
+            if np.count_nonzero(loc_j) != n_sites_j:
+                raise RuntimeError(
+                    f"Internal error in jackknife resampling: expected {n_sites_j} "
+                    f"sites after block deletion, got {np.count_nonzero(loc_j)}"
+                )
 
             # resample data and compute statistics
 
@@ -968,6 +972,12 @@ class AnophelesDataResource(
             inline_array=inline_array,
         )
 
+        if len(x) == 0:
+            raise ValueError(
+                "No iHS values remain after filtering. "
+                "Try relaxing filter_min_maf or min_ehh parameters."
+            )
+
         # determine X axis range
         x_min = x[0]
         x_max = x[-1]
@@ -1491,6 +1501,12 @@ class AnophelesDataResource(
             chunks=chunks,
             inline_array=inline_array,
         )
+
+        if len(x) == 0:
+            raise ValueError(
+                "No XP-EHH values remain after filtering. "
+                "Try relaxing filter_min_maf or min_ehh parameters."
+            )
 
         # determine X axis range
         x_min = x[0]

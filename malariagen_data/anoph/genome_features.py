@@ -110,7 +110,11 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         # Handle normal contigs in the reference genome.
         else:
-            assert contig in self.contigs
+            if contig not in self.contigs:
+                raise ValueError(
+                    f"Contig {contig!r} not found. "
+                    f"Available contigs: {self.contigs}"
+                )
             df = self._genome_features(attributes=attributes)
 
             # Apply contig query.
@@ -561,7 +565,8 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
             # Increase the figure height by a certain factor, to accommodate labels.
             height_increase_factor = 1.3
-            assert fig.height is not None
+            if fig.height is None:
+                raise RuntimeError("Figure height is unexpectedly None")
             fig.height = int(fig.height * height_increase_factor)
 
             # Get the original y_range.
