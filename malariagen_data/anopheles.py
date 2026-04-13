@@ -47,6 +47,7 @@ from .anoph.hapclust import AnophelesHapClustAnalysis
 from .anoph.describe import AnophelesDescribe
 from .anoph.dipclust import AnophelesDipClustAnalysis
 from .anoph.heterozygosity import AnophelesHetAnalysis
+from .anoph.association import AnophelesAssociationAnalysis
 from .util import (
     CacheMiss,
     Region,  # noqa: F401 (re-exported via __init__.py)
@@ -78,6 +79,7 @@ from .util import (
 # work around pycharm failing to recognise that doc() is callable
 # noinspection PyCallingNonCallable
 class AnophelesDataResource(
+    AnophelesAssociationAnalysis,
     AnophelesDipClustAnalysis,
     AnophelesHapClustAnalysis,
     AnophelesH1XAnalysis,
