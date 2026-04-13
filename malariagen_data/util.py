@@ -26,7 +26,6 @@ import numba  # type: ignore
 import numpy as np
 import pandas as pd
 import plotly.express as px  # type: ignore
-import typeguard
 import xarray as xr
 import zarr  # type: ignore
 
@@ -302,9 +301,17 @@ def _dask_compress_dataset(ds, indexer, dim):
         indexer = ds[indexer].data
 
     # sanity checks
-    assert indexer.ndim == 1
-    assert indexer.dtype == bool
-    assert indexer.shape[0] == ds.sizes[dim]
+    if indexer.ndim != 1:
+        raise ValueError(
+            f"Expected indexer to be 1-dimensional, got {indexer.ndim} dimensions"
+        )
+    if indexer.dtype != bool:
+        raise ValueError(f"Expected indexer dtype to be bool, got {indexer.dtype}")
+    if indexer.shape[0] != ds.sizes[dim]:
+        raise ValueError(
+            f"Indexer length {indexer.shape[0]} does not match "
+            f"dataset dimension '{dim}' size {ds.sizes[dim]}"
+        )
 
     if isinstance(indexer, da.Array):
         # temporarily compute the indexer once, to avoid multiple reads from
@@ -369,9 +376,17 @@ def _da_compress(
     """Wrapper for dask.array.compress() which computes chunk sizes faster."""
 
     # Sanity checks.
-    assert indexer.ndim == 1
-    assert indexer.dtype == bool
-    assert indexer.shape[0] == data.shape[axis]
+    if indexer.ndim != 1:
+        raise ValueError(
+            f"Expected indexer to be 1-dimensional, got {indexer.ndim} dimensions"
+        )
+    if indexer.dtype != bool:
+        raise ValueError(f"Expected indexer dtype to be bool, got {indexer.dtype}")
+    if indexer.shape[0] != data.shape[axis]:
+        raise ValueError(
+            f"Indexer length {indexer.shape[0]} does not match "
+            f"data axis {axis} size {data.shape[axis]}"
+        )
 
     # Useful variables.
     old_chunks = data.chunks
@@ -696,9 +711,10 @@ def _parse_single_region(resource, region: single_region_param_type) -> Region:
     if region_from_feature is not None:
         return region_from_feature
 
-    raise ValueError(
-        f"Region {region!r} is not a valid contig, region string or feature ID."
-    )
+    # If we get here, the provided region is not a valid contig, coordinate
+    # string, or feature ID. For compatibility with existing callers/tests,
+    # treat unknown single contig strings as "contig not found".
+    raise ValueError(f"Contig {region!r} not found.")
 
 
 def _parse_multi_region(
@@ -799,7 +815,10 @@ def _simple_xarray_concat_arrays(
             xr_arrays = [ds[k] for ds in datasets]
 
             # Check that all arrays have the same dimension as the same axis.
-            assert all([a.dims[axis] == dim for a in xr_arrays])
+            if not all(a.dims[axis] == dim for a in xr_arrays):
+                raise ValueError(
+                    f"Not all arrays have dimension '{dim}' at axis {axis}"
+                )
 
             # Access the inner arrays - these are either numpy or dask arrays.
             inner_arrays = [a.data for a in xr_arrays]
@@ -1207,43 +1226,57 @@ def _check_colab_location(gcp_region: Optional[str]):
 
 
 def _check_types(f):
-    """Simple decorator to provide runtime checking of parameter types.
+    """Decorator to provide runtime checking of parameter types.
 
-    N.B., the typeguard package does have a decorator function called
-    @typechecked which performs a similar purpose. However, the typeguard
-    decorator causes a memory leak and doesn't seem usable. Also, the
-    typeguard decorator performs runtime checking of all variables within
-    the function as well as the arguments and return values. We only want
-    checking of the arguments to help users provide correct inputs.
+    Uses Pydantic v2's validate_call() for parameter validation.
+    Validates input types in strict mode without coercing arguments.
 
     """
+    from pydantic import ConfigDict, ValidationError, validate_call
+
+    config = ConfigDict(strict=True, arbitrary_types_allowed=True)
+
+    try:
+        validated_f = validate_call(config=config, validate_return=False)(f)
+    except Exception as exc:
+        warnings.warn(
+            f"Could not apply validate_call to {f.__name__!r}: {exc}. "
+            "Type validation will be skipped for this function.",
+            stacklevel=2,
+        )
+        return f
 
     @wraps(f)
-    def check_types_wrapper(*args, **kwargs):
-        type_hints = get_type_hints(f)
-        call_args = getcallargs(f, *args, **kwargs)
-        for k, t in type_hints.items():
-            if k in call_args:
-                v = call_args[k]
-                try:
-                    typeguard.check_type(v, t)
-                except typeguard.TypeCheckError as e:
-                    expected_type = humanize_type(t)
-                    actual_type = humanize_type(type(v))
-                    message = fill(
-                        dedent(
-                            f"""
-                        Parameter {k!r} with value {v!r} in call to function {f.__name__!r} has incorrect type:
-                        found {actual_type}, expected {expected_type}. See below for further information.
-                    """
+    def wrapper(*args, **kwargs):
+        try:
+            return validated_f(*args, **kwargs)
+        except ValidationError as e:
+            type_hints = get_type_hints(f)
+            call_args = getcallargs(f, *args, **kwargs)
+            errors = e.errors()
+            if errors:
+                err = errors[0]
+                loc = err.get("loc", ())
+                if loc:
+                    k = str(loc[0])
+                    v = call_args.get(k)
+                    t = type_hints.get(k)
+                    if t is not None:
+                        expected_type = humanize_type(t)
+                        actual_type = humanize_type(type(v))
+                        message = fill(
+                            dedent(
+                                f"""\
+                            Parameter {k!r} with value {v!r} in call to function {f.__name__!r} has incorrect type:
+                            found {actual_type}, expected {expected_type}. See below for further information.
+                        """
+                            )
                         )
-                    )
-                    message += f"\n\n{e}"
-                    error = TypeError(message)
-                    raise error from None
-        return f(*args, **kwargs)
+                        message += f"\n\n{e}"
+                        raise TypeError(message) from None
+            raise TypeError(str(e)) from None
 
-    return check_types_wrapper
+    return wrapper
 
 
 @numba.njit
@@ -1547,14 +1580,26 @@ def _apply_allele_mapping(x, mapping, max_allele):
 
 def _dask_apply_allele_mapping(v, mapping, max_allele):
     if not isinstance(v, da.Array):
-        raise TypeError(f"Expected v to be a dask.array.Array, got {type(v).__name__}")
+        raise TypeError(
+            f"Expected input array to be a dask.array.Array, got {type(v).__name__}"
+        )
     if not isinstance(mapping, np.ndarray):
         raise TypeError(
             f"Expected mapping to be a numpy.ndarray, got {type(mapping).__name__}"
         )
-    assert v.ndim == 2
-    assert mapping.ndim == 2
-    assert v.shape[0] == mapping.shape[0]
+    if v.ndim != 2:
+        raise ValueError(
+            f"Expected input array to be 2-dimensional, got {v.ndim} dimensions"
+        )
+    if mapping.ndim != 2:
+        raise ValueError(
+            f"Expected mapping to be 2-dimensional, got {mapping.ndim} dimensions"
+        )
+    if v.shape[0] != mapping.shape[0]:
+        raise ValueError(
+            "Expected input array and mapping to have the same first dimension, "
+            f"got {v.shape[0]} and {mapping.shape[0]}"
+        )
     v = v.rechunk((v.chunks[0], -1))
     mapping = da.from_array(mapping, chunks=(v.chunks[0], -1))
     out = da.map_blocks(
@@ -1577,19 +1622,41 @@ def _genotype_array_map_alleles(gt, mapping):
         raise TypeError(
             f"Expected mapping to be a numpy.ndarray, got {type(mapping).__name__}"
         )
-    assert gt.ndim == 3
-    assert mapping.ndim == 3
-    assert gt.shape[0] == mapping.shape[0]
-    assert gt.shape[1] > 0
-    assert gt.shape[2] == 2
+    if gt.ndim != 3:
+        raise ValueError(
+            f"Expected genotype calls array to be 3-dimensional, got {gt.ndim} dimensions"
+        )
+    if mapping.ndim != 3:
+        raise ValueError(
+            f"Expected mapping to be 3-dimensional, got {mapping.ndim} dimensions"
+        )
+    if gt.shape[0] != mapping.shape[0]:
+        raise ValueError(
+            "Expected genotype calls array and mapping to have the same first dimension, "
+            f"got {gt.shape[0]} and {mapping.shape[0]}"
+        )
+    if gt.shape[1] <= 0:
+        raise ValueError(f"Expected genotype calls axis 1 to be > 0, got {gt.shape[1]}")
+    if gt.shape[2] != 2:
+        raise ValueError(
+            f"Expected genotype calls axis 2 to be 2 (diploid), got {gt.shape[2]}"
+        )
     if gt.size > 0:
         # Block is not empty, can pass through to GenotypeArray.
-        assert gt.shape[0] > 0
+        if gt.shape[0] <= 0:
+            raise RuntimeError(
+                f"Internal error: non-empty genotype block but axis 0 is {gt.shape[0]}. "
+                "Please open a GitHub issue."
+            )
         m = mapping[:, 0, :]
         out = allel.GenotypeArray(gt).map_alleles(m).values
     else:
         # Block is empty so no alleles need to be mapped.
-        assert gt.shape[0] == 0
+        if gt.shape[0] != 0:
+            raise RuntimeError(
+                f"Internal error: empty genotype block but axis 0 is {gt.shape[0]}. "
+                "Please open a GitHub issue."
+            )
         out = gt
     return out
 
@@ -1603,9 +1670,17 @@ def _dask_genotype_array_map_alleles(gt, mapping):
         raise TypeError(
             f"Expected mapping to be a numpy.ndarray, got {type(mapping).__name__}"
         )
-    assert gt.ndim == 3
-    assert mapping.ndim == 2
-    assert gt.shape[0] == mapping.shape[0]
+    if gt.ndim != 3:
+        raise ValueError(f"Expected gt to be 3-dimensional, got {gt.ndim} dimensions")
+    if mapping.ndim != 2:
+        raise ValueError(
+            f"Expected mapping to be 2-dimensional, got {mapping.ndim} dimensions"
+        )
+    if gt.shape[0] != mapping.shape[0]:
+        raise ValueError(
+            f"gt and mapping must have same first dimension, "
+            f"got gt.shape[0]={gt.shape[0]} and mapping.shape[0]={mapping.shape[0]}"
+        )
     mapping = da.from_array(mapping, chunks=(gt.chunks[0], -1))
     gt_out = da.map_blocks(
         _genotype_array_map_alleles,

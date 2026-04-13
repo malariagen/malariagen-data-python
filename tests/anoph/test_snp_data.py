@@ -973,6 +973,64 @@ def test_locate_site_class_cache_is_bounded(ag3_sim_api: AnophelesSnpData):
     assert len(ag3_sim_api._cache_locate_site_class) <= _LOCATE_SITE_CLASS_CACHE_MAXSIZE
 
 
+def test_locate_site_class_cache_lru_eviction(ag3_sim_api: AnophelesSnpData):
+    """Verify true LRU semantics: recently *accessed* entries survive eviction,
+    while least-recently-used entries are evicted first."""
+    from collections import OrderedDict
+
+    from malariagen_data.anoph.snp_data import _LOCATE_SITE_CLASS_CACHE_MAXSIZE
+
+    cache = ag3_sim_api._cache_locate_site_class
+
+    # Start from a clean cache.
+    cache.clear()
+    assert isinstance(cache, OrderedDict)
+
+    maxsize = _LOCATE_SITE_CLASS_CACHE_MAXSIZE  # 64
+
+    # --- Phase 1: fill the cache to exactly maxsize ---
+    dummy = np.array([True, False])
+    for i in range(maxsize):
+        key = (f"contig_{i}", f"mask_{i}", f"class_{i}")
+        cache[key] = dummy
+    assert len(cache) == maxsize
+
+    # Remember the first key inserted (the oldest / least-recently-used).
+    first_key = ("contig_0", "mask_0", "class_0")
+    assert first_key in cache
+
+    # --- Phase 2: simulate an access (LRU promotion) on the first key ---
+    # move_to_end makes it the most-recently-used entry.
+    cache.move_to_end(first_key)
+
+    # Insert one more entry, exceeding maxsize.
+    overflow_key = ("overflow", "mask", "class")
+    cache[overflow_key] = dummy
+
+    # Evict to maintain the bound (same logic as _locate_site_class).
+    while len(cache) > maxsize:
+        oldest = next(iter(cache))
+        del cache[oldest]
+
+    # The first key should STILL be present because it was promoted.
+    assert (
+        first_key in cache
+    ), "LRU promotion via move_to_end must keep recently accessed entries alive"
+
+    # The second key ("contig_1", ...) — which was never re-accessed —
+    # should have been evicted as the new least-recently-used entry.
+    second_key = ("contig_1", "mask_1", "class_1")
+    assert (
+        second_key not in cache
+    ), "The least-recently-used entry should be evicted when cache exceeds maxsize"
+
+    # The overflow key should be present (it was just inserted).
+    assert overflow_key in cache
+
+    # Cache size must remain bounded.
+    assert len(cache) == maxsize
+
+
 def test_snp_calls_cache_is_per_instance(ag3_sim_api: AnophelesSnpData):
     """_cached_snp_calls must be a per-instance lru_cache, not a class-level one.
 

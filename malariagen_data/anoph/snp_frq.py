@@ -211,7 +211,11 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         )
         for coh, loc_coh in cohorts_iterator:
             n_samples = np.count_nonzero(loc_coh)
-            assert n_samples >= min_cohort_size
+            if n_samples < min_cohort_size:
+                raise ValueError(
+                    f"Not enough samples ({n_samples}) for minimum "
+                    f"cohort size ({min_cohort_size})"
+                )
             gt_coh = np.compress(loc_coh, gt, axis=1)
             ac_coh = np.asarray(allel.GenotypeArray(gt_coh).count_alleles(max_allele=3))
             an_coh = np.sum(ac_coh, axis=1)[:, None]
@@ -606,7 +610,11 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             if nobs_mode == "called":
                 nobs[:, cohort_index] = cohort_an
             else:
-                assert nobs_mode == "fixed"
+                if nobs_mode != "fixed":
+                    raise RuntimeError(
+                        f"Internal error: expected nobs_mode='fixed', "
+                        f"got {nobs_mode!r}"
+                    )
                 nobs[:, cohort_index] = cohort.size * 2
 
         # Compute frequency.

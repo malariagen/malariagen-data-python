@@ -287,7 +287,11 @@ class AnophelesDataResource(
             block_stop = block_start + block_length
             loc_j = np.ones(n_sites, dtype=bool)
             loc_j[block_start:block_stop] = False
-            assert np.count_nonzero(loc_j) == n_sites_j
+            if np.count_nonzero(loc_j) != n_sites_j:
+                raise RuntimeError(
+                    f"Internal error in jackknife resampling: expected {n_sites_j} "
+                    f"sites after block deletion, got {np.count_nonzero(loc_j)}"
+                )
 
             # resample data and compute statistics
 

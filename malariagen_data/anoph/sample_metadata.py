@@ -594,8 +594,16 @@ class AnophelesSampleMetadata(AnophelesBase):
     def _parse_aim_metadata(
         self, sample_set: str, data: Union[bytes, Exception]
     ) -> pd.DataFrame:
-        assert self._aim_metadata_columns is not None
-        assert self._aim_metadata_dtype is not None
+        if self._aim_metadata_columns is None:
+            raise RuntimeError(
+                "Internal error: AIM metadata columns are not configured. "
+                "This should not happen; please open a GitHub issue."
+            )
+        if self._aim_metadata_dtype is None:
+            raise RuntimeError(
+                "Internal error: AIM metadata dtypes are not configured. "
+                "This should not happen; please open a GitHub issue."
+            )
         if isinstance(data, bytes):
             # Parse CSV data but don't apply the dtype yet.
             df = pd.read_csv(io.BytesIO(data), na_values="")
@@ -971,6 +979,8 @@ class AnophelesSampleMetadata(AnophelesBase):
             fill_value=0,
         )
 
+        taxa = df_pivot.columns.dropna().sort_values().unique()
+
         # Append aggregations to pivot.
         df_location_aggs = df_samples.groupby(location_composite_key).agg(
             {
@@ -1015,7 +1025,6 @@ class AnophelesSampleMetadata(AnophelesBase):
         samples_map.layout.width = width
 
         # Add markers.
-        count_factors = df_samples[count_by].dropna().sort_values().unique()
         for _, row in df_pivot.reset_index().iterrows():
             title = (
                 f"Location: {row.location} ({row.latitude:.3f}, {row.longitude:.3f})"
@@ -1028,13 +1037,13 @@ class AnophelesSampleMetadata(AnophelesBase):
             title += f"\nContributors: {row.contributor}"
             title += "\nNo. specimens: "
             all_n = 0
-            for factor in count_factors:
+            for taxon in taxa:
                 # Get the number of samples in this taxon
-                n = row[factor]
+                n = int(row[taxon])
                 # Count the number of samples in all taxa
                 all_n += n
                 if n > 0:
-                    title += f"{n} {factor}; "
+                    title += f"{n} {taxon}; "
             # Only show a marker when there are enough samples
             if all_n >= min_samples:
                 marker = ipyleaflet.Marker(

@@ -1,4 +1,5 @@
 import warnings
+from collections import OrderedDict
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -75,7 +76,9 @@ class AnophelesSnpData(
             base_params.site_mask, zarr.hierarchy.Group
         ] = dict()
         self._cache_site_annotations: Optional[zarr.hierarchy.Group] = None
-        self._cache_locate_site_class: Dict[Tuple[Any, ...], np.ndarray] = dict()
+        self._cache_locate_site_class: OrderedDict[
+            Tuple[Any, ...], np.ndarray
+        ] = OrderedDict()
 
         # Create the SNP-calls cache as a per-instance lru_cache wrapping the
         # bound method.  Storing it on the instance (rather than using a
@@ -103,6 +106,14 @@ class AnophelesSnpData(
         """
         return tuple(self.config.get("SITE_MASK_IDS", ()))  # ensure tuple
 
+    def site_mask_def(self) -> str:
+        """Return the default site mask identifier for this data resource."""
+        if self._default_site_mask is None:
+            raise RuntimeError(
+                "No default site mask configured. Please specify the 'site_mask' parameter explicitly."
+            )
+        return self._default_site_mask
+
     @property
     def _site_annotations_zarr_path(self) -> str:
         return self.config["SITE_ANNOTATIONS_ZARR_PATH"]
@@ -114,7 +125,11 @@ class AnophelesSnpData(
     ) -> base_params.site_mask:
         if site_mask == base_params.DEFAULT:
             # Use whatever is the default site mask for this data resource.
-            assert self._default_site_mask is not None
+            if self._default_site_mask is None:
+                raise RuntimeError(
+                    "No default site mask configured. "
+                    "Please specify the 'site_mask' parameter explicitly."
+                )
             return self._default_site_mask
         elif site_mask in self.site_mask_ids:
             return site_mask
@@ -214,7 +229,9 @@ class AnophelesSnpData(
         *,
         contig: str,
         mask: base_params.site_mask,
-        field: base_params.field,
+        # Field identifies which per-variant filter array to read (e.g. "filter_pass").
+        # Default kept for backwards compatibility with internal callers/tests.
+        field: base_params.field = "filter_pass",
         inline_array: base_params.inline_array,
         chunks: base_params.chunks,
     ) -> da.Array:
@@ -234,7 +251,11 @@ class AnophelesSnpData(
             return d
 
         else:
-            assert contig in self.contigs
+            if contig not in self.contigs:
+                raise ValueError(
+                    f"Contig {contig!r} not found. "
+                    f"Available contigs: {self.contigs}"
+                )
             root = self.open_site_filters(mask=mask)
             z = root[f"{contig}/variants/{field}"]
             d = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
@@ -336,11 +357,31 @@ class AnophelesSnpData(
 
         # Handle contig in the reference genome.
         else:
-            assert contig in self.contigs
+            if contig not in self.contigs:
+                raise ValueError(
+                    f"Contig {contig!r} not found. "
+                    f"Available contigs: {self.contigs}"
+                )
             root = self.open_snp_sites()
             z = root[f"{contig}/variants/{field}"]
             ret = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             return ret
+
+    # Backwards compatible alias for internal callers/tests.
+    def snp_sites_for_contig(
+        self,
+        *,
+        contig: base_params.contig,
+        field: base_params.field,
+        inline_array: base_params.inline_array,
+        chunks: base_params.chunks,
+    ) -> da.Array:
+        return self._snp_sites_for_contig(
+            contig=contig,
+            field=field,
+            inline_array=inline_array,
+            chunks=chunks,
+        )
 
     def _snp_sites_for_region(
         self,
@@ -445,7 +486,11 @@ class AnophelesSnpData(
             return da.concatenate(arrs)
 
         else:
-            assert contig in self.contigs
+            if contig not in self.contigs:
+                raise ValueError(
+                    f"Contig {contig!r} not found. "
+                    f"Available contigs: {self.contigs}"
+                )
             root = self.open_snp_genotypes(sample_set=sample_set)
             z = root[f"{contig}/calldata/{field}"]
             d = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
@@ -601,7 +646,11 @@ class AnophelesSnpData(
             return ret
 
         else:
-            assert contig in self.contigs
+            if contig not in self.contigs:
+                raise ValueError(
+                    f"Contig {contig!r} not found. "
+                    f"Available contigs: {self.contigs}"
+                )
             coords = dict()
             data_vars = dict()
             sites_root = self.open_snp_sites()
@@ -721,6 +770,40 @@ class AnophelesSnpData(
 
         return ds
 
+    def _site_annotations_for_contig(
+        self,
+        *,
+        contig,
+        inline_array: base_params.inline_array,
+        chunks: base_params.chunks,
+    ) -> xr.Dataset:
+        """
+        Backwards compatible internal helper.
+
+        Raises a ValueError with a consistent message when the contig is unknown,
+        matching expectations in tests and existing error-handling behavior.
+        """
+        if contig in getattr(self, "virtual_contigs", {}):
+            contigs = self.virtual_contigs[contig]
+            ds_parts = [
+                self._site_annotations_raw(
+                    contig=c,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
+                for c in contigs
+            ]
+            return _simple_xarray_concat(ds_parts, dim=DIM_VARIANT)
+
+        if contig not in self.contigs:
+            raise ValueError(
+                f"Contig {contig!r} not found. Available contigs: {self.contigs}"
+            )
+
+        return self._site_annotations_raw(
+            contig=contig, inline_array=inline_array, chunks=chunks
+        )
+
     @_check_types
     @doc(
         summary="Load site annotations.",
@@ -798,6 +881,9 @@ class AnophelesSnpData(
 
         try:
             loc_ann = self._cache_locate_site_class[cache_key]
+            # Promote to most-recently-used so the LRU eviction below
+            # always removes the *least*-recently-used entry.
+            self._cache_locate_site_class.move_to_end(cache_key)
 
         except KeyError as exc:
             # Access site annotations data.
@@ -943,9 +1029,10 @@ class AnophelesSnpData(
 
             self._cache_locate_site_class[cache_key] = loc_ann
 
-            # Evict the oldest entry when the cache exceeds its size limit.
-            # Plain dicts preserve insertion order (Python 3.7+), so the first
-            # key is always the oldest.
+            # Evict the least-recently-used entry when the cache exceeds its
+            # size limit.  Because the cache is an OrderedDict and both hits
+            # (move_to_end above) and inserts append to the right, the first
+            # key is always the *least*-recently-used entry.
             while len(self._cache_locate_site_class) > _LOCATE_SITE_CLASS_CACHE_MAXSIZE:
                 oldest = next(iter(self._cache_locate_site_class))
                 del self._cache_locate_site_class[oldest]
@@ -977,7 +1064,11 @@ class AnophelesSnpData(
 
         # Handle contig in the reference genome.
         else:
-            assert contig in self.contigs
+            if contig not in self.contigs:
+                raise ValueError(
+                    f"Contig {contig!r} not found. "
+                    f"Available contigs: {self.contigs}"
+                )
 
             coords = dict()
             data_vars = dict()
@@ -1159,7 +1250,12 @@ class AnophelesSnpData(
                         inline_array=inline_array,
                         chunks=chunks,
                     )
-                    assert x.sizes["variants"] == loc_ann.shape[0]
+                    if x.sizes["variants"] != loc_ann.shape[0]:
+                        raise RuntimeError(
+                            f"Variants dimension mismatch: dataset has "
+                            f"{x.sizes['variants']} variants but annotation "
+                            f"mask has {loc_ann.shape[0]}"
+                        )
                     x = x.isel(variants=loc_ann)
 
                 lx.append(x)
