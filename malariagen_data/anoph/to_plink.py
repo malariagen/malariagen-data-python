@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Mapping, Optional
 
 import allel  # type: ignore
 import numpy as np
@@ -12,28 +12,23 @@ from . import plink_params
 from . import pca_params
 from numpydoc_decorator import doc  # type: ignore
 
-# Mapping from internal contig indices to PLINK chromosome codes.
-# In PLINK format, 0 means "unknown" and 23 represents the X chromosome.
-_CHROM_MAP = {
-    0: 1,  # 2R -> 1
-    1: 2,  # 2L -> 2
-    2: 3,  # 3R -> 3
-    3: 4,  # 3L -> 4
-    4: 23,  # X  -> 23
-}
-
 
 class PlinkConverter(
     AnophelesSnpData,
 ):
     def __init__(
         self,
+        plink_chrom_map: Optional[Mapping[str, int]] = None,
         **kwargs,
     ):
         # N.B., this class is designed to work cooperatively, and
         # so it's important that any remaining parameters are passed
         # to the superclass constructor.
         super().__init__(**kwargs)
+
+        # Store the PLINK chromosome mapping.
+        # Maps contig names to PLINK chromosome codes.
+        self._plink_chrom_map = plink_chrom_map or {}
 
     @doc(
         summary="""
@@ -138,10 +133,18 @@ class PlinkConverter(
         with self._spinner("Prepare output data"):
             alleles = ds_snps_final["variant_allele"].values
 
-            # Map chromosome indices to PLINK conventions.
+            # Map chromosome indices to PLINK conventions using contig names.
             raw_contigs = ds_snps_final["variant_contig"].values
+            contig_names = self.contigs
+            chrom_map = self._plink_chrom_map
             mapped_contigs = np.array(
-                [_CHROM_MAP.get(int(c), int(c)) for c in raw_contigs]
+                [
+                    chrom_map.get(
+                        contig_names[int(c)],  # look up name from index
+                        int(c) + 1,  # fallback: 1-based index
+                    )
+                    for c in raw_contigs
+                ]
             )
 
             # Get sample IDs for property lookups.

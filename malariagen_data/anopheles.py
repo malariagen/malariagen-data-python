@@ -143,6 +143,7 @@ class AnophelesDataResource(
         inversion_tag_path: Optional[str] = None,
         unrestricted_use_only: Optional[bool] = None,
         surveillance_use_only: Optional[bool] = None,
+        plink_chrom_map: Optional[Mapping[str, int]] = None,
     ):
         super().__init__(
             url=url,
@@ -181,6 +182,7 @@ class AnophelesDataResource(
             inversion_tag_path=inversion_tag_path,
             unrestricted_use_only=unrestricted_use_only,
             surveillance_use_only=surveillance_use_only,
+            plink_chrom_map=plink_chrom_map,
         )
 
     def _get_xpehh_gwss_cache_name(self):

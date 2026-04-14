@@ -29,6 +29,16 @@ GENE_NAMES = {
 }
 INVERSION_TAG_PATH = "karyotype_tag_snps.csv"
 
+# Mapping from contig names to PLINK chromosome codes.
+# In PLINK: 0 = unknown, 1-22 = autosomes, 23 = X.
+PLINK_CHROM_MAP = {
+    "2R": 1,
+    "2L": 2,
+    "3R": 3,
+    "3L": 4,
+    "X": 23,
+}
+
 
 def _setup_aim_palettes():
     # Set up default AIMs color palettes.
@@ -216,6 +226,7 @@ class Ag3(AnophelesDataResource):
             inversion_tag_path=INVERSION_TAG_PATH,
             unrestricted_use_only=unrestricted_use_only,
             surveillance_use_only=surveillance_use_only,
+            plink_chrom_map=PLINK_CHROM_MAP,
         )
 
         # set up caches

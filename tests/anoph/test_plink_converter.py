@@ -39,6 +39,7 @@ def ag3_sim_api(ag3_sim_fixture):
         results_cache=ag3_sim_fixture.results_cache_path.as_posix(),
         taxon_colors=_ag3.TAXON_COLORS,
         virtual_contigs=_ag3.VIRTUAL_CONTIGS,
+        plink_chrom_map=_ag3.PLINK_CHROM_MAP,
     )
 
 
@@ -57,6 +58,7 @@ def af1_sim_api(af1_sim_fixture):
         default_site_mask="funestus",
         results_cache=af1_sim_fixture.results_cache_path.as_posix(),
         taxon_colors=_af1.TAXON_COLORS,
+        plink_chrom_map=_af1.PLINK_CHROM_MAP,
     )
 
 
@@ -75,6 +77,7 @@ def adir1_sim_api(adir1_sim_fixture):
         default_site_mask="dirus",
         results_cache=adir1_sim_fixture.results_cache_path.as_posix(),
         taxon_colors=_adir1.TAXON_COLORS,
+        plink_chrom_map=_adir1.PLINK_CHROM_MAP,
     )
 
 
