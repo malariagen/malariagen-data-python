@@ -1441,8 +1441,15 @@ class AnophelesSnpData(
         with self._dask_progress(desc="Compute SNP allele counts"):
             ac = ac.compute()
 
-        # Return plain numpy array.
-        results = dict(ac=ac.values)
+        # Cache variant metadata alongside allele counts so that
+        # snp_allele_counts(return_dataset=True) can reconstruct a
+        # Dataset without a redundant snp_calls() invocation.
+        results = dict(
+            ac=ac.values,
+            variant_position=ds_snps["variant_position"].values,
+            variant_contig=ds_snps["variant_contig"].values,
+            variant_allele=ds_snps["variant_allele"].values,
+        )
 
         return results
 
@@ -1453,11 +1460,11 @@ class AnophelesSnpData(
             SNP allele was observed in the selected samples.
         """,
         returns="""
-            A numpy array of shape (n_variants, 4), where the first column has
-            the reference allele (0) counts, the second column has the first
-            alternate allele (1) counts, the third column has the second
-            alternate allele (2) counts, and the fourth column has the third
-            alternate allele (3) counts.
+            If `return_dataset` is False (default), a numpy array of shape
+            (n_variants, 4) where columns correspond to allele counts for the
+            reference and three alternate alleles. If `return_dataset` is True,
+            an xarray Dataset containing SNP calls with `variant_allele_count`
+            added as an extra data variable.
         """,
         notes="""
             This computation may take some time to run, depending on your
@@ -1481,10 +1488,11 @@ class AnophelesSnpData(
         random_seed: base_params.random_seed = 42,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
-    ) -> np.ndarray:
-        # Change this name if you ever change the behaviour of this function,
-        # to invalidate any previously cached data.
-        name = "snp_allele_counts_v2"
+        return_dataset: base_params.return_dataset = False,
+    ) -> Any:
+        # Bumped to v3 to include variant metadata in cached results,
+        # enabling Dataset reconstruction without extra snp_calls().
+        name = "snp_allele_counts_v3"
 
         # Check that either sample_query xor sample_indices are provided.
         base_params._validate_sample_selection_params(
@@ -1553,6 +1561,28 @@ class AnophelesSnpData(
             self.results_cache_set(name=name, params=params, results=results)
 
         ac = results["ac"]
+
+        if return_dataset:
+            # Reconstruct the Dataset from cached arrays — no extra
+            # snp_calls() invocation required.
+            ds = xr.Dataset(
+                coords={
+                    "variant_position": (DIM_VARIANT, results["variant_position"]),
+                    "variant_contig": (DIM_VARIANT, results["variant_contig"]),
+                },
+                data_vars={
+                    "variant_allele": (
+                        (DIM_VARIANT, DIM_ALLELE),
+                        results["variant_allele"],
+                    ),
+                    "variant_allele_count": (
+                        (DIM_VARIANT, DIM_ALLELE),
+                        ac,
+                    ),
+                },
+            )
+            return ds
+
         return ac
 
     @_check_types
@@ -1897,7 +1927,26 @@ class AnophelesSnpData(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
-        # Perform an allele count.
+        # Get the full SNP calls dataset (genotypes, sample_id, variant info).
+        # N.B., snp_calls() uses an LRU cache so this is efficient.
+        ds = self.snp_calls(
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            sample_indices=sample_indices,
+            site_mask=site_mask,
+            site_class=site_class,
+            cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+            inline_array=inline_array,
+            chunks=chunks,
+        )
+
+        # Get allele counts (uses the results cache, so no redundant
+        # genotype computation even if snp_calls was already called).
         ac = self.snp_allele_counts(
             region=region,
             sample_sets=sample_sets,
@@ -1914,29 +1963,20 @@ class AnophelesSnpData(
             chunks=chunks,
         )
 
+        # Attach allele counts to the dataset.
+        ds = ds.assign(
+            variant_allele_count=(
+                ds["variant_allele"].dims,
+                ac,
+            )
+        )
+
         # Locate biallelic SNPs.
         loc_bi = allel.AlleleCountsArray(ac).is_biallelic()
 
         # Remap alleles to squeeze out unobserved alleles.
         ac_bi = ac[loc_bi]
         allele_mapping = _trim_alleles(ac_bi)
-
-        # Set up SNP calls.
-        ds = self.snp_calls(
-            region=region,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            sample_query_options=sample_query_options,
-            sample_indices=sample_indices,
-            site_mask=site_mask,
-            site_class=site_class,
-            cohort_size=cohort_size,
-            min_cohort_size=min_cohort_size,
-            max_cohort_size=max_cohort_size,
-            random_seed=random_seed,
-            inline_array=inline_array,
-            chunks=chunks,
-        )
 
         with self._spinner("Prepare biallelic SNP calls"):
             # Subset to biallelic sites.
@@ -2032,13 +2072,14 @@ class AnophelesSnpData(
     @_check_types
     @doc(
         summary="Load biallelic SNP genotypes.",
-        returns=dict(
-            gn="""
-                An array of shape (variants, samples) where each value counts the
-                number of alternate alleles per genotype call.
-            """,
-            samples="Sample identifiers.",
-        ),
+        returns="""
+            If `return_dataset` is False (default), return `(gn, samples)`, where
+            `gn` is an array of shape `(variants, samples)` counting alternate
+            alleles per genotype call and `samples` contains sample identifiers.
+            If `return_dataset` is True, return a dataset containing
+            `call_diplotype` with dimensions `(variants, samples)`, plus
+            `sample_id`, `variant_position`, and `variant_contig`.
+        """,
     )
     def biallelic_diplotypes(
         self,
@@ -2059,10 +2100,11 @@ class AnophelesSnpData(
         thin_offset: base_params.thin_offset = 0,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+        return_dataset: base_params.return_dataset = False,
+    ) -> Any:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "biallelic_diplotypes_v2"
+        name = "biallelic_diplotypes_v3"
 
         # Check that either sample_query xor sample_indices are provided.
         base_params._validate_sample_selection_params(
@@ -2124,7 +2166,7 @@ class AnophelesSnpData(
             results = self.results_cache_get(name=name, params=params)
 
         except CacheMiss:
-            results = self._biallelic_diplotypes(
+            ds = self._biallelic_diplotypes(
                 inline_array=inline_array,
                 chunks=chunks,
                 region=prepared_region,
@@ -2141,11 +2183,33 @@ class AnophelesSnpData(
                 min_minor_ac=min_minor_ac,
                 max_missing_an=max_missing_an,
             )
+            results = dict(
+                gn=ds["call_diplotype"].values,
+                samples=ds["sample_id"].values,
+                variant_position=ds["variant_position"].values,
+                variant_contig=ds["variant_contig"].values,
+            )
             self.results_cache_set(name=name, params=params, results=results)
 
         # Unpack results.
         gn = results["gn"]
         samples = results["samples"]
+
+        if return_dataset:
+            ds = xr.Dataset(
+                coords={
+                    "sample_id": ("samples", samples),
+                    "variant_position": ("variants", results["variant_position"]),
+                    "variant_contig": ("variants", results["variant_contig"]),
+                },
+                data_vars={
+                    "call_diplotype": (
+                        ("variants", "samples"),
+                        gn,
+                    )
+                },
+            )
+            return ds
 
         return gn, samples
 
@@ -2167,7 +2231,7 @@ class AnophelesSnpData(
         thin_offset: base_params.thin_offset,
         inline_array: base_params.inline_array,
         chunks: base_params.chunks,
-    ) -> Dict[str, np.ndarray]:
+    ) -> xr.Dataset:
         # Note: this function uses sample_indices and should not expect a sample_query.
 
         # Access biallelic SNPs.
@@ -2191,16 +2255,30 @@ class AnophelesSnpData(
             chunks=chunks,
         )
 
-        # Load sample IDs
+        # Load sample IDs.
         samples = ds["sample_id"].values.astype("U")
+        variant_position = ds["variant_position"].values
+        variant_contig = ds["variant_contig"].values
 
-        # Compute diplotypes as the number of alt alleles per genotype call.
+        # Compute diplotypes as the number of all alleles per genotype call,
         # with missing calls coded as -127.
         gt = allel.GenotypeDaskArray(ds["call_genotype"].data)
         with self._dask_progress(desc="Compute biallelic diplotypes"):
             gn = gt.to_n_ref().compute()
-        # Code missing calls as -127.
         missing = np.all(ds["call_genotype"].values == -1, axis=2)
         gn[missing] = -127
 
-        return dict(samples=samples, gn=gn)
+        ds_out = xr.Dataset(
+            coords={
+                "sample_id": ("samples", samples),
+                "variant_position": ("variants", variant_position),
+                "variant_contig": ("variants", variant_contig),
+            },
+            data_vars={
+                "call_diplotype": (
+                    ("variants", "samples"),
+                    gn,
+                )
+            },
+        )
+        return ds_out

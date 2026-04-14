@@ -1,5 +1,5 @@
 import warnings
-from typing import Optional, Tuple
+from typing import Any, Optional
 
 import allel  # type: ignore
 import numpy as np
@@ -204,11 +204,12 @@ class AnophelesHapClustAnalysis(
         summary="""
             Compute pairwise distances between haplotypes.
         """,
-        returns=dict(
-            dist="Pairwise distance.",
-            phased_samples="Sample identifiers for haplotypes.",
-            n_snps="Number of SNPs used.",
-        ),
+        returns="""
+            If `return_dataset` is False (default), return a tuple
+            `(dist, phased_samples, n_snps)`. If `return_dataset` is True,
+            return an xarray Dataset with `dist`, `sample_id`, and
+            `n_snps` as variables/attributes.
+        """,
     )
     def haplotype_pairwise_distances(
         self,
@@ -222,7 +223,8 @@ class AnophelesHapClustAnalysis(
         random_seed: base_params.random_seed = 42,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-    ) -> Tuple[np.ndarray, np.ndarray, int]:
+        return_dataset: base_params.return_dataset = False,
+    ) -> Any:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
         name = "haplotype_pairwise_distances"
@@ -255,10 +257,29 @@ class AnophelesHapClustAnalysis(
             )
             self.results_cache_set(name=name, params=params, results=results)
 
-        # Unpack results")
+        # Unpack results.
         dist: np.ndarray = results["dist"]
         phased_samples: np.ndarray = results["phased_samples"]
         n_snps: int = int(results["n_snps"][()])  # ensure scalar
+
+        if return_dataset:
+            import xarray as xr
+            from scipy.spatial.distance import squareform
+
+            dist_square = squareform(dist)
+            # Each phased sample contributes 2 haplotypes; create
+            # haplotype-level labels to match the distance matrix.
+            hap_labels = np.repeat(phased_samples, 2)
+            ds = xr.Dataset(
+                data_vars={
+                    "dist": (("sample_x", "sample_y"), dist_square),
+                },
+                coords={
+                    "sample_id": ("sample_x", hap_labels),
+                },
+                attrs={"n_snps": n_snps},
+            )
+            return ds
 
         return dist, phased_samples, n_snps
 

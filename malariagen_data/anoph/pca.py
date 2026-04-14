@@ -207,7 +207,7 @@ class AnophelesPca(
         inline_array,
     ):
         # Load diplotypes.
-        gn, samples = self.biallelic_diplotypes(
+        ds_diplotypes = self.biallelic_diplotypes(
             region=region,
             n_snps=n_snps,
             thin_offset=thin_offset,
@@ -223,7 +223,10 @@ class AnophelesPca(
             random_seed=random_seed,
             chunks=chunks,
             inline_array=inline_array,
+            return_dataset=True,
         )
+        gn = ds_diplotypes["call_diplotype"].values
+        samples = ds_diplotypes["sample_id"].values.astype("U")
 
         with self._spinner(desc="Compute PCA"):
             # Exclude any samples prior to computing PCA.
