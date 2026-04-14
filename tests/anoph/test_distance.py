@@ -124,18 +124,19 @@ def check_biallelic_diplotype_pairwise_distance(*, api, data_params, metric):
     assert n_snps_used >= n_snps
     assert n_snps_used <= n_snps_available
 
-    # Check types.
-    assert isinstance(dist, np.ndarray)
-    assert isinstance(samples, np.ndarray)
-    assert isinstance(n_snps_used, int)
+    ds = api.biallelic_diplotype_pairwise_distances(
+        n_snps=n_snps,
+        metric=metric,
+        return_dataset=True,
+        **data_params,
+    )
+    import xarray as xr
 
-    # Check sizes.
-    assert dist.ndim == 1  # condensed form distance matrix
-    assert dist.shape[0] == int((n_samples * (n_samples - 1)) / 2)
-    assert samples.ndim == 1
-    assert samples.shape[0] == n_samples
-    assert n_snps_used >= n_snps
-    assert n_snps_used <= n_snps_available
+    assert isinstance(ds, xr.Dataset)
+    assert "dist" in ds
+    assert "sample_id" in ds.coords
+    assert ds["dist"].shape == (n_samples, n_samples)
+    assert ds.attrs["n_snps_used"] == n_snps_used
 
 
 @parametrize_with_cases("fixture,api", cases=".")
