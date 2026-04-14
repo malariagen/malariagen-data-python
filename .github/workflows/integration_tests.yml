@@ -39,11 +39,17 @@ jobs:
       - name: 'Check gcloud CLI'
         run: 'gcloud info'
 
+      - name: Generate cache key
+        id: cache-key
+        run: echo "key=gcs_cache_integration_tests_$(date +%Y%m)" >> "$GITHUB_OUTPUT"
+
       - name: Restore GCS cache
         uses: actions/cache/restore@v3
         with:
           path: gcs_cache
-          key: gcs_cache_integration_tests_20240922
+          key: ${{ steps.cache-key.outputs.key }}
+          restore-keys: |
+            gcs_cache_integration_tests_
 
       - name: Run integration tests
         run: poetry run pytest --durations=20 -v tests/integration
@@ -53,4 +59,4 @@ jobs:
         if: always()
         with:
           path: gcs_cache
-          key: gcs_cache_integration_tests_20240922
+          key: ${{ steps.cache-key.outputs.key }}
