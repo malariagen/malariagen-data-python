@@ -139,3 +139,140 @@ def test_inversion_frequencies_advanced(ag3_sim_api):
             period_by="year",
             sample_sets="3.0",
         )
+
+
+@pytest.mark.parametrize("min_cohort_size", [0, 10])
+def test_inversion_frequencies_min_cohort_size(ag3_sim_api, min_cohort_size):
+    df = ag3_sim_api.inversion_frequencies(
+        inversions="2La",
+        cohorts="admin1_year",
+        sample_sets="3.0",
+        min_cohort_size=min_cohort_size,
+    )
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) >= 3  # At least one cohort with 3 rows
+    assert list(df.columns[:3]) == ["inversion", "allele", "label"]
+    # All frq_ columns should have valid frequency values
+    frq_cols = [c for c in df.columns if c.startswith("frq_")]
+    assert len(frq_cols) > 0
+    for col in frq_cols:
+        assert df[col].between(0, 1).all()
+
+
+def test_inversion_frequencies_sample_query(ag3_sim_api):
+    # Get the full metadata to find a valid query value.
+    df_samples = ag3_sim_api.sample_metadata(sample_sets="3.0")
+    # Use the first sample_set value as a query filter.
+    sample_set_val = df_samples["sample_set"].iloc[0]
+
+    df = ag3_sim_api.inversion_frequencies(
+        inversions="2La",
+        cohorts="admin1_year",
+        sample_query=f"sample_set == '{sample_set_val}'",
+        sample_sets="3.0",
+        min_cohort_size=0,
+    )
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) >= 3
+    assert "2La" in df["inversion"].values
+
+
+def test_inversion_frequencies_sample_query_options(ag3_sim_api):
+    # Get the full metadata to find a valid query value.
+    df_samples = ag3_sim_api.sample_metadata(sample_sets="3.0")
+    sample_set_val = df_samples["sample_set"].iloc[0]
+
+    df = ag3_sim_api.inversion_frequencies(
+        inversions="2La",
+        cohorts="admin1_year",
+        sample_query="sample_set == @ss_val",
+        sample_query_options={
+            "local_dict": {
+                "ss_val": sample_set_val,
+            }
+        },
+        sample_sets="3.0",
+        min_cohort_size=0,
+    )
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) >= 3
+    assert "2La" in df["inversion"].values
+
+
+def test_inversion_frequencies_include_counts_columns(ag3_sim_api):
+    df = ag3_sim_api.inversion_frequencies(
+        inversions="2La",
+        cohorts="admin1_year",
+        sample_sets="3.0",
+        include_counts=True,
+    )
+    assert isinstance(df, pd.DataFrame)
+
+    # Check that frq_, count_, and nobs_ columns all exist
+    frq_cols = [c for c in df.columns if c.startswith("frq_")]
+    count_cols = [c for c in df.columns if c.startswith("count_")]
+    nobs_cols = [c for c in df.columns if c.startswith("nobs_")]
+    assert len(frq_cols) > 0
+    assert len(count_cols) > 0
+    assert len(nobs_cols) > 0
+
+    # Cohort labels should match across frq, count, and nobs columns
+    frq_labels = sorted([c.replace("frq_", "") for c in frq_cols])
+    count_labels = sorted([c.replace("count_", "") for c in count_cols])
+    nobs_labels = sorted([c.replace("nobs_", "") for c in nobs_cols])
+    assert frq_labels == count_labels == nobs_labels
+
+    # Counts should be non-negative integers
+    for col in count_cols:
+        assert (df[col] >= 0).all()
+
+
+@pytest.mark.parametrize("area_by", ["country", "admin1_iso"])
+def test_inversion_frequencies_advanced_area_by(ag3_sim_api, area_by):
+    ds = ag3_sim_api.inversion_frequencies_advanced(
+        inversions="2La",
+        area_by=area_by,
+        period_by="year",
+        sample_sets="3.0",
+        min_cohort_size=0,
+    )
+    assert isinstance(ds, xr.Dataset)
+    assert "event_frequency" in ds
+    assert "cohort_area" in ds
+    assert len(ds.variants) == 3
+
+
+@pytest.mark.parametrize("period_by", ["year", "month"])
+def test_inversion_frequencies_advanced_period_by(ag3_sim_api, period_by):
+    ds = ag3_sim_api.inversion_frequencies_advanced(
+        inversions="2La",
+        area_by="admin1_iso",
+        period_by=period_by,
+        sample_sets="3.0",
+        min_cohort_size=0,
+    )
+    assert isinstance(ds, xr.Dataset)
+    assert "event_frequency" in ds
+    assert "cohort_period" in ds
+    assert len(ds.variants) == 3
+
+    # Check period values have the expected frequency string
+    if period_by == "year":
+        expected_freqstr = "Y-DEC"
+    elif period_by == "month":
+        expected_freqstr = "M"
+    for p in ds["cohort_period"].values:
+        assert isinstance(p, pd.Period)
+        assert p.freqstr == expected_freqstr
+
+
+def test_inversion_frequencies_advanced_no_cohorts(ag3_sim_api):
+    # A very large min_cohort_size should result in no cohorts and raise ValueError.
+    with pytest.raises(ValueError):
+        ag3_sim_api.inversion_frequencies_advanced(
+            inversions="2La",
+            area_by="admin1_iso",
+            period_by="year",
+            sample_sets="3.0",
+            min_cohort_size=999999,
+        )
