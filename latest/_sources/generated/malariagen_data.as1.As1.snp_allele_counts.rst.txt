@@ -1,0 +1,6 @@
+﻿malariagen\_data.as1.As1.snp\_allele\_counts
+============================================
+
+.. currentmodule:: malariagen_data.as1
+
+.. automethod:: As1.snp_allele_counts

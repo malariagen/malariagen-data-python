@@ -1,0 +1,6 @@
+﻿malariagen\_data.as1.As1.plot\_pca\_coords\_3d
+==============================================
+
+.. currentmodule:: malariagen_data.as1
+
+.. automethod:: As1.plot_pca_coords_3d
