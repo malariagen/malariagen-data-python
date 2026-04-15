@@ -314,7 +314,7 @@ def test_snp_sites_with_virtual_contigs(ag3_sim_api, chrom):
     check_snp_sites(api, region=region)
 
     # Extra checks.
-    region_size = stop - start
+    region_size = stop - start + 1
     pos = api.snp_sites(region=region, field="POS").compute()
     assert pos.shape[0] <= region_size
     assert np.all(pos >= start)
