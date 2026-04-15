@@ -1134,7 +1134,8 @@ def check_snp_allele_counts(
     assert ac.shape == (pos.shape[0], 4)
     assert np.all(ac >= 0)
     an = ac.sum(axis=1)
-    assert an.max() <= 2 * n_samples
+    if an.size > 0:
+        assert an.max() <= 2 * n_samples
 
     # Run again to ensure loading from results cache produces the same result.
     ac2 = api.snp_allele_counts(
