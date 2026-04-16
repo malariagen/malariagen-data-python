@@ -4,6 +4,7 @@ from .adir1 import Adir1
 from .af1 import Af1
 from .ag3 import Ag3
 from .amin1 import Amin1
+from .as1 import As1
 from .anopheles import AnophelesDataResource, Region
 from .pf7 import Pf7
 from .pf8 import Pf8
