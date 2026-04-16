@@ -1031,6 +1031,111 @@ class AnophelesDataResource(
             bokeh.plotting.show(fig)
         return fig
 
+    @doc(
+        summary="Run and plot iHS GWSS data.",
+    )
+    def plot_ihs_gwss(
+        self,
+        contig: base_params.contig,
+        analysis: hap_params.analysis = base_params.DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
+        window_size: ihs_params.window_size = ihs_params.window_size_default,
+        percentiles: ihs_params.percentiles = ihs_params.percentiles_default,
+        standardize: ihs_params.standardize = True,
+        standardization_bins: Optional[ihs_params.standardization_bins] = None,
+        standardization_n_bins: ihs_params.standardization_n_bins = ihs_params.standardization_n_bins_default,
+        standardization_diagnostics: ihs_params.standardization_diagnostics = False,
+        filter_min_maf: ihs_params.filter_min_maf = ihs_params.filter_min_maf_default,
+        compute_min_maf: ihs_params.compute_min_maf = ihs_params.compute_min_maf_default,
+        min_ehh: ihs_params.min_ehh = ihs_params.min_ehh_default,
+        max_gap: ihs_params.max_gap = ihs_params.max_gap_default,
+        gap_scale: ihs_params.gap_scale = ihs_params.gap_scale_default,
+        include_edges: ihs_params.include_edges = True,
+        use_threads: ihs_params.use_threads = True,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = ihs_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = ihs_params.max_cohort_size_default,
+        random_seed: base_params.random_seed = 42,
+        palette: ihs_params.palette = ihs_params.palette_default,
+        title: Optional[gplt_params.title] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        track_height: gplt_params.track_height = 170,
+        genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
+        show: gplt_params.show = True,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        gene_labels: Optional[gplt_params.gene_labels] = None,
+        gene_labelset: Optional[gplt_params.gene_labelset] = None,
+    ) -> gplt_params.optional_figure:
+        # gwss track
+        fig1 = self.plot_ihs_gwss_track(
+            contig=contig,
+            analysis=analysis,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            window_size=window_size,
+            percentiles=percentiles,
+            palette=palette,
+            standardize=standardize,
+            standardization_bins=standardization_bins,
+            standardization_n_bins=standardization_n_bins,
+            standardization_diagnostics=standardization_diagnostics,
+            filter_min_maf=filter_min_maf,
+            compute_min_maf=compute_min_maf,
+            min_ehh=min_ehh,
+            max_gap=max_gap,
+            gap_scale=gap_scale,
+            include_edges=include_edges,
+            use_threads=use_threads,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+            title=title,
+            sizing_mode=sizing_mode,
+            width=width,
+            height=track_height,
+            show=False,
+            output_backend=output_backend,
+            chunks=chunks,
+            inline_array=inline_array,
+        )
+
+        fig1.xaxis.visible = False
+
+        # plot genes
+        fig2 = self.plot_genes(
+            region=contig,
+            sizing_mode=sizing_mode,
+            width=width,
+            height=genes_height,
+            x_range=fig1.x_range,
+            show=False,
+            output_backend=output_backend,
+            gene_labels=gene_labels,
+            gene_labelset=gene_labelset,
+        )
+
+        # combine plots into a single figure
+        fig = bokeh.layouts.gridplot(
+            [fig1, fig2],
+            ncols=1,
+            toolbar_location="above",
+            merge_tools=True,
+            sizing_mode=sizing_mode,
+        )
+
+        if show:  # pragma: no cover
+            bokeh.plotting.show(fig)
+        return fig
+
     @_check_types
     @doc(
         summary="""
