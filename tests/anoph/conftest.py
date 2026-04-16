@@ -3195,6 +3195,286 @@ class Amin1Simulator(AnophelesSimulator):
         simulate_site_annotations(path=path, genome=self.genome, rng=self.rng)
 
 
+class As1Simulator(AnophelesSimulator):
+    def __init__(self, fixture_dir, rng):
+        super().__init__(
+            fixture_dir=fixture_dir,
+            rng=rng,
+            bucket="vo_aste_release_master_us_central1",
+            releases=("1.0",),
+            has_aims=False,
+            has_cohorts_by_quarter=True,
+            has_sequence_qc=True,
+        )
+
+    def init_config(self):
+        self.config = {
+            "PUBLIC_RELEASES": ["1.0"],
+            "GENESET_GFF3_PATH": "reference/genome/UCISS2018/Anopheles-stephensi-UCISS2018-curated.gff.gz",
+            "GENOME_FASTA_PATH": "reference/genome/UCISS2018/Anopheles-stephensi-UCISS2018-curated.fasta",
+            "GENOME_FAI_PATH": "reference/genome/UCISS2018/Anopheles-stephensi-UCISS2018-curated.fasta.fai",
+            "GENOME_ZARR_PATH": "reference/genome/UCISS2018/Anopheles-stephensi-UCISS2018-curated.zarr",
+            "GENOME_REF_ID": "UCISS2018",
+            "GENOME_REF_NAME": "Anopheles stephensi",
+            "CONTIGS": ["2RL", "3RL", "X"],
+            "SITE_ANNOTATIONS_ZARR_PATH": "reference/genome/UCISS2018/Anopheles-stephensi-UCISS2018-curated_SEQANNOTATION.zarr",
+            "DEFAULT_SITE_FILTERS_ANALYSIS": "sc_20260401",
+            "DEFAULT_COHORTS_ANALYSIS": "20260402",
+            "DEFAULT_DISCORDANT_READ_CALLS_ANALYSIS": "",
+            "SITE_MASK_IDS": ["stephensi"],
+            "PHASING_ANALYSIS_IDS": [],
+            "COVERAGE_CALLS_ANALYSIS_IDS": ["stephensi"],
+        }
+        config_path = self.bucket_path / "v1.0-config.json"
+        with config_path.open(mode="w") as f:
+            json.dump(self.config, f, indent=4)
+
+    def init_public_release_manifest(self):
+        release_path = self.bucket_path / "v1.0"
+        release_path.mkdir(parents=True, exist_ok=True)
+        manifest_path = release_path / "manifest.tsv"
+        manifest = pd.DataFrame(
+            {
+                "sample_set": [
+                    "1365-VO-DJ-ADBI-VMF00318",
+                    "1386-VO-KE-OCHOMO-VMF00339",
+                    "1367-VO-AF-DONNELLY-VMF00320",
+                ],
+                "sample_count": [21, 29, 24],
+                "study_id": [
+                    "1365-VO-DJ-ADBI",
+                    "1386-VO-KE-OCHOMO",
+                    "1367-VO-AF-DONNELLY",
+                ],
+                "study_url": [
+                    "https://www.malariagen.net/network/where-we-work/1365-VO-DJ-ADBI",
+                    "https://www.malariagen.net/network/where-we-work/1386-VO-KE-OCHOMO",
+                    "https://www.malariagen.net/network/where-we-work/1367-VO-AF-DONNELLY",
+                ],
+                "terms_of_use_expiry_date": [
+                    "2099-12-31",
+                    "2099-12-31",
+                    "2024-01-01",  # Set to the past in order to test unrestricted_use_only.
+                ],
+                "terms_of_use_url": [
+                    "https://malariagen.github.io/vector-data/as1/as1.0.html#terms-of-use",
+                    "https://malariagen.github.io/vector-data/as1/as1.0.html#terms-of-use",
+                    "https://malariagen.github.io/vector-data/as1/as1.0.html#terms-of-use",
+                ],
+            }
+        )
+        manifest.to_csv(manifest_path, index=False, sep="\t")
+        self.release_manifests["1.0"] = manifest
+
+    def init_genome_sequence(self):
+        base_composition = {
+            b"a": 0.0,
+            b"c": 0.0,
+            b"g": 0.0,
+            b"t": 0.0,
+            b"n": 0.0,
+            b"A": 0.29432128333333335,
+            b"C": 0.20542065,
+            b"G": 0.20575796666666665,
+            b"T": 0.2944834333333333,
+            b"N": 1.6666666666666667e-05,
+        }
+        path = self.bucket_path / self.config["GENOME_ZARR_PATH"]
+        self.genome = simulate_genome(
+            path=path,
+            contigs=self.contigs,
+            low=80_000,
+            high=120_000,
+            base_composition=base_composition,
+            rng=self.rng,
+        )
+        self.contig_sizes = {
+            contig: self.genome[contig].shape[0] for contig in self.contigs
+        }
+
+    def init_genome_features(self):
+        path = self.bucket_path / self.config["GENESET_GFF3_PATH"]
+        path.parent.mkdir(parents=True, exist_ok=True)
+        simulator = Gff3Simulator(
+            contig_sizes=self.contig_sizes,
+            rng=self.rng,
+            gene_type="protein_coding_gene",
+            attrs=("Note", "description"),
+        )
+        self.genome_features = simulator.simulate_gff(path=path)
+
+    def write_metadata(self, release, release_path, sample_set, sequence_qc=True):
+        n_samples_sim = (
+            self.release_manifests[release]
+            .set_index("sample_set")
+            .loc[sample_set]["sample_count"]
+        )
+
+        src_path = (
+            self.fixture_dir
+            / "vo_aste_release_master_us_central1"
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "samples.meta.csv"
+        )
+        df_general = pd.read_csv(src_path)
+        df_general_ds = df_general.sample(
+            n_samples_sim, replace=False, random_state=self.rng
+        )
+        samples_ds = df_general_ds["sample_id"].tolist()
+        dst_path = (
+            self.bucket_path
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "samples.meta.csv"
+        )
+        dst_path.parent.mkdir(parents=True, exist_ok=True)
+        df_general_ds.to_csv(dst_path, index=False)
+
+        if sequence_qc:
+            src_path = (
+                self.fixture_dir
+                / "vo_aste_release_master_us_central1"
+                / release_path
+                / "metadata"
+                / "curation"
+                / sample_set
+                / "sequence_qc_stats.csv"
+            )
+            df_sequence_qc_stats = pd.read_csv(src_path)
+            df_sequence_qc_stats_ds = (
+                df_sequence_qc_stats.set_index("sample_id")
+                .loc[samples_ds]
+                .reset_index()
+            )
+            dst_path = (
+                self.bucket_path
+                / release_path
+                / "metadata"
+                / "curation"
+                / sample_set
+                / "sequence_qc_stats.csv"
+            )
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+            df_sequence_qc_stats_ds.to_csv(dst_path, index=False)
+
+        src_path = (
+            self.fixture_dir
+            / "vo_aste_release_master_us_central1"
+            / release_path
+            / "metadata"
+            / "cohorts_20260402"
+            / sample_set
+            / "samples.cohorts.csv"
+        )
+        df_coh = pd.read_csv(src_path)
+        df_coh_ds = df_coh.set_index("sample_id").loc[samples_ds].reset_index()
+        dst_path = (
+            self.bucket_path
+            / release_path
+            / "metadata"
+            / "cohorts_20260402"
+            / sample_set
+            / "samples.cohorts.csv"
+        )
+        dst_path.parent.mkdir(parents=True, exist_ok=True)
+        df_coh_ds.to_csv(dst_path, index=False)
+
+        src_path = (
+            self.fixture_dir
+            / "vo_aste_release_master_us_central1"
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "wgs_snp_data.csv"
+        )
+        df_cat = pd.read_csv(src_path)
+        df_cat_ds = df_cat.set_index("sample_id").loc[samples_ds].reset_index()
+        dst_path = (
+            self.bucket_path
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "wgs_snp_data.csv"
+        )
+        dst_path.parent.mkdir(parents=True, exist_ok=True)
+        df_cat_ds.to_csv(dst_path, index=False)
+
+    def init_metadata(self):
+        self.write_metadata(
+            release="1.0", release_path="v1.0", sample_set="1365-VO-DJ-ADBI-VMF00318"
+        )
+        self.write_metadata(
+            release="1.0", release_path="v1.0", sample_set="1386-VO-KE-OCHOMO-VMF00339"
+        )
+        self.write_metadata(
+            release="1.0",
+            release_path="v1.0",
+            sample_set="1367-VO-AF-DONNELLY-VMF00320",
+        )
+
+    def init_snp_sites(self):
+        path = self.bucket_path / "v1.0/snp_genotypes/all/sites/"
+        self.snp_sites, self.n_snp_sites = simulate_snp_sites(
+            path=path, contigs=self.contigs, genome=self.genome
+        )
+
+    def init_site_filters(self):
+        analysis = self.config["DEFAULT_SITE_FILTERS_ANALYSIS"]
+        mask = "stephensi"
+        p_pass = 0.59
+        path = self.bucket_path / "v1.0/site_filters" / analysis / mask
+        simulate_site_filters(
+            path=path,
+            contigs=self.contigs,
+            p_pass=p_pass,
+            n_sites=self.n_snp_sites,
+            rng=self.rng,
+        )
+
+    def init_snp_genotypes(self):
+        for release, manifest in self.release_manifests.items():
+            release_path = f"v{release}"
+            for rec in manifest.itertuples():
+                sample_set = rec.sample_set
+                metadata_path = (
+                    self.bucket_path
+                    / release_path
+                    / "metadata"
+                    / "general"
+                    / sample_set
+                    / "samples.meta.csv"
+                )
+                zarr_path = (
+                    self.bucket_path
+                    / release_path
+                    / "snp_genotypes"
+                    / "all"
+                    / sample_set
+                )
+                p_allele = np.array([0.981, 0.006, 0.008, 0.005])
+                p_missing = np.array([0.95, 0.05])
+                simulate_snp_genotypes(
+                    zarr_path=zarr_path,
+                    metadata_path=metadata_path,
+                    contigs=self.contigs,
+                    n_sites=self.n_snp_sites,
+                    p_allele=p_allele,
+                    p_missing=p_missing,
+                    rng=self.rng,
+                )
+
+    def init_site_annotations(self):
+        path = self.bucket_path / self.config["SITE_ANNOTATIONS_ZARR_PATH"]
+        simulate_site_annotations(path=path, genome=self.genome, rng=self.rng)
+
+
 # For the following data fixtures we will use the "session" scope
 # so that the fixture data will be created only once per test
 # session (i.e., per invocation of pytest).
@@ -3228,3 +3508,8 @@ def adir1_sim_fixture(fixture_dir):
 @pytest.fixture(scope="session")
 def amin1_sim_fixture(fixture_dir):
     return Amin1Simulator(fixture_dir=fixture_dir, rng=create_rng("Amin1"))
+
+
+@pytest.fixture(scope="session")
+def as1_sim_fixture(fixture_dir):
+    return As1Simulator(fixture_dir=fixture_dir, rng=create_rng("As1"))
