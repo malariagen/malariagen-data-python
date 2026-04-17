@@ -182,6 +182,37 @@ class SnpVcfExporter(
                         except (FileNotFoundError, KeyError):
                             pass
 
+                    n_samples = gt_chunk.shape[1]
+
+                    # OPTIMIZATION: Vectorize GT field formatting across entire chunk.
+                    # Instead of formatting each sample's GT field in a nested Python loop
+                    # (which results in billions of string operations for large datasets),
+                    # use NumPy's vectorized string operations on the entire chunk at once.
+                    # This provides ~3x speedup while maintaining exact output compatibility.
+                    # See issue #1280 for performance analysis.
+                    gt_chunk_2d = gt_chunk.reshape(
+                        gt_chunk.shape[0], gt_chunk.shape[1], 2
+                    )
+                    a0 = gt_chunk_2d[:, :, 0]  # (n_variants, n_samples)
+                    a1 = gt_chunk_2d[:, :, 1]  # (n_variants, n_samples)
+                    missing = (a0 < 0) | (a1 < 0)
+
+                    # Build formatted GT strings using NumPy vectorization
+                    gt_formatted = np.empty(
+                        (gt_chunk.shape[0], n_samples), dtype=object
+                    )
+                    gt_formatted[missing] = "./."
+                    present_idx = ~missing
+                    if np.any(present_idx):
+                        a0_str = a0[present_idx].astype(str)
+                        a1_str = a1[present_idx].astype(str)
+                        gt_formatted[present_idx] = np.char.add(
+                            np.char.add(a0_str, "/"), a1_str
+                        )
+
+                    # Pre-allocate line buffer for better I/O
+                    lines_to_write = []
+
                     for j in range(gt_chunk.shape[0]):
                         chrom = contigs[contig_chunk[j]]
                         pos = str(pos_chunk[j])
@@ -198,18 +229,17 @@ class SnpVcfExporter(
                                 alt_alleles.append(s)
                         alt = ",".join(alt_alleles) if alt_alleles else "."
 
-                        gt_row = gt_chunk[j]
-                        n_samples = gt_row.shape[0]
+                        # Build fixed VCF columns once per variant
+                        fixed_cols = (
+                            f"{chrom}\t{pos}\t.\t{ref}\t{alt}\t.\t.\t.\t{format_str}\t"
+                        )
+
                         sample_fields = np.empty(n_samples, dtype=object)
+
+                        # Use pre-formatted GT strings and add other fields
                         for k in range(n_samples):
-                            parts = []
-                            # GT (always present).
-                            a0 = gt_row[k, 0]
-                            a1 = gt_row[k, 1]
-                            if a0 < 0 or a1 < 0:
-                                parts.append("./.")
-                            else:
-                                parts.append(f"{a0}/{a1}")
+                            parts = [gt_formatted[j, k]]
+
                             # GQ.
                             if include_gq:
                                 if gq_chunk is not None:
@@ -237,10 +267,11 @@ class SnpVcfExporter(
                                     parts.append(".")
                             sample_fields[k] = ":".join(parts)
 
-                        line = (
-                            f"{chrom}\t{pos}\t.\t{ref}\t{alt}\t.\t.\t.\t{format_str}\t"
-                        )
-                        line += "\t".join(sample_fields)
-                        f.write(line + "\n")
+                        # Build and buffer the line
+                        line = fixed_cols + "\t".join(sample_fields) + "\n"
+                        lines_to_write.append(line)
+
+                    # Write buffered lines in one go per chunk
+                    f.write("".join(lines_to_write))
 
         return output_path
