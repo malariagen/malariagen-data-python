@@ -8,6 +8,7 @@ from numpydoc_decorator import doc  # type: ignore
 
 from ..util import CacheMiss, _check_types, _pdist_abs_hamming, _pandas_apply
 from ..plotly_dendrogram import _plot_dendrogram, concat_clustering_subplots
+from .safe_query import validate_query
 from . import (
     base_params,
     plotly_params,
@@ -623,6 +624,7 @@ class AnophelesHapClustAnalysis(
         """
 
         # Get SNP genotype allele counts for the transcript, applying snp_query
+        validate_query(snp_query)
         df_eff = (
             self.snp_effects(
                 transcript=transcript,
