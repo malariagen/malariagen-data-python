@@ -11,6 +11,7 @@ import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 from numpydoc_decorator import doc  # type: ignore
 
+from .anoph.safe_query import validate_query
 
 from .anoph import (
     aim_params,
@@ -1297,7 +1298,8 @@ class AnophelesDataResource(
 
                     # Apply each query in the mapping to create the _partition column
                     for label, query in color.items():
-                        # Apply the query and assign the label to matching rows
+                        # Validate and apply the query to matching rows
+                        validate_query(query)
                         mask = df_haps.eval(query)
                         df_haps.loc[mask, "_partition"] = label
 

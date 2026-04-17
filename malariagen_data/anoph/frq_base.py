@@ -147,8 +147,10 @@ def _build_cohorts_from_sample_grouping(
         period_str = df_cohorts["period"].astype(str)
         df_cohorts["label"] = area_str + "_" + taxon_clean + "_" + period_str
 
-    # Apply minimum cohort size.
-    df_cohorts = df_cohorts.query(f"size >= {min_cohort_size}").reset_index(drop=True)
+    # Apply minimum cohort size using safe boolean indexing.
+    df_cohorts = df_cohorts.loc[df_cohorts["size"] >= min_cohort_size].reset_index(
+        drop=True
+    )
 
     # Early check for no cohorts.
     if len(df_cohorts) == 0:
