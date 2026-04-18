@@ -28,6 +28,8 @@ import zarr  # type: ignore
 from numpydoc_decorator import doc  # type: ignore
 from tqdm.auto import tqdm as tqdm_auto  # type: ignore
 from tqdm.dask import TqdmCallback  # type: ignore
+
+from .safe_query import validate_query
 from yaspin import yaspin  # type: ignore
 import xarray as xr
 
@@ -980,10 +982,9 @@ class AnophelesBase:
 
         # Determine which samples match the sample query.
         if sample_query != "":
-            # Use the python engine in order to support extension array dtypes, e.g. Float64, Int64, boolean.
-            loc_samples = df_samples.eval(
-                sample_query, **sample_query_options, engine="python"
-            )
+            # Validate the query to prevent arbitrary code execution (GH-1292).
+            validate_query(sample_query)
+            loc_samples = df_samples.eval(sample_query, **sample_query_options)
         else:
             loc_samples = pd.Series(True, index=df_samples.index)
 

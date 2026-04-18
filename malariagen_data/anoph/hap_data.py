@@ -6,6 +6,8 @@ import xarray as xr
 import zarr  # type: ignore
 from numpydoc_decorator import doc  # type: ignore
 
+from .safe_query import validate_query
+
 from ..util import (
     DIM_ALLELE,
     DIM_PLOIDY,
@@ -418,7 +420,8 @@ class AnophelesHapData(
                 df_samples.set_index("sample_id").loc[phased_samples].reset_index()
             )
 
-            # Apply the query.
+            # Validate the query to prevent arbitrary code execution (GH-1292).
+            validate_query(sample_query_prepped)
             sample_query_options = sample_query_options or {}
             loc_samples = df_samples_phased.eval(
                 sample_query_prepped, **sample_query_options
