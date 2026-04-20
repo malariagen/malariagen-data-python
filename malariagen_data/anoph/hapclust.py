@@ -86,120 +86,127 @@ class AnophelesHapClustAnalysis(
             distance_sort = False
 
         # This is needed to avoid RecursionError on some haplotype clustering analyses
-        # with larger numbers of haplotypes.
-        sys.setrecursionlimit(10_000)
+        # with larger numbers of haplotypes. Save and restore the original limit to
+        # avoid permanently modifying global interpreter state.
+        _original_limit = sys.getrecursionlimit()
+        try:
+            sys.setrecursionlimit(10_000)
 
-        # Load sample metadata.
-        df_samples = self.sample_metadata(
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            sample_query_options=sample_query_options,
-        )
-
-        # Compute pairwise distances.
-        dist, phased_samples, n_snps_used = self.haplotype_pairwise_distances(
-            region=region,
-            analysis=analysis,
-            distance_metric=distance_metric,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            sample_query_options=sample_query_options,
-            cohort_size=cohort_size,
-            random_seed=random_seed,
-            chunks=chunks,
-            inline_array=inline_array,
-        )
-
-        # Align sample metadata with haplotypes.
-        df_samples_phased = (
-            df_samples.set_index("sample_id").loc[phased_samples.tolist()].reset_index()
-        )
-
-        # Normalise color and symbol parameters.
-        symbol_prepped = self._setup_sample_symbol(
-            data=df_samples_phased,
-            symbol=symbol,
-        )
-        del symbol
-        (
-            color_prepped,
-            color_discrete_map_prepped,
-            category_orders_prepped,
-        ) = self._setup_sample_colors_plotly(
-            data=df_samples_phased,
-            color=color,
-            color_discrete_map=color_discrete_map,
-            color_discrete_sequence=color_discrete_sequence,
-            category_orders=category_orders,
-        )
-        del color
-        del color_discrete_map
-        del color_discrete_sequence
-
-        # Repeat the dataframe so there is one row of metadata for each haplotype.
-        df_haps = pd.DataFrame(np.repeat(df_samples_phased.values, 2, axis=0))
-        df_haps.columns = df_samples_phased.columns
-        leaf_data = df_haps.assign(sample_id=_make_unique(df_haps.sample_id))
-
-        # Configure hover data.
-        hover_data = self._setup_sample_hover_data_plotly(
-            color=color_prepped, symbol=symbol_prepped
-        )
-
-        # Construct plot title.
-        if title is True:
-            title_lines = []
-            if sample_sets is not None:
-                title_lines.append(f"Sample sets: {sample_sets}")
-            if sample_query is not None:
-                title_lines.append(f"Sample query: {sample_query}")
-            title_lines.append(f"Genomic region: {region} ({n_snps_used:,} SNPs)")
-            title = "<br>".join(title_lines)
-
-        # Create the plot.
-        with self._spinner("Plot dendrogram"):
-            fig, leaf_data = _plot_dendrogram(
-                dist=dist,
-                linkage_method=linkage_method,
-                count_sort=count_sort,
-                distance_sort=distance_sort,
-                render_mode=render_mode,
-                width=width,
-                height=height,
-                title=title,
-                line_width=line_width,
-                line_color=line_color,
-                marker_size=marker_size,
-                leaf_data=leaf_data,
-                leaf_hover_name="sample_id",
-                leaf_hover_data=hover_data,
-                leaf_color=color_prepped,
-                leaf_symbol=symbol_prepped,
-                leaf_y=leaf_y,
-                leaf_color_discrete_map=color_discrete_map_prepped,
-                leaf_category_orders=category_orders_prepped,
-                template="simple_white",
-                y_axis_title=f"Distance ({distance_metric})",
-                y_axis_buffer=1,
+            # Load sample metadata.
+            df_samples = self.sample_metadata(
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                sample_query_options=sample_query_options,
             )
 
-        # Tidy up.
-        fig.update_layout(
-            title_font=dict(
-                size=title_font_size,
-            ),
-            legend=dict(itemsizing=legend_sizing, tracegroupgap=0),
-        )
+            # Compute pairwise distances.
+            dist, phased_samples, n_snps_used = self.haplotype_pairwise_distances(
+                region=region,
+                analysis=analysis,
+                distance_metric=distance_metric,
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                sample_query_options=sample_query_options,
+                cohort_size=cohort_size,
+                random_seed=random_seed,
+                chunks=chunks,
+                inline_array=inline_array,
+            )
 
-        if show:  # pragma: no cover
-            fig.show(renderer=renderer)
-        return {
-            "figure": fig,
-            "n_snps": n_snps_used,
-            "dist": dist,
-            "dist_samples": phased_samples,
-            "leaf_data": leaf_data,
-        }
+            # Align sample metadata with haplotypes.
+            df_samples_phased = (
+                df_samples.set_index("sample_id")
+                .loc[phased_samples.tolist()]
+                .reset_index()
+            )
+
+            # Normalise color and symbol parameters.
+            symbol_prepped = self._setup_sample_symbol(
+                data=df_samples_phased,
+                symbol=symbol,
+            )
+            del symbol
+            (
+                color_prepped,
+                color_discrete_map_prepped,
+                category_orders_prepped,
+            ) = self._setup_sample_colors_plotly(
+                data=df_samples_phased,
+                color=color,
+                color_discrete_map=color_discrete_map,
+                color_discrete_sequence=color_discrete_sequence,
+                category_orders=category_orders,
+            )
+            del color
+            del color_discrete_map
+            del color_discrete_sequence
+
+            # Repeat the dataframe so there is one row of metadata for each haplotype.
+            df_haps = pd.DataFrame(np.repeat(df_samples_phased.values, 2, axis=0))
+            df_haps.columns = df_samples_phased.columns
+            leaf_data = df_haps.assign(sample_id=_make_unique(df_haps.sample_id))
+
+            # Configure hover data.
+            hover_data = self._setup_sample_hover_data_plotly(
+                color=color_prepped, symbol=symbol_prepped
+            )
+
+            # Construct plot title.
+            if title is True:
+                title_lines = []
+                if sample_sets is not None:
+                    title_lines.append(f"Sample sets: {sample_sets}")
+                if sample_query is not None:
+                    title_lines.append(f"Sample query: {sample_query}")
+                title_lines.append(f"Genomic region: {region} ({n_snps_used:,} SNPs)")
+                title = "<br>".join(title_lines)
+
+            # Create the plot.
+            with self._spinner("Plot dendrogram"):
+                fig, leaf_data = _plot_dendrogram(
+                    dist=dist,
+                    linkage_method=linkage_method,
+                    count_sort=count_sort,
+                    distance_sort=distance_sort,
+                    render_mode=render_mode,
+                    width=width,
+                    height=height,
+                    title=title,
+                    line_width=line_width,
+                    line_color=line_color,
+                    marker_size=marker_size,
+                    leaf_data=leaf_data,
+                    leaf_hover_name="sample_id",
+                    leaf_hover_data=hover_data,
+                    leaf_color=color_prepped,
+                    leaf_symbol=symbol_prepped,
+                    leaf_y=leaf_y,
+                    leaf_color_discrete_map=color_discrete_map_prepped,
+                    leaf_category_orders=category_orders_prepped,
+                    template="simple_white",
+                    y_axis_title=f"Distance ({distance_metric})",
+                    y_axis_buffer=1,
+                )
+
+            # Tidy up.
+            fig.update_layout(
+                title_font=dict(
+                    size=title_font_size,
+                ),
+                legend=dict(itemsizing=legend_sizing, tracegroupgap=0),
+            )
+
+            if show:  # pragma: no cover
+                fig.show(renderer=renderer)
+            return {
+                "figure": fig,
+                "n_snps": n_snps_used,
+                "dist": dist,
+                "dist_samples": phased_samples,
+                "leaf_data": leaf_data,
+            }
+        finally:
+            sys.setrecursionlimit(_original_limit)
 
     @doc(
         summary="""
