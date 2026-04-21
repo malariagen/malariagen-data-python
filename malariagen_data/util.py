@@ -479,6 +479,12 @@ def _init_filesystem(url, **kwargs):
 
         kwargs.setdefault("token", credentials)
 
+        # Set retry and timeout defaults for GCS to handle transient errors
+        # on unreliable networks (e.g., field stations in endemic regions).
+        # gcsfs supports retry (number of retries) and timeout (seconds).
+        kwargs.setdefault("retry", 3)
+        kwargs.setdefault("timeout", 60)
+
         # Ensure options are passed through to gcsfs, even if URL is chained.
         if url.startswith("gs://") or url.startswith("gcs://"):
             storage_options = kwargs
@@ -501,6 +507,13 @@ def _init_filesystem(url, **kwargs):
         kwargs.setdefault("endpoint_url", "https://cog.sanger.ac.uk")
         kwargs.setdefault("config_kwargs", config)
 
+        # Set retry and timeout defaults for S3 to handle transient errors.
+        # s3fs supports retries (max retry attempts) and
+        # config_kwargs for connect/read timeouts.
+        kwargs.setdefault("retries", 3)
+        config.setdefault("connect_timeout", 60)
+        config.setdefault("read_timeout", 60)
+
         if url.startswith("s3://"):
             storage_options = kwargs
         else:
@@ -509,6 +522,9 @@ def _init_filesystem(url, **kwargs):
 
     else:
         # Some other kind of URL, pass through kwargs as-is.
+        # Set a default timeout for remote HTTP/HTTPS filesystems.
+        if url.startswith("http://") or url.startswith("https://"):
+            kwargs.setdefault("timeout", 60)
         storage_options = kwargs
 
     if simplecache_options is not None:
