@@ -8,6 +8,7 @@ from pytest_cases import parametrize_with_cases
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data import adir1 as _adir1
+from malariagen_data import as1 as _as1
 
 from malariagen_data.anoph.pca import AnophelesPca
 from malariagen_data.anoph import pca_params
@@ -76,6 +77,24 @@ def adir1_sim_api(adir1_sim_fixture):
     )
 
 
+@pytest.fixture
+def as1_sim_api(as1_sim_fixture):
+    return AnophelesPca(
+        url=as1_sim_fixture.url,
+        public_url=as1_sim_fixture.url,
+        config_path=_as1.CONFIG_PATH,
+        major_version_number=_as1.MAJOR_VERSION_NUMBER,
+        major_version_path=_as1.MAJOR_VERSION_PATH,
+        pre=False,
+        gff_gene_type="protein_coding_gene",
+        gff_gene_name_attribute="Note",
+        gff_default_attributes=("ID", "Parent", "Note", "description"),
+        default_site_mask="stephensi",
+        results_cache=as1_sim_fixture.results_cache_path.as_posix(),
+        taxon_colors=_as1.TAXON_COLORS,
+    )
+
+
 # N.B., here we use pytest_cases to parametrize tests. Each
 # function whose name begins with "case_" defines a set of
 # inputs to the test functions. See the documentation for
@@ -98,6 +117,10 @@ def case_af1_sim(af1_sim_fixture, af1_sim_api):
 
 def case_adir1_sim(adir1_sim_fixture, adir1_sim_api):
     return adir1_sim_fixture, adir1_sim_api
+
+
+def case_as1_sim(as1_sim_fixture, as1_sim_api):
+    return as1_sim_fixture, as1_sim_api
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -137,7 +160,7 @@ def test_pca_plotting(fixture, api: AnophelesPca):
     # Check sizes.
     assert len(pca_df) == ds.sizes["samples"]
     for i in range(n_components):
-        assert f"PC{i+1}" in pca_df.columns, (
+        assert f"PC{i + 1}" in pca_df.columns, (
             "n_components",
             n_components,
             "n_samples",
@@ -229,7 +252,7 @@ def test_pca_exclude_samples(fixture, api: AnophelesPca):
     # Check sizes.
     assert len(pca_df) == n_samples
     for i in range(n_components):
-        assert f"PC{i+1}" in pca_df.columns, (
+        assert f"PC{i + 1}" in pca_df.columns, (
             "n_components",
             n_components,
             "n_samples",
@@ -239,7 +262,7 @@ def test_pca_exclude_samples(fixture, api: AnophelesPca):
             "n_snps",
             n_snps,
         )
-    assert f"PC{n_components+1}" not in pca_df.columns
+    assert f"PC{n_components + 1}" not in pca_df.columns
     assert "pca_fit" in pca_df.columns
     assert pca_df["pca_fit"].all()
     assert pca_evr.ndim == 1
@@ -292,7 +315,7 @@ def test_pca_fit_exclude_samples(fixture, api: AnophelesPca):
     # Check sizes.
     assert len(pca_df) == n_samples
     for i in range(n_components):
-        assert f"PC{i+1}" in pca_df.columns, (
+        assert f"PC{i + 1}" in pca_df.columns, (
             "n_components",
             n_components,
             "n_samples",
@@ -302,7 +325,7 @@ def test_pca_fit_exclude_samples(fixture, api: AnophelesPca):
             "n_snps",
             n_snps,
         )
-    assert f"PC{n_components+1}" not in pca_df.columns
+    assert f"PC{n_components + 1}" not in pca_df.columns
     assert "pca_fit" in pca_df.columns
     assert pca_evr.ndim == 1
     assert pca_evr.shape[0] == n_components
@@ -315,6 +338,85 @@ def test_pca_fit_exclude_samples(fixture, api: AnophelesPca):
         len(pca_df.query(f"sample_id in {exclude_samples} and not pca_fit"))
         == n_samples_excluded
     )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_pca_cohort_downsampling(fixture, api: AnophelesPca):
+    # Parameters for selecting input data.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = np.random.choice(all_sample_sets, size=2, replace=False).tolist()
+    data_params = dict(
+        region=str(np.random.choice(api.contigs)),
+        sample_sets=sample_sets,
+        site_mask=np.random.choice(list(api.site_mask_ids) + [None]),
+    )
+
+    # Test cohort downsampling.
+    cohort_col = "country"
+    max_cohort_size = 10
+    random_seed = 42
+
+    # Try to run the PCA with cohort downsampling.
+    try:
+        pca_df, pca_evr = api.pca(
+            n_snps=100,  # Use a small number to avoid "Not enough SNPs" errors
+            n_components=2,
+            cohorts=cohort_col,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+            **data_params,
+        )
+    except ValueError as e:
+        if "Not enough SNPs" in str(e):
+            pytest.skip("Not enough SNPs available after downsampling to run test.")
+        else:
+            raise
+
+    # Check types.
+    assert isinstance(pca_df, pd.DataFrame)
+    assert isinstance(pca_evr, np.ndarray)
+
+    # Check basic structure.
+    assert len(pca_df) > 0
+    assert "PC1" in pca_df.columns
+    assert "PC2" in pca_df.columns
+    assert "pca_fit" in pca_df.columns
+    assert pca_df["pca_fit"].all()
+    assert pca_evr.ndim == 1
+    assert pca_evr.shape[0] == 2
+
+    # Check cohort counts.
+    final_cohort_counts = pca_df[cohort_col].value_counts()
+    for cohort, count in final_cohort_counts.items():
+        assert count <= max_cohort_size
+
+    # Test bad parameter combinations.
+    with pytest.raises(ValueError):
+        api.pca(
+            n_snps=100,
+            n_components=2,
+            cohorts=cohort_col,
+            # max_cohort_size is missing
+            **data_params,
+        )
+    with pytest.raises(ValueError):
+        api.pca(
+            n_snps=100,
+            n_components=2,
+            cohorts=cohort_col,
+            max_cohort_size=max_cohort_size,
+            sample_indices=[0, 1, 2],
+            **data_params,
+        )
+    with pytest.raises(ValueError):
+        api.pca(
+            n_snps=100,
+            n_components=2,
+            cohorts=cohort_col,
+            max_cohort_size=max_cohort_size,
+            cohort_size=10,
+            **data_params,
+        )
 
 
 # --- _jitter() determinism unit tests ---

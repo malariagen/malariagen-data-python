@@ -24,6 +24,8 @@ import pandas as pd
 import plotly.express as px  # type: ignore
 from numpydoc_decorator import doc  # type: ignore
 
+from .safe_query import validate_query
+
 from ..util import _check_types
 from . import base_params, map_params, plotly_params
 from .base import AnophelesBase
@@ -808,10 +810,9 @@ class AnophelesSampleMetadata(AnophelesBase):
             # zero-result queries and provide a helpful warning.
             df_before_query = df_samples
 
-            # Use the python engine in order to support extension array dtypes, e.g. Float64, Int64, boolean.
-            df_samples = df_samples.query(
-                prepared_sample_query, **sample_query_options, engine="python"
-            )
+            # Validate the query to prevent arbitrary code execution (GH-1292).
+            validate_query(prepared_sample_query)
+            df_samples = df_samples.query(prepared_sample_query, **sample_query_options)
             df_samples = df_samples.reset_index(drop=True)
 
             # Warn if query returned zero results on a non-empty dataset.
@@ -1197,12 +1198,13 @@ class AnophelesSampleMetadata(AnophelesBase):
             # Default the sample_query_options to an empty dict.
             sample_query_options = sample_query_options or {}
 
-            # Use the python engine in order to support extension array dtypes, e.g. Float64, Int64, boolean.
+            # Validate the query to prevent arbitrary code execution (GH-1292).
             # Get the Pandas Series as a NumPy array of Boolean values.
             # Note: if `prepared_sample_query` is an internal query, this will select all samples,
             # since `sample_metadata` should have already applied the internal query.
+            validate_query(prepared_sample_query)
             loc_samples = df_samples.eval(
-                prepared_sample_query, **sample_query_options, engine="python"
+                prepared_sample_query, **sample_query_options
             ).values
 
             # Convert the sample indices to a list.
@@ -1368,6 +1370,7 @@ class AnophelesSampleMetadata(AnophelesBase):
                 )
             data["symbol"] = ""
             for key, value in symbol.items():
+                validate_query(value)
                 data.loc[data.query(value).index, "symbol"] = key
             symbol_prepped = "symbol"
 
@@ -1421,6 +1424,7 @@ class AnophelesSampleMetadata(AnophelesBase):
                 )
             data["color"] = ""
             for key, value in color.items():
+                validate_query(value)
                 data.loc[data.query(value).index, "color"] = key
             color_prepped = "color"
 
@@ -1654,6 +1658,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             self._cache_cohorts[cache_key] = df_cohorts
 
         if query is not None:
+            validate_query(query)
             df_cohorts = df_cohorts.query(query)
             df_cohorts = df_cohorts.reset_index(drop=True)
 
@@ -1872,6 +1877,7 @@ def _locate_cohorts(*, cohorts, data, min_cohort_size):
 
         for coh, query in cohorts.items():
             try:
+                validate_query(query)
                 loc_coh = data.eval(query).values
             except (KeyError, NameError, SyntaxError, TypeError, AttributeError) as e:
                 raise ValueError(
