@@ -3,6 +3,7 @@
 from typing import Optional, Literal
 
 import pandas as pd
+from pydantic import Field
 from typing_extensions import Annotated, TypeAlias
 
 from . import base_params
@@ -10,6 +11,7 @@ from . import base_params
 # N.B., window size can mean different things for different functions
 window_size: TypeAlias = Annotated[
     int,
+    Field(ge=1),
     "The size of windows (number of sites) used to calculate statistics within.",
 ]
 cohort_size_default: Optional[base_params.cohort_size] = None

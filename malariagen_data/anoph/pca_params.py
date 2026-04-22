@@ -2,11 +2,13 @@
 
 import numpy as np
 import pandas as pd
+from pydantic import Field
 from typing_extensions import Annotated, TypeAlias
 from . import base_params
 
 n_components: TypeAlias = Annotated[
     int,
+    Field(ge=1),
     "Number of components to return.",
 ]
 
