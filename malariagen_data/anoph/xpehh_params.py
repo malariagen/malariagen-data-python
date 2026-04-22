@@ -60,7 +60,9 @@ max_gap: TypeAlias = Annotated[
 ]
 max_gap_default: max_gap = 200_000
 gap_scale: TypeAlias = Annotated[
-    int, Field(ge=1), "Rescale distance between variants if gap is larger than this value."
+    int,
+    Field(ge=1),
+    "Rescale distance between variants if gap is larger than this value.",
 ]
 gap_scale_default: gap_scale = 20_000
 include_edges: TypeAlias = Annotated[

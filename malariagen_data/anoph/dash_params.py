@@ -5,7 +5,9 @@ from typing import Literal, Union
 from pydantic import Field
 from typing_extensions import Annotated, TypeAlias
 
-height: TypeAlias = Annotated[int, Field(gt=0), "Height of the Dash app in pixels (px)."]
+height: TypeAlias = Annotated[
+    int, Field(gt=0), "Height of the Dash app in pixels (px)."
+]
 
 width: TypeAlias = Annotated[Union[int, str], "Width of the Dash app."]
 
