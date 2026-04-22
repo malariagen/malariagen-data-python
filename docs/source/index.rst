@@ -17,7 +17,10 @@ API documentation
 
       *Anopheles gambiae* complex.
 
-      .. image:: https://upload.wikimedia.org/wikipedia/commons/0/0a/AnophelesGambiaemosquito.jpg
+      .. image:: ./_static/images/anopheles_gambiae.jpg
+         :alt: Anopheles gambiae mosquito
+         :align: center
+         :width: 100%
 
    .. grid-item-card:: ``Af1``
       :link: Af1
@@ -25,7 +28,21 @@ API documentation
 
       *Anopheles funestus* subgroup.
 
-      .. image:: https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Anopheles_Funetus.jpg/640px-Anopheles_Funetus.jpg
+      .. image:: ./_static/images/anopheles_funestus.jpg
+         :alt: Anopheles funestus mosquito
+         :align: center
+         :width: 100%
+
+   .. grid-item-card:: ``As1``
+      :link: As1
+      :link-type: doc
+
+      *Anopheles stephensi*.
+
+      .. image:: ./_static/images/anopheles_stephensi.jpg
+         :alt: Anopheles stephensi mosquito mosquito
+         :align: center
+         :width: 100%
 
    .. grid-item-card:: ``Amin1``
       :link: Amin1
@@ -33,7 +50,10 @@ API documentation
 
       *Anopheles minimus*.
 
-      .. image:: https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Anopheles_minimus_1.jpg/640px-Anopheles_minimus_1.jpg
+      .. image:: ./_static/images/anopheles_minimus.jpg
+         :alt: Anopheles minimus mosquito
+         :align: center
+         :width: 100%
 
    .. grid-item-card:: ``Adir1``
       :link: Adir1
@@ -41,7 +61,10 @@ API documentation
 
       *Anopheles dirus* complex.
 
-      .. image:: https://phil.cdc.gov//PHIL_Images/8777/8777_lores.jpg
+      .. image:: ./_static/images/anopheles_dirus.jpg
+         :alt: Anopheles dirus mosquito
+         :align: center
+         :width: 100%
 
 Documentation for the `Pf7 <https://malariagen.github.io/parasite-data/pf7/api.html>`_ (*Plasmodium falciparum*)
 and `Pv4 <https://malariagen.github.io/parasite-data/pv4/api.html>`_ (*Plasmodium vivax*) APIs is also available,
@@ -55,6 +78,13 @@ The ``malariagen_data`` package is available from the Python package index (PyPI
 via pip::
 
    pip install malariagen_data
+
+.. note::
+
+   If you are using Google Colab with a **TPU runtime**, installation may fail due to
+   a dependency conflict with a preinstalled system package (``blinker==1.4``).
+
+   See :doc:`colab_tpu` for detailed instructions and troubleshooting.
 
 For accessing data in Google Cloud Storage (GCS) you will also need to authenticate with Google Cloud.
 
@@ -92,7 +122,7 @@ Some data from MalariaGEN are subject to **terms of use** which may include an e
 public communication of any analysis results without permission from data owners. If you
 have any questions about terms of use please email support@malariagen.net.
 
-By default, this sofware package accesses data directly from the **MalariaGEN cloud data repository**
+By default, this software package accesses data directly from the **MalariaGEN cloud data repository**
 hosted in Google Cloud Storage in the US. Note that data access will be more efficient if your
 computations are also run within the same region. Google Colab provides a convenient and free
 service which you can use to explore data and run computations. If you have any questions about
