@@ -1,0 +1,30 @@
+sample_id,country_ISO,adm1_name,adm1_ISO,adm2_name,taxon,cohort_admin1_year,cohort_admin1_month,cohort_admin1_quarter,cohort_admin2_year,cohort_admin2_month,cohort_admin2_quarter
+VMF00339-0001,KEN,Marsabit,KE-25,Saku,stephensi,KE-25_step_2022,KE-25_step_2022_12,KE-25_step_2022_Q4,KE-25_Saku_step_2022,KE-25_Saku_step_2022_12,KE-25_Saku_step_2022_Q4
+VMF00339-0002,KEN,Mandera,KE-24,Mandera East,stephensi,KE-24_step_2024,KE-24_step_2024,KE-24_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024
+VMF00339-0003,KEN,Isiolo,KE-09,Isiolo North,stephensi,KE-09_step_2024,KE-09_step_2024,KE-09_step_2024,KE-09_Isiolo-North_step_2024,KE-09_Isiolo-North_step_2024,KE-09_Isiolo-North_step_2024
+VMF00339-0004,KEN,Isiolo,KE-09,Isiolo North,stephensi,KE-09_step_2024,KE-09_step_2024,KE-09_step_2024,KE-09_Isiolo-North_step_2024,KE-09_Isiolo-North_step_2024,KE-09_Isiolo-North_step_2024
+VMF00339-0005,KEN,Isiolo,KE-09,Isiolo North,stephensi,KE-09_step_2024,KE-09_step_2024,KE-09_step_2024,KE-09_Isiolo-North_step_2024,KE-09_Isiolo-North_step_2024,KE-09_Isiolo-North_step_2024
+VMF00339-0006,KEN,Mandera,KE-24,Mandera East,stephensi,KE-24_step_2024,KE-24_step_2024,KE-24_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024
+VMF00339-0007,KEN,Mandera,KE-24,Mandera East,stephensi,KE-24_step_2024,KE-24_step_2024,KE-24_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024
+VMF00339-0008,KEN,Mandera,KE-24,Mandera East,stephensi,KE-24_step_2024,KE-24_step_2024,KE-24_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024
+VMF00339-0009,KEN,Mandera,KE-24,Mandera East,stephensi,KE-24_step_2024,KE-24_step_2024,KE-24_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024
+VMF00339-0010,KEN,Mandera,KE-24,Mandera East,stephensi,KE-24_step_2024,KE-24_step_2024,KE-24_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024
+VMF00339-0011,KEN,Mandera,KE-24,Mandera East,stephensi,KE-24_step_2024,KE-24_step_2024,KE-24_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024
+VMF00339-0012,KEN,Isiolo,KE-09,Isiolo North,stephensi,KE-09_step_2024,KE-09_step_2024,KE-09_step_2024,KE-09_Isiolo-North_step_2024,KE-09_Isiolo-North_step_2024,KE-09_Isiolo-North_step_2024
+VMF00339-0013,KEN,Mandera,KE-24,Mandera East,stephensi,KE-24_step_2024,KE-24_step_2024,KE-24_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024
+VMF00339-0014,KEN,Mandera,KE-24,Mandera East,stephensi,KE-24_step_2024,KE-24_step_2024,KE-24_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024
+VMF00339-0015,KEN,Mandera,KE-24,Mandera East,stephensi,KE-24_step_2024,KE-24_step_2024,KE-24_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024
+VMF00339-0016,KEN,Isiolo,KE-09,Isiolo North,stephensi,KE-09_step_2024,KE-09_step_2024,KE-09_step_2024,KE-09_Isiolo-North_step_2024,KE-09_Isiolo-North_step_2024,KE-09_Isiolo-North_step_2024
+VMF00339-0017,KEN,Mandera,KE-24,Mandera East,stephensi,KE-24_step_2024,KE-24_step_2024,KE-24_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024
+VMF00339-0018,KEN,Mandera,KE-24,Mandera East,stephensi,KE-24_step_2024,KE-24_step_2024,KE-24_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024
+VMF00339-0019,KEN,Mandera,KE-24,Mandera East,stephensi,KE-24_step_2024,KE-24_step_2024,KE-24_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024
+VMF00339-0020,KEN,Mandera,KE-24,Mandera East,stephensi,KE-24_step_2024,KE-24_step_2024,KE-24_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024
+VMF00339-0021,KEN,Isiolo,KE-09,Isiolo North,stephensi,KE-09_step_2024,KE-09_step_2024,KE-09_step_2024,KE-09_Isiolo-North_step_2024,KE-09_Isiolo-North_step_2024,KE-09_Isiolo-North_step_2024
+VMF00339-0022,KEN,Mandera,KE-24,Mandera East,stephensi,KE-24_step_2024,KE-24_step_2024,KE-24_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024,KE-24_Mandera-East_step_2024
+VMF00339-0025,KEN,Samburu,KE-37,Samburu East,stephensi,KE-37_step_2024,KE-37_step_2024,KE-37_step_2024,KE-37_Samburu-East_step_2024,KE-37_Samburu-East_step_2024,KE-37_Samburu-East_step_2024
+VMF00339-0026,KEN,Samburu,KE-37,Samburu East,stephensi,KE-37_step_2024,KE-37_step_2024,KE-37_step_2024,KE-37_Samburu-East_step_2024,KE-37_Samburu-East_step_2024,KE-37_Samburu-East_step_2024
+VMF00339-0027,KEN,Samburu,KE-37,Samburu East,stephensi,KE-37_step_2024,KE-37_step_2024,KE-37_step_2024,KE-37_Samburu-East_step_2024,KE-37_Samburu-East_step_2024,KE-37_Samburu-East_step_2024
+VMF00339-0028,KEN,Samburu,KE-37,Samburu East,stephensi,KE-37_step_2024,KE-37_step_2024,KE-37_step_2024,KE-37_Samburu-East_step_2024,KE-37_Samburu-East_step_2024,KE-37_Samburu-East_step_2024
+VMF00339-0029,KEN,Samburu,KE-37,Samburu East,stephensi,KE-37_step_2024,KE-37_step_2024,KE-37_step_2024,KE-37_Samburu-East_step_2024,KE-37_Samburu-East_step_2024,KE-37_Samburu-East_step_2024
+VMF00339-0030,KEN,Samburu,KE-37,Samburu East,stephensi,KE-37_step_2024,KE-37_step_2024,KE-37_step_2024,KE-37_Samburu-East_step_2024,KE-37_Samburu-East_step_2024,KE-37_Samburu-East_step_2024
+VMF00339-0031,KEN,Samburu,KE-37,Samburu East,stephensi,KE-37_step_2024,KE-37_step_2024,KE-37_step_2024,KE-37_Samburu-East_step_2024,KE-37_Samburu-East_step_2024,KE-37_Samburu-East_step_2024

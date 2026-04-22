@@ -34,6 +34,22 @@ df_pairwise_fst: TypeAlias = Annotated[
     """,
 ]
 
+min_snps_threshold: TypeAlias = Annotated[
+    int,
+    """
+    Minimum number of SNP sites required for the Fst GWSS computation. If
+    fewer sites are available, a ValueError is raised.
+    """,
+]
+
+window_adjustment_factor: TypeAlias = Annotated[
+    int,
+    """
+    If window_size is >= the number of available SNP sites, the window_size
+    is automatically adjusted to number_of_snps // window_adjustment_factor.
+    """,
+]
+
 annotation: TypeAlias = Annotated[
     Optional[Literal["standard error", "Z score", "lower triangle"]],
     """

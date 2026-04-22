@@ -77,7 +77,8 @@ def _minimum_spanning_network(dist, max_dist=None):
 def _pairwise_haplotype_distance(h, metric="hamming"):
     import scipy.spatial
 
-    assert metric in ["hamming", "jaccard"]
+    if metric not in ("hamming", "jaccard"):
+        raise ValueError(f"metric must be 'hamming' or 'jaccard', got {metric!r}")
     dist = scipy.spatial.distance.pdist(h.T, metric=metric)
     dist *= h.shape[0]
     dist = scipy.spatial.distance.squareform(dist)
@@ -263,7 +264,7 @@ def _mjn_graph_edges(
 
                 # add further intermediate nodes as necessary
                 for k in range(1, sep - 1):
-                    source = f"anon_{i}_{j}_{k-1}"
+                    source = f"anon_{i}_{j}_{k - 1}"
                     target = f"anon_{i}_{j}_{k}"
                     graph_node = {
                         "id": target,
@@ -279,10 +280,10 @@ def _mjn_graph_edges(
                     graph_edges.append(graph_edge)
 
                 # add edge from final intermediate node to node j
-                source = f"anon_{i}_{j}_{sep-2}"
+                source = f"anon_{i}_{j}_{sep - 2}"
                 target = j
                 graph_edge = {
-                    "id": f"edge_{i}_{j}_{sep-1}",
+                    "id": f"edge_{i}_{j}_{sep - 1}",
                     "source": source,
                     "target": target,
                 }

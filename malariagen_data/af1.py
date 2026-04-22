@@ -21,6 +21,10 @@ TAXON_COLORS = {
     "funestus": TAXON_PALETTE[0],
 }
 
+XPEHH_GWSS_CACHE_NAME = "af1_xpehh_gwss_v1"
+IHS_GWSS_CACHE_NAME = "af1_ihs_gwss_v1"
+ROH_HMM_CACHE_NAME = "af1_roh_hmm_v1"
+
 
 class Af1(AnophelesDataResource):
     """Provides access to data from Af1.x releases.
@@ -75,6 +79,7 @@ class Af1(AnophelesDataResource):
 
     _xpehh_gwss_cache_name = XPEHH_GWSS_CACHE_NAME
     _ihs_gwss_cache_name = IHS_GWSS_CACHE_NAME
+    _roh_hmm_cache_name = ROH_HMM_CACHE_NAME
 
     def __init__(
         self,
@@ -127,7 +132,6 @@ class Af1(AnophelesDataResource):
             tqdm_class=tqdm_class,
             taxon_colors=TAXON_COLORS,
             virtual_contigs=None,
-            gene_names=None,
             inversion_tag_path=None,
             unrestricted_use_only=unrestricted_use_only,
             surveillance_use_only=surveillance_use_only,
@@ -179,7 +183,7 @@ class Af1(AnophelesDataResource):
                         <th style="text-align: left">
                             Data releases available
                         </th>
-                        <td>{', '.join(self._available_releases)}</td>
+                        <td>{", ".join(self._available_releases)}</td>
                     </tr>
                     <tr>
                         <th style="text-align: left">
@@ -227,7 +231,7 @@ class Af1(AnophelesDataResource):
                         <th style="text-align: left">
                             Relevant data releases
                         </th>
-                        <td>{', '.join(self.releases)}</td>
+                        <td>{", ".join(self.releases)}</td>
                     </tr>
                 </tbody>
             </table>
