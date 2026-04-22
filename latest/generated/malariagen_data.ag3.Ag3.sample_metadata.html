@@ -375,7 +375,11 @@
 <dl class="py method">
 <dt class="sig sig-object py" id="malariagen_data.ag3.Ag3.sample_metadata">
 <span class="sig-prename descclassname"><span class="pre">Ag3.</span></span><span class="sig-name descname"><span class="pre">sample_metadata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample_sets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_query_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_indices</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#malariagen_data.ag3.Ag3.sample_metadata" title="Link to this definition">#</a></dt>
-<dd><p>Access sample metadata for one or more sample sets.</p>
+<dd><p>Access sample-level metadata for one or more sample sets. This method
+returns a pandas DataFrame where each row corresponds to a single
+sample. The metadata is assembled by merging multiple sources including
+general metadata, sequence quality control (QC) metadata, surveillance
+flags, and—when available—AIM and cohort metadata.</p>
 <section id="parameters">
 <h2>Parameters<a class="headerlink" href="#parameters" title="Link to this heading">#</a></h2>
 <dl class="simple">
@@ -402,7 +406,79 @@ both.</p>
 <section id="returns">
 <h2>Returns<a class="headerlink" href="#returns" title="Link to this heading">#</a></h2>
 <dl class="simple">
-<dt>DataFrame</dt><dd><p>A dataframe of sample metadata, one row per sample.</p>
+<dt>DataFrame</dt><dd><p>A pandas DataFrame with one row per sample. Columns are grouped by
+metadata source:  <strong>General metadata</strong> (present for all sample
+sets):  - <code class="docutils literal notranslate"><span class="pre">sample_id</span></code> - Unique identifier for the sample. -
+<code class="docutils literal notranslate"><span class="pre">partner_sample_id</span></code> - Sample ID used by the contributing partner.
+- <code class="docutils literal notranslate"><span class="pre">contributor</span></code> - Name of the contributing institution or
+individual. - <code class="docutils literal notranslate"><span class="pre">country</span></code> - Country where the sample was collected.
+- <code class="docutils literal notranslate"><span class="pre">location</span></code> - Specific collection site (e.g., village or site
+name). - <code class="docutils literal notranslate"><span class="pre">year</span></code> - Year of collection. - <code class="docutils literal notranslate"><span class="pre">month</span></code> - Month of
+collection. - <code class="docutils literal notranslate"><span class="pre">quarter</span></code> - Quarter of the year derived from month
+(1–4). - <code class="docutils literal notranslate"><span class="pre">latitude</span></code> - GPS latitude of the collection site. -
+<code class="docutils literal notranslate"><span class="pre">longitude</span></code> - GPS longitude of the collection site. - <code class="docutils literal notranslate"><span class="pre">sex_call</span></code>
+- Sex determination call; <code class="docutils literal notranslate"><span class="pre">'F'</span></code> for female, <code class="docutils literal notranslate"><span class="pre">'M'</span></code> for male. -
+<code class="docutils literal notranslate"><span class="pre">sample_set</span></code> - Sample set containing the sample. - <code class="docutils literal notranslate"><span class="pre">release</span></code> -
+Data release containing the sample. - <code class="docutils literal notranslate"><span class="pre">study_id</span></code> - Identifier of
+the study the sample set belongs to. - <code class="docutils literal notranslate"><span class="pre">study_url</span></code> - URL of the
+study the sample set belongs to. - <code class="docutils literal notranslate"><span class="pre">terms_of_use_expiry_date</span></code> -
+Expiry date of terms of use for the sample. - <code class="docutils literal notranslate"><span class="pre">terms_of_use_url</span></code> -
+URL of the terms of use for the sample. - <code class="docutils literal notranslate"><span class="pre">unrestricted_use</span></code> -
+Whether the sample can be used without restrictions. -
+<code class="docutils literal notranslate"><span class="pre">is_surveillance</span></code> - Whether the sample can be used for
+surveillance.  <strong>Sequence QC metadata</strong> (present for all sample
+sets, values may be missing if QC data is unavailable for a given
+sample set):  - <code class="docutils literal notranslate"><span class="pre">mean_cov</span></code> - Mean sequencing coverage across the
+genome. - <code class="docutils literal notranslate"><span class="pre">median_cov</span></code> - Median sequencing coverage across the
+genome. - <code class="docutils literal notranslate"><span class="pre">modal_cov</span></code> - Modal (most frequent) sequencing coverage.
+- <code class="docutils literal notranslate"><span class="pre">mean_cov_2L</span></code> - Mean coverage on chromosome arm 2L. -
+<code class="docutils literal notranslate"><span class="pre">median_cov_2L</span></code> - Median coverage on chromosome arm 2L. -
+<code class="docutils literal notranslate"><span class="pre">mode_cov_2L</span></code> - Modal coverage on chromosome arm 2L. -
+<code class="docutils literal notranslate"><span class="pre">mean_cov_2R</span></code> - Mean coverage on chromosome arm 2R. -
+<code class="docutils literal notranslate"><span class="pre">median_cov_2R</span></code> - Median coverage on chromosome arm 2R. -
+<code class="docutils literal notranslate"><span class="pre">mode_cov_2R</span></code> - Modal coverage on chromosome arm 2R. -
+<code class="docutils literal notranslate"><span class="pre">mean_cov_3L</span></code> - Mean coverage on chromosome arm 3L. -
+<code class="docutils literal notranslate"><span class="pre">median_cov_3L</span></code> - Median coverage on chromosome arm 3L. -
+<code class="docutils literal notranslate"><span class="pre">mode_cov_3L</span></code> - Modal coverage on chromosome arm 3L. -
+<code class="docutils literal notranslate"><span class="pre">mean_cov_3R</span></code> - Mean coverage on chromosome arm 3R. -
+<code class="docutils literal notranslate"><span class="pre">median_cov_3R</span></code> - Median coverage on chromosome arm 3R. -
+<code class="docutils literal notranslate"><span class="pre">mode_cov_3R</span></code> - Modal coverage on chromosome arm 3R. -
+<code class="docutils literal notranslate"><span class="pre">mean_cov_X</span></code> - Mean coverage on chromosome X. - <code class="docutils literal notranslate"><span class="pre">median_cov_X</span></code> -
+Median coverage on chromosome X. - <code class="docutils literal notranslate"><span class="pre">mode_cov_X</span></code> - Modal coverage
+on chromosome X. - <code class="docutils literal notranslate"><span class="pre">frac_gen_cov</span></code> - Fraction of the genome
+covered. - <code class="docutils literal notranslate"><span class="pre">divergence</span></code> - Sequence divergence from the reference.
+- <code class="docutils literal notranslate"><span class="pre">contam_pct</span></code> - Estimated contamination percentage. -
+<code class="docutils literal notranslate"><span class="pre">contam_LLR</span></code> - Log-likelihood ratio for contamination estimate.
+<strong>AIM (Ancestry-Informative Marker) metadata</strong> (only present when an
+AIM analysis is available for the data resource, e.g., <em>Ag3</em>):  -
+<code class="docutils literal notranslate"><span class="pre">aim_species_fraction_arab</span></code> - Fraction of gambcolu vs. arabiensis
+AIMs indicating arabiensis. - <code class="docutils literal notranslate"><span class="pre">aim_species_fraction_colu</span></code> -
+Fraction of gambiae vs. coluzzii AIMs   indicating coluzzii. -
+<code class="docutils literal notranslate"><span class="pre">aim_species_fraction_colu_no2l</span></code> - Fraction of gambiae vs.
+coluzzii   AIMs indicating coluzzii, excluding chromosome arm 2L. -
+<code class="docutils literal notranslate"><span class="pre">aim_species_gambcolu_arabiensis</span></code> - Taxon assigned by gambcolu vs.
+arabiensis AIMs. - <code class="docutils literal notranslate"><span class="pre">aim_species_gambiae_coluzzii</span></code> - Taxon assigned
+by gambiae vs.   coluzzii AIMs. - <code class="docutils literal notranslate"><span class="pre">aim_species</span></code> - Final species
+assignment combining both AIM analyses.  <strong>Cohort metadata</strong> (only
+present when a cohorts analysis is available for the data resource;
+quarter columns are only present for cohorts analyses from 20230223
+onwards):  - <code class="docutils literal notranslate"><span class="pre">country_iso</span></code> - ISO code of the country of
+collection. - <code class="docutils literal notranslate"><span class="pre">admin1_name</span></code> - Name of the first-level
+administrative region. - <code class="docutils literal notranslate"><span class="pre">admin1_iso</span></code> - ISO code of the first-
+level administrative region. - <code class="docutils literal notranslate"><span class="pre">admin2_name</span></code> - Name of the second-
+level administrative region. - <code class="docutils literal notranslate"><span class="pre">taxon</span></code> - Taxon assigned by
+combining AIM and cohort analyses. - <code class="docutils literal notranslate"><span class="pre">cohort_admin1_year</span></code> - Cohort
+grouping by admin level 1 and year. - <code class="docutils literal notranslate"><span class="pre">cohort_admin1_month</span></code> -
+Cohort grouping by admin level 1 and month. -
+<code class="docutils literal notranslate"><span class="pre">cohort_admin1_quarter</span></code> - Cohort grouping by admin level 1 and
+quarter (cohorts analysis &gt;= 20230223 only). -
+<code class="docutils literal notranslate"><span class="pre">cohort_admin2_year</span></code> - Cohort grouping by admin level 2 and year.
+- <code class="docutils literal notranslate"><span class="pre">cohort_admin2_month</span></code> - Cohort grouping by admin level 2 and
+month. - <code class="docutils literal notranslate"><span class="pre">cohort_admin2_quarter</span></code> - Cohort grouping by admin level
+2 and   quarter (cohorts analysis &gt;= 20230223 only).  The exact
+columns present depend on the data resource and sample sets
+requested. The returned DataFrame is a copy and can be safely
+modified without affecting internal caches.</p>
 </dd>
 </dl>
 </section>
