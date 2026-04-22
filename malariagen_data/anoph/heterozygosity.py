@@ -231,9 +231,7 @@ class AnophelesHetAnalysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -334,9 +332,7 @@ class AnophelesHetAnalysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig_all)
-            return None
-        else:
-            return fig_all
+        return fig_all
 
     def _sample_count_het(
         self,
@@ -399,8 +395,131 @@ class AnophelesHetAnalysis(
 
         return sample_id, sample_set, windows, counts
 
+    def cohort_count_het(
+        self,
+        region: Region,
+        df_cohort_samples: pd.DataFrame,
+        sample_sets: Optional[base_params.sample_sets],
+        window_size: het_params.window_size,
+        site_mask: Optional[base_params.site_mask],
+        chunks: base_params.chunks,
+        inline_array: base_params.inline_array,
+    ):
+        """Compute windowed heterozygosity counts for multiple samples in a cohort.
+
+        This method efficiently computes heterozygosity for all samples by loading
+        SNP data once and computing across all samples, rather than calling snp_calls()
+        repeatedly for each sample. This vectorized approach provides substantial
+        performance improvements for large cohorts.
+
+        Parameters
+        ----------
+        region : Region
+            Genome region to analyze.
+        df_cohort_samples : pd.DataFrame
+            Sample metadata dataframe with at least 'sample_id' column.
+        sample_sets : str, optional
+            Sample set identifier(s).
+        window_size : int
+            Size of sliding windows for heterozygosity computation.
+        site_mask : str, optional
+            Site mask to apply.
+        chunks : str or int, dict
+            Chunk size for dask arrays.
+        inline_array : bool
+            Whether to inline arrays.
+
+        Returns
+        -------
+        dict
+            Mapping from sample_id to (windows, counts) tuple, where:
+            - windows: array of shape (n_windows, 2) with [start, stop] positions
+            - counts: array of shape (n_windows,) with heterozygous site counts per window
+        """
+        debug = self._log.debug
+
+        # Extract sample IDs from cohort dataframe
+        sample_ids = df_cohort_samples["sample_id"].values
+
+        debug("access SNPs for all cohort samples")
+        # Load SNP data once for all samples in cohort
+        ds_snps = self.snp_calls(
+            region=region,
+            sample_sets=sample_sets,
+            site_mask=site_mask,
+            chunks=chunks,
+            inline_array=inline_array,
+        )
+
+        # Subset to cohort samples to ensure correct indexing
+        ds_snps = ds_snps.set_index(samples="sample_id").sel(samples=sample_ids)
+        sample_id_to_idx = {sid: idx for idx, sid in enumerate(sample_ids)}
+
+        # SNP positions (same for all samples)
+        pos = ds_snps["variant_position"].values
+
+        # guard against window_size exceeding available sites
+        if pos.shape[0] < window_size:
+            raise ValueError(
+                f"Not enough sites ({pos.shape[0]}) for window size "
+                f"({window_size}). Please reduce the window size or "
+                f"use different site selection criteria."
+            )
+
+        # Compute window coordinates once (same for all samples)
+        windows = allel.moving_statistic(
+            values=pos,
+            statistic=lambda x: [x[0], x[-1]],
+            size=window_size,
+        )
+
+        # access genotypes for all samples
+        gt_data = ds_snps["call_genotype"].data
+
+        # Compute windowed heterozygosity for each sample and cache results
+        results = {}
+        for sample_id, sample_idx in sample_id_to_idx.items():
+            # Compute heterozygous genotypes for this sample only to avoid
+            # materializing the full (variants, samples) array in memory.
+            debug(f"Compute heterozygous genotypes for sample {sample_id}")
+            gt_sample = allel.GenotypeDaskVector(gt_data[:, sample_idx, :])
+            with self._dask_progress(desc="Compute heterozygous genotypes"):
+                is_het_sample = gt_sample.is_het().compute()
+
+            # compute windowed heterozygosity for this sample
+            counts = allel.moving_statistic(
+                values=is_het_sample,
+                statistic=np.sum,
+                size=window_size,
+            )
+
+            results[sample_id] = (windows, counts)
+
+        return results
+
     @property
     def _roh_hmm_cache_name(self):
+        return "roh_hmm_v1"
+
+    def _get_roh_hmm_cache_name(self):
+        """Safely resolve the ROH HMM cache name.
+
+        Supports class attribute, property, or legacy method override.
+        Falls back to the default "roh_hmm_v1" if resolution fails.
+
+        See also: https://github.com/malariagen/malariagen-data-python/issues/1151
+        """
+        try:
+            name = self._roh_hmm_cache_name
+            # Handle legacy case where _roh_hmm_cache_name might be a
+            # callable method rather than a property or class attribute.
+            if callable(name):
+                name = name()
+            if isinstance(name, str) and len(name) > 0:
+                return name
+        except NotImplementedError:
+            pass
+        # Fallback to default.
         return "roh_hmm_v1"
 
     @_check_types
@@ -424,7 +543,7 @@ class AnophelesHetAnalysis(
 
         resolved_region: Region = _parse_single_region(self, region)
 
-        name = self._roh_hmm_cache_name
+        name = self._get_roh_hmm_cache_name()
 
         params = dict(
             sample=sample,
@@ -583,9 +702,7 @@ class AnophelesHetAnalysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -705,6 +822,128 @@ class AnophelesHetAnalysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig_all)
-            return None
-        else:
-            return fig_all
+        return fig_all
+
+    @_check_types
+    @doc(
+        summary="Return windowed heterozygosity for a single sample over a genome region.",
+        returns="""
+            A DataFrame with one row per window. Columns are:
+            `sample_id` is the identifier of the sample,
+            `window_start` is the start position of the window,
+            `window_stop` is the stop position of the window,
+            `heterozygosity` is the heterozygosity in the window.
+        """,
+    )
+    def sample_count_het(
+        self,
+        sample: base_params.sample,
+        region: base_params.region,
+        window_size: het_params.window_size = het_params.window_size_default,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
+        sample_set: Optional[base_params.sample_set] = None,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+    ) -> pd.DataFrame:
+        # Normalise region parameter.
+        region_prepped: Region = _parse_single_region(self, region)
+        del region
+
+        # Compute windowed heterozygosity using private method.
+        sample_id, sample_set, windows, counts = self._sample_count_het(
+            sample=sample,
+            region=region_prepped,
+            site_mask=site_mask,
+            window_size=window_size,
+            sample_set=sample_set,
+            chunks=chunks,
+            inline_array=inline_array,
+        )
+
+        # Build and return a DataFrame.
+        df = pd.DataFrame(
+            {
+                "sample_id": sample_id,
+                "window_start": windows[:, 0],
+                "window_stop": windows[:, 1],
+                "heterozygosity": counts / window_size,
+            }
+        )
+
+        return df
+
+    @_check_types
+    @doc(
+        summary="Compute mean heterozygosity for multiple cohorts over a genome region.",
+        returns="""
+            A DataFrame with one row per cohort. Columns are:
+            `cohort` is the cohort identifier,
+            `n_samples` is the number of samples in the cohort,
+            `mean_heterozygosity` is the mean heterozygosity across all samples and windows in the cohort.
+        """,
+    )
+    def cohort_heterozygosity(
+        self,
+        region: base_params.region,
+        cohorts: base_params.cohorts,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
+        window_size: het_params.window_size = het_params.window_size_default,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+    ) -> pd.DataFrame:
+        # Normalise region parameter.
+        region_prepped: Region = _parse_single_region(self, region)
+        del region
+
+        # Set up cohort queries.
+        cohort_queries = self._setup_cohort_queries(
+            cohorts=cohorts,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            cohort_size=None,
+            min_cohort_size=1,
+        )
+
+        # Compute heterozygosity for each cohort.
+        results = []
+        for cohort_label, cohort_query in cohort_queries.items():
+            # Get samples in this cohort.
+            df_cohort_samples = self.sample_metadata(
+                sample_sets=sample_sets,
+                sample_query=cohort_query,
+            )
+            n_samples = len(df_cohort_samples)
+
+            # Compute heterozygosity for all samples in the cohort using cohort_count_het().
+            # This public method loads SNP data once and computes across all samples,
+            # providing substantial speedup over sequential per-sample processing.
+            cohort_het_results = self.cohort_count_het(
+                region=region_prepped,
+                df_cohort_samples=df_cohort_samples,
+                sample_sets=sample_sets,
+                window_size=window_size,
+                site_mask=site_mask,
+                chunks=chunks,
+                inline_array=inline_array,
+            )
+
+            # Compute per-sample means and aggregate.
+            het_values = []
+            for sample_id in df_cohort_samples["sample_id"]:
+                _, counts = cohort_het_results[sample_id]
+                het_mean = np.mean(counts / window_size)
+                het_values.append(het_mean)
+
+            results.append(
+                {
+                    "cohort": cohort_label,
+                    "n_samples": n_samples,
+                    "mean_heterozygosity": np.mean(het_values),
+                }
+            )
+
+        return pd.DataFrame(results)
