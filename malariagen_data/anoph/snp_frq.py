@@ -15,6 +15,7 @@ from ..util import (
     _check_types,
     _pandas_apply,
 )
+from .safe_query import validate_query
 from .snp_data import AnophelesSnpData
 from .frq_base import (
     _prep_samples_for_cohort_grouping,
@@ -211,7 +212,11 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         )
         for coh, loc_coh in cohorts_iterator:
             n_samples = np.count_nonzero(loc_coh)
-            assert n_samples >= min_cohort_size
+            if n_samples < min_cohort_size:
+                raise ValueError(
+                    f"Not enough samples ({n_samples}) for minimum "
+                    f"cohort size ({min_cohort_size})"
+                )
             gt_coh = np.compress(loc_coh, gt, axis=1)
             ac_coh = np.asarray(allel.GenotypeArray(gt_coh).count_alleles(max_allele=3))
             an_coh = np.sum(ac_coh, axis=1)[:, None]
@@ -606,7 +611,11 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             if nobs_mode == "called":
                 nobs[:, cohort_index] = cohort_an
             else:
-                assert nobs_mode == "fixed"
+                if nobs_mode != "fixed":
+                    raise RuntimeError(
+                        f"Internal error: expected nobs_mode='fixed', "
+                        f"got {nobs_mode!r}"
+                    )
                 nobs[:, cohort_index] = cohort.size * 2
 
         # Compute frequency.
@@ -682,6 +691,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
         # Apply variant query.
         if variant_query is not None:
+            validate_query(variant_query)
             loc_variants = np.asarray(df_variants.eval(variant_query))
 
             # Check for no SNPs remaining after applying variant query.
@@ -826,6 +836,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
         # Apply variant query if given.
         if variant_query is not None:
+            validate_query(variant_query)
             loc_variants = df_variants.eval(variant_query).values
 
             # Check for no SNPs remaining after applying variant query.
@@ -915,6 +926,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             df_snps = df_snps.loc[loc_sites]
 
         if snp_query is not None:
+            validate_query(snp_query)
             df_snps = df_snps.query(snp_query)
 
         return df_snps

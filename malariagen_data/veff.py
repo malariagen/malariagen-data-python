@@ -1,4 +1,5 @@
 import collections
+import functools
 import operator
 
 import pandas as pd
@@ -31,7 +32,7 @@ null_effect = VariantEffect(*([None] * len(VariantEffect._fields)))
 
 
 class Annotator(object):
-    def __init__(self, genome, genome_features):
+    def __init__(self, genome, genome_features, genome_cache_maxsize=5):
         """
         An annotator.
 
@@ -41,13 +42,25 @@ class Annotator(object):
             Reference genome.
         genome_features : pandas dataframe
             Dataframe with genome annotations.
+        genome_cache_maxsize : int or None, optional
+            Maximum number of contig genome sequences to keep in the
+            LRU cache.  Set to ``None`` for an unbounded cache (the
+            previous default behaviour).  Default is 5.
 
         """
 
         # store initialisation parameters
         self._genome = genome
-        self._genome_cache = dict()
         self._genome_features_cache = None
+
+        # Create a per-instance LRU cache for genome sequences.
+        # Defining the cached function inside __init__ ensures each
+        # Annotator instance has its own independent cache.
+        @functools.lru_cache(maxsize=genome_cache_maxsize)
+        def _load_genome_seq(chrom):
+            return self._genome[chrom][:]
+
+        self._load_genome_seq = _load_genome_seq
 
         genome_features = genome_features[
             (genome_features.end - genome_features.start) > 0
@@ -76,14 +89,14 @@ class Annotator(object):
 
     def get_ref_seq(self, chrom, start, stop):
         """Accepts 1-based coords."""
-        try:
-            seq = self._genome_cache[chrom]
-        except KeyError:
-            seq = self._genome[chrom][:]
-            self._genome_cache[chrom] = seq
+        seq = self._load_genome_seq(chrom)
         ref_seq = seq[start - 1 : stop]
         ref_seq = ref_seq.tobytes().decode()
         return ref_seq
+
+    def clear_genome_cache(self):
+        """Clear all cached genome sequences to free memory."""
+        self._load_genome_seq.cache_clear()
 
     def get_ref_allele_coords(self, chrom, pos, ref):
         # N.B., use one-based inclusive coordinate system (like GFF3) throughout

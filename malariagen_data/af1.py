@@ -132,7 +132,6 @@ class Af1(AnophelesDataResource):
             tqdm_class=tqdm_class,
             taxon_colors=TAXON_COLORS,
             virtual_contigs=None,
-            gene_names=None,
             inversion_tag_path=None,
             unrestricted_use_only=unrestricted_use_only,
             surveillance_use_only=surveillance_use_only,
@@ -184,7 +183,7 @@ class Af1(AnophelesDataResource):
                         <th style="text-align: left">
                             Data releases available
                         </th>
-                        <td>{', '.join(self._available_releases)}</td>
+                        <td>{", ".join(self._available_releases)}</td>
                     </tr>
                     <tr>
                         <th style="text-align: left">
@@ -232,7 +231,7 @@ class Af1(AnophelesDataResource):
                         <th style="text-align: left">
                             Relevant data releases
                         </th>
-                        <td>{', '.join(self.releases)}</td>
+                        <td>{", ".join(self.releases)}</td>
                     </tr>
                 </tbody>
             </table>

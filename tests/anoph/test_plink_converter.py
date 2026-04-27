@@ -1,10 +1,11 @@
-import random
+import numpy as np
 import pytest
 from pytest_cases import parametrize_with_cases
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data import adir1 as _adir1
+from malariagen_data import as1 as _as1
 
 from malariagen_data.anoph.to_plink import PlinkConverter
 
@@ -77,6 +78,24 @@ def adir1_sim_api(adir1_sim_fixture):
     )
 
 
+@pytest.fixture
+def as1_sim_api(as1_sim_fixture):
+    return PlinkConverter(
+        url=as1_sim_fixture.url,
+        public_url=as1_sim_fixture.url,
+        config_path=_as1.CONFIG_PATH,
+        major_version_number=_as1.MAJOR_VERSION_NUMBER,
+        major_version_path=_as1.MAJOR_VERSION_PATH,
+        pre=False,
+        gff_gene_type="protein_coding_gene",
+        gff_gene_name_attribute="Note",
+        gff_default_attributes=("ID", "Parent", "Note", "description"),
+        default_site_mask="stephensi",
+        results_cache=as1_sim_fixture.results_cache_path.as_posix(),
+        taxon_colors=_as1.TAXON_COLORS,
+    )
+
+
 # N.B., here we use pytest_cases to parametrize tests. Each
 # function whose name begins with "case_" defines a set of
 # inputs to the test functions. See the documentation for
@@ -97,19 +116,23 @@ def case_af1_sim(af1_sim_fixture, af1_sim_api):
     return af1_sim_fixture, af1_sim_api
 
 
+def case_as1_sim(as1_sim_fixture, as1_sim_api):
+    return as1_sim_fixture, as1_sim_api
+
+
 @parametrize_with_cases("fixture,api", cases=".")
 def test_plink_converter(fixture, api: PlinkConverter, tmp_path):
     # Parameters for selecting input data, filtering, and converting.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
 
     data_params = dict(
-        region=random.choice(api.contigs),
-        sample_sets=random.sample(all_sample_sets, 2),
-        site_mask=random.choice((None,) + api.site_mask_ids),
+        region=str(np.random.choice(api.contigs)),
+        sample_sets=np.random.choice(all_sample_sets, size=2, replace=False).tolist(),
+        site_mask=np.random.choice(list(api.site_mask_ids) + [None]),
         min_minor_ac=1,
         max_missing_an=1,
         thin_offset=1,
-        random_seed=random.randint(1, 2000),
+        random_seed=int(np.random.randint(1, 2001)),
     )
 
     # Load a ds containing the randomly generated samples and regions to get the number of available snps to subset from.
@@ -118,7 +141,7 @@ def test_plink_converter(fixture, api: PlinkConverter, tmp_path):
     )
 
     n_snps_available = ds.sizes["variants"]
-    n_snps = random.randint(1, n_snps_available)
+    n_snps = int(np.random.randint(1, n_snps_available + 1))
 
     # Define plink params.
     plink_params = dict(output_dir=str(tmp_path), n_snps=n_snps, **data_params)
