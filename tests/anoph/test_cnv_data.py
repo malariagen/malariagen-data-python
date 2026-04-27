@@ -1,5 +1,3 @@
-import random
-
 import bokeh.models
 import dask.array as da
 import numpy as np
@@ -136,14 +134,15 @@ def test_open_cnv_coverage_calls(fixture, api: AnophelesCnvData):
     # Check with a sample set that should not exist
     with pytest.raises(ValueError):
         root = api.open_cnv_coverage_calls(
-            sample_set="foobar", analysis=random.choice(api.coverage_calls_analysis_ids)
+            sample_set="foobar",
+            analysis=str(np.random.choice(api.coverage_calls_analysis_ids)),
         )
 
     # Check with an analysis that should not exist
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     with pytest.raises(ValueError):
         root = api.open_cnv_coverage_calls(
-            sample_set=random.choice(all_sample_sets), analysis="foobar"
+            sample_set=str(np.random.choice(all_sample_sets)), analysis="foobar"
         )
 
     # Check with a sample set and analysis that should not exist
@@ -343,15 +342,15 @@ def test_cnv_hmm(fixture, api: AnophelesCnvData):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     parametrize_sample_sets = [
         None,
-        random.choice(all_sample_sets),
-        random.sample(all_sample_sets, 2),
-        random.choice(all_releases),
+        str(np.random.choice(all_sample_sets)),
+        np.random.choice(all_sample_sets, size=2, replace=False).tolist(),
+        np.random.choice(all_releases),
     ]
 
     # Parametrize region.
     parametrize_region = [
         fixture.random_contig(),
-        random.sample(api.contigs, 2),
+        np.random.choice(api.contigs, size=2, replace=False).tolist(),
         fixture.random_region_str(),
     ]
 
@@ -421,7 +420,7 @@ def test_cnv_hmm(fixture, api: AnophelesCnvData):
 def test_cnv_hmm__max_coverage_variance(fixture, api: AnophelesCnvData):
     # Set up test.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_set = random.choice(all_sample_sets)
+    sample_set = str(np.random.choice(all_sample_sets))
     region = fixture.random_contig()
 
     # Parametrize max_coverage_variance.
@@ -465,7 +464,9 @@ def test_cnv_hmm__max_coverage_variance(fixture, api: AnophelesCnvData):
 def test_cnv_coverage_calls(fixture, api: AnophelesCnvData):
     # Parametrize sample_sets.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    parametrize_sample_sets = random.sample(all_sample_sets, 3)
+    parametrize_sample_sets = np.random.choice(
+        all_sample_sets, size=3, replace=False
+    ).tolist()
 
     # Parametrize analysis.
     parametrize_analysis = api.coverage_calls_analysis_ids
@@ -473,7 +474,7 @@ def test_cnv_coverage_calls(fixture, api: AnophelesCnvData):
     # Parametrize region.
     parametrize_region = [
         fixture.random_contig(),
-        random.sample(api.contigs, 2),
+        np.random.choice(api.contigs, size=2, replace=False).tolist(),
         fixture.random_region_str(),
     ]
 
@@ -551,20 +552,20 @@ def test_cnv_discordant_read_calls(fixture, api: AnophelesCnvData):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     parametrize_sample_sets = [
         None,
-        random.choice(all_sample_sets),
-        random.sample(all_sample_sets, 2),
-        random.choice(all_releases),
+        str(np.random.choice(all_sample_sets)),
+        np.random.choice(all_sample_sets, size=2, replace=False).tolist(),
+        np.random.choice(all_releases),
     ]
 
     # Parametrize contig.
     parametrize_contig = [
-        random.choice(api.contigs),
-        random.sample(api.contigs, 2),
+        str(np.random.choice(api.contigs)),
+        np.random.choice(api.contigs, size=2, replace=False).tolist(),
     ]
 
     for sample_sets in parametrize_sample_sets:
         for contig in parametrize_contig:
-            ds = api.cnv_discordant_read_calls(contig=contig, sample_sets=sample_sets)
+            ds = api.cnv_discordant_read_calls(contigs=contig, sample_sets=sample_sets)
             assert isinstance(ds, xr.Dataset)
 
             # check fields
@@ -631,18 +632,30 @@ def test_cnv_discordant_read_calls(fixture, api: AnophelesCnvData):
         match="No CNV discordant read calls data found|no CNVs available for contig",
     ):
         api.cnv_discordant_read_calls(
-            contig="foobar", sample_sets=random.choice(all_sample_sets)
+            contigs="foobar", sample_sets=str(np.random.choice(all_sample_sets))
         )
 
     # Check with a sample set that should not exist
     with pytest.raises(ValueError):
         api.cnv_discordant_read_calls(
-            contig=random.choice(api.contigs), sample_sets="foobar"
+            contigs=np.random.choice(api.contigs), sample_sets="foobar"
         )
 
     # Check with a contig and sample set that should not exist
     with pytest.raises(ValueError):
-        api.cnv_discordant_read_calls(contig="foobar", sample_sets="bazqux")
+        api.cnv_discordant_read_calls(contigs="foobar", sample_sets="bazqux")
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_cnv_discordant_read_calls_deprecated_contig_alias(
+    fixture, api: AnophelesCnvData
+):
+    sample_set = str(np.random.choice(api.sample_sets()["sample_set"].to_list()))
+    contig = str(np.random.choice(api.contigs))
+    ds_contigs = api.cnv_discordant_read_calls(contigs=contig, sample_sets=sample_set)
+    with pytest.warns(DeprecationWarning, match="deprecated"):
+        ds_contig = api.cnv_discordant_read_calls(contig=contig, sample_sets=sample_set)
+    xr.testing.assert_identical(ds_contig, ds_contigs)
 
 
 def test_cnv_discordant_read_calls__sample_query(
@@ -670,13 +683,13 @@ def test_cnv_discordant_read_calls__sample_query(
         if len(df_samples) == 0:
             with pytest.raises(ValueError):
                 ds = api.cnv_discordant_read_calls(
-                    contig=contig,
+                    contigs=contig,
                     sample_sets=sample_sets,
                     sample_query=sample_query,
                 )
         else:
             ds = api.cnv_discordant_read_calls(
-                contig=contig,
+                contigs=contig,
                 sample_sets=sample_sets,
                 sample_query=sample_query,
             )
@@ -755,14 +768,14 @@ def test_cnv_discordant_read_calls__sample_query_options(
         if len(df_samples) == 0:
             with pytest.raises(ValueError):
                 ds = api.cnv_discordant_read_calls(
-                    contig=contig,
+                    contigs=contig,
                     sample_sets=sample_sets,
                     sample_query=sample_query,
                     sample_query_options=sample_query_options,
                 )
         else:
             ds = api.cnv_discordant_read_calls(
-                contig=contig,
+                contigs=contig,
                 sample_sets=sample_sets,
                 sample_query=sample_query,
                 sample_query_options=sample_query_options,
@@ -809,7 +822,7 @@ def test_cnv_discordant_read_calls__sample_query_options(
 def test_plot_cnv_hmm_coverage_track(fixture, api: AnophelesCnvData):
     # Set up test.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_set = random.choice(all_sample_sets)
+    sample_set = str(np.random.choice(all_sample_sets))
     region = fixture.random_contig()
     df_samples = api.sample_metadata(sample_sets=sample_set)
     all_sample_ids = df_samples["sample_id"].values
@@ -862,7 +875,7 @@ def test_plot_cnv_hmm_coverage_track(fixture, api: AnophelesCnvData):
 def test_plot_cnv_hmm_coverage(fixture, api: AnophelesCnvData):
     # Set up test.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_set = random.choice(all_sample_sets)
+    sample_set = str(np.random.choice(all_sample_sets))
     region = fixture.random_contig()
     df_samples = api.sample_metadata(sample_sets=sample_set)
     all_sample_ids = df_samples["sample_id"].values
@@ -916,9 +929,9 @@ def test_plot_cnv_hmm_heatmap_track(fixture, api: AnophelesCnvData):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     parametrize_sample_sets = [
         None,
-        random.choice(all_sample_sets),
-        random.sample(all_sample_sets, 2),
-        random.choice(all_releases),
+        str(np.random.choice(all_sample_sets)),
+        np.random.choice(all_sample_sets, size=2, replace=False).tolist(),
+        np.random.choice(all_releases),
     ]
 
     for region in parametrize_region:
