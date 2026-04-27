@@ -1,0 +1,6 @@
+﻿malariagen\_data.adar1.Adar1.site\_mask\_ids
+============================================
+
+.. currentmodule:: malariagen_data.adar1
+
+.. autoproperty:: Adar1.site_mask_ids

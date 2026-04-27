@@ -1,0 +1,6 @@
+﻿malariagen\_data.adar1.Adar1.snp\_allele\_frequencies
+=====================================================
+
+.. currentmodule:: malariagen_data.adar1
+
+.. automethod:: Adar1.snp_allele_frequencies
