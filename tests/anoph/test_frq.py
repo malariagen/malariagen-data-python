@@ -16,7 +16,7 @@ def check_plot_frequencies_heatmap(api, frq_df):
     # Test index parameter - if None, should use dataframe index.
     fig = api.plot_frequencies_heatmap(frq_df, show=False, index=None, max_len=None)
 
-    if "contig" in list(frq_df.columns):
+    if "contig" in list(frq_df.columns) and not frq_df["contig"].is_unique:
         # Not unique.
         with pytest.raises(ValueError):
             api.plot_frequencies_heatmap(
