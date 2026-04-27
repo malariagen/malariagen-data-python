@@ -36,7 +36,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         self,
         cohorts_analysis: Optional[str] = None,
         aim_analysis: Optional[str] = None,
-        aim_metadata_dtype: Optional[Mapping[str, Any]] = None,
+        aim_metadata_dtype: Optional[Dict[str, Any]] = None,
         taxon_colors: Optional[Mapping[str, str]] = None,
         aim_species_colors: Optional[Mapping[str, str]] = None,
         **kwargs,
