@@ -110,11 +110,15 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         # Handle normal contigs in the reference genome.
         else:
-            assert contig in self.contigs
+            if contig not in self.contigs:
+                raise ValueError(
+                    f"Contig {contig!r} not found. "
+                    f"Available contigs: {self.contigs}"
+                )
             df = self._genome_features(attributes=attributes)
 
-            # Apply contig query.
-            df = df.query(f"contig == '{contig}'")
+            # Apply contig filter using safe boolean indexing.
+            df = df.loc[df["contig"] == contig]
             return df
 
     def _prep_gff_attributes(
@@ -158,9 +162,9 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
                         contig=r.contig, attributes=attributes_normed
                     )
                     if r.end is not None:
-                        df_part = df_part.query(f"start <= {r.end}")
+                        df_part = df_part.loc[df_part["start"] <= r.end]
                     if r.start is not None:
-                        df_part = df_part.query(f"end >= {r.start}")
+                        df_part = df_part.loc[df_part["end"] >= r.start]
                     parts.append(df_part)
                 df = pd.concat(parts, axis=0)
                 return df.sort_values(["contig", "start"]).reset_index(drop=True).copy()
@@ -188,8 +192,8 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         df_gf["Parent"] = df_gf["Parent"].str.split(",")
         df_gf = df_gf.explode(column="Parent", ignore_index=True)
 
-        # Query to find children of the requested parent.
-        df_children = df_gf.query(f"Parent == '{parent}'")
+        # Filter to find children of the requested parent using safe indexing.
+        df_children = df_gf.loc[df_gf["Parent"] == parent]
 
         return df_children.copy()
 
@@ -561,7 +565,8 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
             # Increase the figure height by a certain factor, to accommodate labels.
             height_increase_factor = 1.3
-            assert fig.height is not None
+            if fig.height is None:
+                raise RuntimeError("Figure height is unexpectedly None")
             fig.height = int(fig.height * height_increase_factor)
 
             # Get the original y_range.
@@ -665,7 +670,9 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
     def _plot_genes_setup_data(self, *, region):
         attributes = [a for a in self._gff_default_attributes if a != "Parent"]
         df_genome_features = self.genome_features(region=region, attributes=attributes)
-        data = df_genome_features.query(f"type == '{self._gff_gene_type}'").copy()
+        data = df_genome_features.loc[
+            df_genome_features["type"] == self._gff_gene_type
+        ].copy()
         tooltips = [(a.capitalize(), f"@{a}") for a in attributes]
         tooltips += [("Location", "@contig:@start{,}-@end{,}")]
         return data, tooltips

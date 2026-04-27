@@ -86,7 +86,11 @@ class AnophelesGenomeSequenceData(AnophelesBase):
 
         # Handle normal contigs in the reference genome.
         else:
-            assert contig in self.contigs
+            if contig not in self.contigs:
+                raise ValueError(
+                    f"Contig {contig!r} not found. "
+                    f"Available contigs: {self.contigs}"
+                )
             root = self.open_genome()
             z = root[contig]
             d = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)

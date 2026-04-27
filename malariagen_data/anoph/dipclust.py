@@ -88,112 +88,117 @@ class AnophelesDipClustAnalysis(
             distance_sort = False
 
         # This is needed to avoid RecursionError on some clustering analyses
-        # with larger numbers of nodes.
-        sys.setrecursionlimit(10_000)
+        # with larger numbers of nodes. Save and restore the original limit to
+        # avoid permanently modifying global interpreter state.
+        _original_limit = sys.getrecursionlimit()
+        try:
+            sys.setrecursionlimit(10_000)
 
-        # Load sample metadata.
-        df_samples = self.sample_metadata(
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            sample_query_options=sample_query_options,
-        )
-
-        dist, gt_samples, n_snps_used = self.diplotype_pairwise_distances(
-            region=region,
-            site_mask=site_mask,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            sample_query_options=sample_query_options,
-            cohort_size=cohort_size,
-            distance_metric=distance_metric,
-            random_seed=random_seed,
-            chunks=chunks,
-            inline_array=inline_array,
-        )
-
-        # Align sample metadata with genotypes.
-        df_samples = (
-            df_samples.set_index("sample_id").loc[gt_samples.tolist()].reset_index()
-        )
-
-        # Normalise color and symbol parameters.
-        symbol_prepped = self._setup_sample_symbol(
-            data=df_samples,
-            symbol=symbol,
-        )
-        del symbol
-        (
-            color_prepped,
-            color_discrete_map_prepped,
-            category_orders_prepped,
-        ) = self._setup_sample_colors_plotly(
-            data=df_samples,
-            color=color,
-            color_discrete_map=color_discrete_map,
-            color_discrete_sequence=color_discrete_sequence,
-            category_orders=category_orders,
-        )
-        del color
-        del color_discrete_map
-        del color_discrete_sequence
-
-        # Configure hover data.
-        hover_data = self._setup_sample_hover_data_plotly(
-            color=color_prepped, symbol=symbol_prepped
-        )
-
-        # Construct plot title.
-        if title is True:
-            title_lines = []
-            if sample_sets is not None:
-                title_lines.append(f"Sample sets: {sample_sets}")
-            if sample_query is not None:
-                title_lines.append(f"Sample query: {sample_query}")
-            title_lines.append(f"Genomic region: {region} ({n_snps_used:,} SNPs)")
-            title = "<br>".join(title_lines)
-
-        # Create the plot.
-        with self._spinner("Plot dendrogram"):
-            fig, leaf_data = _plot_dendrogram(
-                dist=dist,
-                linkage_method=linkage_method,
-                count_sort=count_sort,
-                distance_sort=distance_sort,
-                render_mode=render_mode,
-                width=width,
-                height=height,
-                title=title,
-                line_width=line_width,
-                line_color=line_color,
-                marker_size=marker_size,
-                leaf_data=df_samples,
-                leaf_hover_name="sample_id",
-                leaf_hover_data=hover_data,
-                leaf_color=color_prepped,
-                leaf_symbol=symbol_prepped,
-                leaf_y=leaf_y,
-                leaf_color_discrete_map=color_discrete_map_prepped,
-                leaf_category_orders=category_orders_prepped,
-                template="simple_white",
-                y_axis_title=f"Distance ({distance_metric})",
-                y_axis_buffer=0.1,
+            # Load sample metadata.
+            df_samples = self.sample_metadata(
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                sample_query_options=sample_query_options,
             )
 
-        # Tidy up.
-        fig.update_layout(
-            title_font=dict(
-                size=title_font_size,
-            ),
-            legend=dict(itemsizing=legend_sizing, tracegroupgap=0),
-        )
+            dist, gt_samples, n_snps_used = self.diplotype_pairwise_distances(
+                region=region,
+                site_mask=site_mask,
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                sample_query_options=sample_query_options,
+                cohort_size=cohort_size,
+                distance_metric=distance_metric,
+                random_seed=random_seed,
+                chunks=chunks,
+                inline_array=inline_array,
+            )
 
-        if show:  # pragma: no cover
-            fig.show(renderer=renderer)
-        return {
-            "figure": fig,
-            "dendro_sample_id_order": np.asarray(leaf_data["sample_id"].to_list()),
-            "n_snps": n_snps_used,
-        }
+            # Align sample metadata with genotypes.
+            df_samples = (
+                df_samples.set_index("sample_id").loc[gt_samples.tolist()].reset_index()
+            )
+
+            # Normalise color and symbol parameters.
+            symbol_prepped = self._setup_sample_symbol(
+                data=df_samples,
+                symbol=symbol,
+            )
+            del symbol
+            (
+                color_prepped,
+                color_discrete_map_prepped,
+                category_orders_prepped,
+            ) = self._setup_sample_colors_plotly(
+                data=df_samples,
+                color=color,
+                color_discrete_map=color_discrete_map,
+                color_discrete_sequence=color_discrete_sequence,
+                category_orders=category_orders,
+            )
+            del color
+            del color_discrete_map
+            del color_discrete_sequence
+
+            # Configure hover data.
+            hover_data = self._setup_sample_hover_data_plotly(
+                color=color_prepped, symbol=symbol_prepped
+            )
+
+            # Construct plot title.
+            if title is True:
+                title_lines = []
+                if sample_sets is not None:
+                    title_lines.append(f"Sample sets: {sample_sets}")
+                if sample_query is not None:
+                    title_lines.append(f"Sample query: {sample_query}")
+                title_lines.append(f"Genomic region: {region} ({n_snps_used:,} SNPs)")
+                title = "<br>".join(title_lines)
+
+            # Create the plot.
+            with self._spinner("Plot dendrogram"):
+                fig, leaf_data = _plot_dendrogram(
+                    dist=dist,
+                    linkage_method=linkage_method,
+                    count_sort=count_sort,
+                    distance_sort=distance_sort,
+                    render_mode=render_mode,
+                    width=width,
+                    height=height,
+                    title=title,
+                    line_width=line_width,
+                    line_color=line_color,
+                    marker_size=marker_size,
+                    leaf_data=df_samples,
+                    leaf_hover_name="sample_id",
+                    leaf_hover_data=hover_data,
+                    leaf_color=color_prepped,
+                    leaf_symbol=symbol_prepped,
+                    leaf_y=leaf_y,
+                    leaf_color_discrete_map=color_discrete_map_prepped,
+                    leaf_category_orders=category_orders_prepped,
+                    template="simple_white",
+                    y_axis_title=f"Distance ({distance_metric})",
+                    y_axis_buffer=0.1,
+                )
+
+            # Tidy up.
+            fig.update_layout(
+                title_font=dict(
+                    size=title_font_size,
+                ),
+                legend=dict(itemsizing=legend_sizing, tracegroupgap=0),
+            )
+
+            if show:  # pragma: no cover
+                fig.show(renderer=renderer)
+            return {
+                "figure": fig,
+                "dendro_sample_id_order": np.asarray(leaf_data["sample_id"].to_list()),
+                "n_snps": n_snps_used,
+            }
+        finally:
+            sys.setrecursionlimit(_original_limit)
 
     def diplotype_pairwise_distances(
         self,

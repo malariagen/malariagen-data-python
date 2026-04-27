@@ -15,6 +15,7 @@ from .frq_base import (
     _build_cohorts_from_sample_grouping,
     _add_frequency_ci,
 )
+from .safe_query import validate_query
 from ..util import (
     _check_types,
     _pandas_apply,
@@ -597,7 +598,11 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
             if nobs_mode == "called":
                 nobs[:, cohort_index] = np.repeat(cohort_n_called, 2)
             else:
-                assert nobs_mode == "fixed"
+                if nobs_mode != "fixed":
+                    raise RuntimeError(
+                        f"Internal error: expected nobs_mode='fixed', got {nobs_mode!r}. "
+                        "This should not happen; please open a GitHub issue."
+                    )
                 nobs[:, cohort_index] = cohort.size
 
         debug("compute frequency")
@@ -667,6 +672,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
 
         debug("apply variant query")
         if variant_query is not None:
+            validate_query(variant_query)
             loc_variants = df_variants.eval(variant_query).values
             # Convert boolean mask to integer indices for NumPy 2.x compatibility
             variant_indices = np.where(loc_variants)[0]
