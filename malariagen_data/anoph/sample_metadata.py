@@ -713,8 +713,103 @@ class AnophelesSampleMetadata(AnophelesBase):
 
     @_check_types
     @doc(
-        summary="Access sample metadata for one or more sample sets.",
-        returns="A dataframe of sample metadata, one row per sample.",
+        summary="""
+            Access sample-level metadata for one or more sample sets.
+            This method returns a pandas DataFrame where each row corresponds
+            to a single sample. The metadata is assembled by merging multiple
+            sources including general metadata, sequence quality control (QC)
+            metadata, surveillance flags, and—when available—AIM and cohort
+            metadata.
+        """,
+        returns="""
+            A pandas DataFrame with one row per sample. Columns are grouped
+            by metadata source:
+
+            **General metadata** (present for all sample sets):
+
+            - ``sample_id`` - Unique identifier for the sample.
+            - ``partner_sample_id`` - Sample ID used by the contributing partner.
+            - ``contributor`` - Name of the contributing institution or individual.
+            - ``country`` - Country where the sample was collected.
+            - ``location`` - Specific collection site (e.g., village or site name).
+            - ``year`` - Year of collection.
+            - ``month`` - Month of collection.
+            - ``quarter`` - Quarter of the year derived from month (1–4).
+            - ``latitude`` - GPS latitude of the collection site.
+            - ``longitude`` - GPS longitude of the collection site.
+            - ``sex_call`` - Sex determination call; ``'F'`` for female, ``'M'`` for male.
+            - ``sample_set`` - Sample set containing the sample.
+            - ``release`` - Data release containing the sample.
+            - ``study_id`` - Identifier of the study the sample set belongs to.
+            - ``study_url`` - URL of the study the sample set belongs to.
+            - ``terms_of_use_expiry_date`` - Expiry date of terms of use for the sample.
+            - ``terms_of_use_url`` - URL of the terms of use for the sample.
+            - ``unrestricted_use`` - Whether the sample can be used without restrictions.
+            - ``is_surveillance`` - Whether the sample can be used for surveillance.
+
+            **Sequence QC metadata** (present for all sample sets, values may
+            be missing if QC data is unavailable for a given sample set):
+
+            - ``mean_cov`` - Mean sequencing coverage across the genome.
+            - ``median_cov`` - Median sequencing coverage across the genome.
+            - ``modal_cov`` - Modal (most frequent) sequencing coverage.
+            - ``mean_cov_2L`` - Mean coverage on chromosome arm 2L.
+            - ``median_cov_2L`` - Median coverage on chromosome arm 2L.
+            - ``mode_cov_2L`` - Modal coverage on chromosome arm 2L.
+            - ``mean_cov_2R`` - Mean coverage on chromosome arm 2R.
+            - ``median_cov_2R`` - Median coverage on chromosome arm 2R.
+            - ``mode_cov_2R`` - Modal coverage on chromosome arm 2R.
+            - ``mean_cov_3L`` - Mean coverage on chromosome arm 3L.
+            - ``median_cov_3L`` - Median coverage on chromosome arm 3L.
+            - ``mode_cov_3L`` - Modal coverage on chromosome arm 3L.
+            - ``mean_cov_3R`` - Mean coverage on chromosome arm 3R.
+            - ``median_cov_3R`` - Median coverage on chromosome arm 3R.
+            - ``mode_cov_3R`` - Modal coverage on chromosome arm 3R.
+            - ``mean_cov_X`` - Mean coverage on chromosome X.
+            - ``median_cov_X`` - Median coverage on chromosome X.
+            - ``mode_cov_X`` - Modal coverage on chromosome X.
+            - ``frac_gen_cov`` - Fraction of the genome covered.
+            - ``divergence`` - Sequence divergence from the reference.
+            - ``contam_pct`` - Estimated contamination percentage.
+            - ``contam_LLR`` - Log-likelihood ratio for contamination estimate.
+
+            **AIM (Ancestry-Informative Marker) metadata** (only present when
+            an AIM analysis is available for the data resource, e.g., *Ag3*):
+
+            - ``aim_species_fraction_arab`` - Fraction of gambcolu vs. arabiensis
+              AIMs indicating arabiensis.
+            - ``aim_species_fraction_colu`` - Fraction of gambiae vs. coluzzii AIMs
+              indicating coluzzii.
+            - ``aim_species_fraction_colu_no2l`` - Fraction of gambiae vs. coluzzii
+              AIMs indicating coluzzii, excluding chromosome arm 2L.
+            - ``aim_species_gambcolu_arabiensis`` - Taxon assigned by gambcolu vs.
+              arabiensis AIMs.
+            - ``aim_species_gambiae_coluzzii`` - Taxon assigned by gambiae vs.
+              coluzzii AIMs.
+            - ``aim_species`` - Final species assignment combining both AIM analyses.
+
+            **Cohort metadata** (only present when a cohorts analysis is available
+            for the data resource; quarter columns are only present for cohorts
+            analyses from 20230223 onwards):
+
+            - ``country_iso`` - ISO code of the country of collection.
+            - ``admin1_name`` - Name of the first-level administrative region.
+            - ``admin1_iso`` - ISO code of the first-level administrative region.
+            - ``admin2_name`` - Name of the second-level administrative region.
+            - ``taxon`` - Taxon assigned by combining AIM and cohort analyses.
+            - ``cohort_admin1_year`` - Cohort grouping by admin level 1 and year.
+            - ``cohort_admin1_month`` - Cohort grouping by admin level 1 and month.
+            - ``cohort_admin1_quarter`` - Cohort grouping by admin level 1 and
+              quarter (cohorts analysis >= 20230223 only).
+            - ``cohort_admin2_year`` - Cohort grouping by admin level 2 and year.
+            - ``cohort_admin2_month`` - Cohort grouping by admin level 2 and month.
+            - ``cohort_admin2_quarter`` - Cohort grouping by admin level 2 and
+              quarter (cohorts analysis >= 20230223 only).
+
+            The exact columns present depend on the data resource and sample sets
+            requested. The returned DataFrame is a copy and can be safely modified
+            without affecting internal caches.
+        """,
         notes="""
             Some samples in the dataset are lab crosses — mosquitoes bred in
             the laboratory that have no real collection date. These samples
