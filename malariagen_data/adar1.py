@@ -152,7 +152,7 @@ class Adar1(AnophelesDataResource):
             f"Please note that data are subject to terms of use,\n"
             f"for more information see https://www.malariagen.net/data\n"
             f"or contact support@malariagen.net. For API documentation see \n"
-            f"https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Adir1.html"
+            f"https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Adar1.html"
         )
         return text
 
@@ -167,7 +167,7 @@ class Adar1(AnophelesDataResource):
                         Please note that data are subject to terms of use,
                         for more information see <a href="https://www.malariagen.net/data">
                         the MalariaGEN website</a> or contact support@malariagen.net.
-                        See also the <a href="https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Adir1.html">Adir1 API docs</a>.
+                        See also the <a href="https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Adar1.html">Adar1 API docs</a>.
                     </td></tr>
                 </thead>
                 <tbody>
