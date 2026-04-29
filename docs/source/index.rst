@@ -33,6 +33,17 @@ API documentation
          :align: center
          :width: 100%
 
+   .. grid-item-card:: ``As1``
+      :link: As1
+      :link-type: doc
+
+      *Anopheles stephensi*.
+
+      .. image:: ./_static/images/anopheles_stephensi.jpg
+         :alt: Anopheles stephensi mosquito mosquito
+         :align: center
+         :width: 100%
+
    .. grid-item-card:: ``Amin1``
       :link: Amin1
       :link-type: doc
@@ -55,6 +66,13 @@ API documentation
          :align: center
          :width: 100%
 
+   .. grid-item-card:: ``Adar1``
+      :link: Adar1
+      :link-type: doc
+
+      *Anopheles darlingi*
+      .. image:: ./_static/images/anopheles_darlingi.jpg
+
 Documentation for the `Pf7 <https://malariagen.github.io/parasite-data/pf7/api.html>`_ (*Plasmodium falciparum*)
 and `Pv4 <https://malariagen.github.io/parasite-data/pv4/api.html>`_ (*Plasmodium vivax*) APIs is also available,
 currently hosted on a separate site.
@@ -67,6 +85,13 @@ The ``malariagen_data`` package is available from the Python package index (PyPI
 via pip::
 
    pip install malariagen_data
+
+.. note::
+
+   If you are using Google Colab with a **TPU runtime**, installation may fail due to
+   a dependency conflict with a preinstalled system package (``blinker==1.4``).
+
+   See :doc:`colab_tpu` for detailed instructions and troubleshooting.
 
 For accessing data in Google Cloud Storage (GCS) you will also need to authenticate with Google Cloud.
 

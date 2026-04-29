@@ -14,6 +14,7 @@ from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data import adir1 as _adir1
 from malariagen_data import amin1 as _amin1
+from malariagen_data import as1 as _as1
 
 from malariagen_data.anoph.sample_metadata import AnophelesSampleMetadata
 
@@ -193,6 +194,19 @@ def af1_sim_unrestricted_surveillance_use_only_api(af1_sim_fixture):
 
 
 @pytest.fixture
+def as1_sim_api(as1_sim_fixture):
+    return AnophelesSampleMetadata(
+        url=as1_sim_fixture.url,
+        public_url=as1_sim_fixture.url,
+        config_path=_as1.CONFIG_PATH,
+        major_version_number=_as1.MAJOR_VERSION_NUMBER,
+        major_version_path=_as1.MAJOR_VERSION_PATH,
+        pre=False,
+        taxon_colors=_as1.TAXON_COLORS,
+    )
+
+
+@pytest.fixture
 def missing_metadata_api(fixture_dir):
     # In this fixture, one of the sample sets (AG1000G-BF-A) has missing files
     # for sequence QC, AIM and cohorts metadata.
@@ -232,6 +246,11 @@ def case_adir1_sim(adir1_sim_fixture, adir1_sim_api):
 @case(tags="amin1")
 def case_amin1_sim(amin1_sim_fixture, amin1_sim_api):
     return amin1_sim_fixture, amin1_sim_api
+
+
+@case(tags="as1")
+def case_as1_sim(as1_sim_fixture, as1_sim_api):
+    return as1_sim_fixture, as1_sim_api
 
 
 @case
@@ -1097,7 +1116,7 @@ def test_wgs_data_catalog(fixture, api):
         assert set(df["sample_id"]) == set(df_samples["sample_id"])
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases("fixture,api", cases=".", filter=~ft.has_tag("as1"))
 def test_wgs_run_accessions(fixture, api):
     # Set up test.
     df_sample_sets = api.sample_sets().set_index("sample_set")

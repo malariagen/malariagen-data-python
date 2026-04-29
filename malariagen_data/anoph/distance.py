@@ -1,5 +1,5 @@
 # Standard library imports.
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 import math
 
 # Third-party library imports.
@@ -86,7 +86,12 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         summary="""
             Compute pairwise distances between samples using biallelic SNP genotypes.
         """,
-        returns=("dist", "samples", "n_snps_used"),
+        returns="""
+            If `return_dataset` is False (default), return a tuple
+            `(dist, samples, n_snps_used)`. If `return_dataset` is True,
+            return an xarray Dataset with `dist`, `sample_id`, and
+            `n_snps_used` as variables/coordinates.
+        """,
     )
     def biallelic_diplotype_pairwise_distances(
         self,
@@ -108,9 +113,8 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         random_seed: base_params.random_seed = 42,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
-    ) -> Tuple[
-        distance_params.dist, distance_params.samples, distance_params.n_snps_used
-    ]:
+        return_dataset: base_params.return_dataset = False,
+    ) -> Any:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
         name = "biallelic_diplotype_pairwise_distances"
@@ -173,6 +177,22 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         samples: np.ndarray = results["samples"]
         n_snps_used: int = int(results["n_snps"][()])  # ensure scalar
 
+        if return_dataset:
+            import xarray as xr
+            from scipy.spatial.distance import squareform
+
+            dist_square = squareform(dist)
+            ds = xr.Dataset(
+                data_vars={
+                    "dist": (("sample_x", "sample_y"), dist_square),
+                },
+                coords={
+                    "sample_id": ("sample_x", samples),
+                },
+                attrs={"n_snps_used": n_snps_used},
+            )
+            return ds
+
         return dist, samples, n_snps_used
 
     def _biallelic_diplotype_pairwise_distances(
@@ -195,7 +215,7 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         max_missing_an,
     ):
         # Compute diplotypes.
-        gn, samples = self.biallelic_diplotypes(
+        ds = self.biallelic_diplotypes(
             region=region,
             sample_sets=sample_sets,
             sample_indices=sample_indices,
@@ -211,7 +231,10 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
             min_minor_ac=min_minor_ac,
             n_snps=n_snps,
             thin_offset=thin_offset,
+            return_dataset=True,
         )
+        gn = ds["call_diplotype"].values
+        samples = ds["sample_id"].values.astype("U")
 
         # Record number of SNPs used.
         n_snps = gn.shape[0]
@@ -503,6 +526,20 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         if count_sort is None and distance_sort is None:
             count_sort = True
             distance_sort = False
+
+        # Ensure we have enough samples for a tree.
+        # If we have 0 samples, `biallelic_snp_calls` or `snp_calls` should have already raised "No samples found".
+        # However, if we have 1 sample, it might pass through until here, where it would cause a failure in njt.
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            sample_indices=sample_indices,
+        )
+        if 0 < len(df_samples) < 2:
+            raise ValueError(
+                f"Not enough samples for neighbour-joining tree. Found {len(df_samples)}, needed at least 2."
+            )
 
         # Compute neighbour-joining tree.
         Z, samples, n_snps_used = self.njt(
