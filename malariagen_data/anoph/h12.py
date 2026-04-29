@@ -281,11 +281,6 @@ class AnophelesH12Analysis(
     @_check_types
     @doc(
         summary="Run h12 genome-wide selection scan.",
-        parameters=dict(
-            apply_hampel="If True, apply Hampel filter to smooth isolated outliers.",
-            hampel_window="Window size for Hampel filter.",
-            hampel_t="Threshold multiplier for Hampel filter.",
-        ),
         returns=dict(
             x="An array containing the window centre point genomic positions.",
             h12="An array with h12 statistic values for each window.",
@@ -351,12 +346,7 @@ class AnophelesH12Analysis(
 
     @_check_types
     @doc(
-        summary="Plot h12 GWSS data.",
-        parameters=dict(
-            apply_hampel="If True, apply Hampel filter to smooth isolated outliers.",
-            hampel_window="Window size for Hampel filter.",
-            hampel_t="Threshold multiplier for Hampel filter.",
-        ),
+        summary="Plot h12 GWSS data."
     )
     def plot_h12_gwss_track(
         self,
@@ -463,12 +453,7 @@ class AnophelesH12Analysis(
 
     @_check_types
     @doc(
-        summary="Plot h12 GWSS data.",
-        parameters=dict(
-            apply_hampel="If True, apply Hampel filter to smooth isolated outliers.",
-            hampel_window="Window size for Hampel filter.",
-            hampel_t="Threshold multiplier for Hampel filter.",
-        ),
+        summary="Plot h12 GWSS data.",  
     )
     def plot_h12_gwss(
         self,
@@ -560,11 +545,6 @@ class AnophelesH12Analysis(
     @_check_types
     @doc(
         summary="Plot h12 GWSS data track with multiple traces overlaid.",
-        parameters=dict(
-            apply_hampel="If True, apply Hampel filter to smooth isolated outliers.",
-            hampel_window="Window size for Hampel filter.",
-            hampel_t="Threshold multiplier for Hampel filter.",
-        ),
     )
     def plot_h12_gwss_multi_overlay_track(
         self,
@@ -691,11 +671,6 @@ class AnophelesH12Analysis(
     @_check_types
     @doc(
         summary="Plot h12 GWSS data with multiple traces overlaid.",
-        parameters=dict(
-            apply_hampel="If True, apply Hampel filter to smooth isolated outliers.",
-            hampel_window="Window size for Hampel filter.",
-            hampel_t="Threshold multiplier for Hampel filter.",
-        ),
     )
     def plot_h12_gwss_multi_overlay(
         self,
@@ -791,11 +766,6 @@ class AnophelesH12Analysis(
     @_check_types
     @doc(
         summary="Plot h12 GWSS data with multiple tracks.",
-        parameters=dict(
-            apply_hampel="If True, apply Hampel filter to smooth isolated outliers.",
-            hampel_window="Window size for Hampel filter.",
-            hampel_t="Threshold multiplier for Hampel filter.",
-        ),
     )
     def plot_h12_gwss_multi_panel(
         self,
