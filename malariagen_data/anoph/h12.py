@@ -345,9 +345,7 @@ class AnophelesH12Analysis(
         return x, h12, contigs
 
     @_check_types
-    @doc(
-        summary="Plot h12 GWSS data."
-    )
+    @doc(summary="Plot h12 GWSS data.")
     def plot_h12_gwss_track(
         self,
         contig: base_params.contig,
@@ -452,9 +450,7 @@ class AnophelesH12Analysis(
         return fig
 
     @_check_types
-    @doc(
-        summary="Plot h12 GWSS data.",  
-    )
+    @doc(summary="Plot h12 GWSS data.")
     def plot_h12_gwss(
         self,
         contig: base_params.contig,
@@ -543,9 +539,7 @@ class AnophelesH12Analysis(
         return fig
 
     @_check_types
-    @doc(
-        summary="Plot h12 GWSS data track with multiple traces overlaid.",
-    )
+    @doc(summary="Plot h12 GWSS data track with multiple traces overlaid.")
     def plot_h12_gwss_multi_overlay_track(
         self,
         contig: base_params.contig,
@@ -669,9 +663,7 @@ class AnophelesH12Analysis(
         return fig
 
     @_check_types
-    @doc(
-        summary="Plot h12 GWSS data with multiple traces overlaid.",
-    )
+    @doc(summary="Plot h12 GWSS data with multiple traces overlaid.")
     def plot_h12_gwss_multi_overlay(
         self,
         contig: base_params.contig,
@@ -764,9 +756,7 @@ class AnophelesH12Analysis(
         return fig
 
     @_check_types
-    @doc(
-        summary="Plot h12 GWSS data with multiple tracks.",
-    )
+    @doc(summary="Plot h12 GWSS data with multiple tracks.")
     def plot_h12_gwss_multi_panel(
         self,
         contig: base_params.contig,
