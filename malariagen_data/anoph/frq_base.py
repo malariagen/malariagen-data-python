@@ -589,7 +589,6 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         import ipyleaflet  # type: ignore
         import ipywidgets  # type: ignore
 
-
         # Slice dataset to variant of interest.
         if isinstance(variant, int):
             ds_variant = ds.isel(variants=variant)
@@ -716,7 +715,7 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
                 variant=variant,
                 taxon=taxon,
                 period=period,
-                clear=True
+                clear=True,
             )
 
         controls = ipywidgets.interactive(
