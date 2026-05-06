@@ -77,7 +77,7 @@ class AnophelesSnpData(
         ] = dict()
         self._cache_site_annotations: Optional[base_params.zarr_group] = None
         self._cache_locate_site_class: OrderedDict[
-          Tuple[Any, ...], base_params.numpy_ndarray
+            Tuple[Any, ...], base_params.numpy_ndarray
         ] = OrderedDict()
 
         # Create the SNP-calls cache as a per-instance lru_cache wrapping the
