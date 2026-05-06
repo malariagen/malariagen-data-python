@@ -1,6 +1,6 @@
 """Parameter definitions for XPEHH analysis functions."""
 
-from typing import Tuple, Union
+from typing import Tuple, Union, Optional
 
 import numpy as np
 from typing_extensions import Annotated, TypeAlias
@@ -8,7 +8,7 @@ from typing_extensions import Annotated, TypeAlias
 from . import base_params
 
 window_size: TypeAlias = Annotated[
-    int,
+    Optional[int],
     """
         The size of window in number of SNPs used to summarise XP-EHH over.
         If None, per-variant XP-EHH values are returned.

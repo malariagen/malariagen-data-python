@@ -6,6 +6,8 @@ import xarray as xr
 import zarr  # type: ignore
 from numpydoc_decorator import doc  # type: ignore
 
+from .safe_query import validate_query
+
 from ..util import (
     DIM_ALLELE,
     DIM_PLOIDY,
@@ -58,7 +60,11 @@ class AnophelesHapData(
     def _prep_phasing_analysis_param(self, *, analysis: hap_params.analysis) -> str:
         if analysis == base_params.DEFAULT:
             # Use whatever is the default phasing analysis for this data resource.
-            assert self._default_phasing_analysis is not None
+            if self._default_phasing_analysis is None:
+                raise RuntimeError(
+                    "No default phasing analysis configured. "
+                    "Please specify the 'analysis' parameter explicitly."
+                )
             return self._default_phasing_analysis
         elif analysis in self.phasing_analysis_ids:
             return analysis
@@ -118,7 +124,11 @@ class AnophelesHapData(
 
         # Handle contig in the reference genome.
         else:
-            assert contig in self.contigs
+            if contig not in self.contigs:
+                raise ValueError(
+                    f"Contig {contig!r} not found. "
+                    f"Available contigs: {self.contigs}"
+                )
             root = self.open_haplotype_sites(analysis=analysis)
             z = root[f"{contig}/variants/{field}"]
             ret = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
@@ -143,7 +153,7 @@ class AnophelesHapData(
         )
 
         # Deal with a region.
-        if region.start or region.end:
+        if region.start is not None or region.end is not None:
             if field == "POS":
                 pos = ret
             else:
@@ -251,7 +261,11 @@ class AnophelesHapData(
 
         # Handle contig in the reference genome.
         else:
-            assert contig in self.contigs
+            if contig not in self.contigs:
+                raise ValueError(
+                    f"Contig {contig!r} not found. "
+                    f"Available contigs: {self.contigs}"
+                )
 
             # Open haplotypes zarr.
             root = self.open_haplotypes(sample_set=sample_set, analysis=analysis)
@@ -385,7 +399,7 @@ class AnophelesHapData(
                 x = _simple_xarray_concat(ly, dim=DIM_SAMPLE)
 
                 # Handle region.
-                if r.start or r.end:
+                if r.start is not None or r.end is not None:
                     pos = x["variant_position"].values
                     loc_region = _locate_region(r, pos)
                     x = x.isel(variants=loc_region)
@@ -406,7 +420,8 @@ class AnophelesHapData(
                 df_samples.set_index("sample_id").loc[phased_samples].reset_index()
             )
 
-            # Apply the query.
+            # Validate the query to prevent arbitrary code execution (GH-1292).
+            validate_query(sample_query_prepped)
             sample_query_options = sample_query_options or {}
             loc_samples = df_samples_phased.eval(
                 sample_query_prepped, **sample_query_options
