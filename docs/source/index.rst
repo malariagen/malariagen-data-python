@@ -66,6 +66,13 @@ API documentation
          :align: center
          :width: 100%
 
+   .. grid-item-card:: ``Adar1``
+      :link: Adar1
+      :link-type: doc
+
+      *Anopheles darlingi*
+      .. image:: ./_static/images/anopheles_darlingi.jpg
+
 Documentation for the `Pf7 <https://malariagen.github.io/parasite-data/pf7/api.html>`_ (*Plasmodium falciparum*)
 and `Pv4 <https://malariagen.github.io/parasite-data/pv4/api.html>`_ (*Plasmodium vivax*) APIs is also available,
 currently hosted on a separate site.
