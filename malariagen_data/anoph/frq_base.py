@@ -731,7 +731,6 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
                 options=periods, value=periods[0], description="Period: "
             ),
         )
-        )
 
         # Lay out widgets.
         components = []
