@@ -699,7 +699,7 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         taxa = ds["cohort_taxon"].to_pandas().dropna().unique()  # type: ignore
         periods = ds["cohort_period"].to_pandas().dropna().unique()  # type: ignore
 
-if len(variants) == 0:
+        if len(variants) == 0:
             raise ValueError("No variants available in dataset.")
         if len(taxa) == 0:
             raise ValueError("No taxons available in dataset.")
