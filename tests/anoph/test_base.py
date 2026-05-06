@@ -10,6 +10,8 @@ from pytest_cases import parametrize_with_cases
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data import adir1 as _adir1
+from malariagen_data import as1 as _as1
+
 from malariagen_data.anoph.base import AnophelesBase
 from malariagen_data.util import LoggingHelper
 
@@ -62,6 +64,18 @@ def amin1_sim_api(amin1_sim_fixture):
     )
 
 
+@pytest.fixture
+def as1_sim_api(as1_sim_fixture):
+    return AnophelesBase(
+        url=as1_sim_fixture.url,
+        public_url=as1_sim_fixture.url,
+        config_path=_as1.CONFIG_PATH,
+        major_version_number=_as1.MAJOR_VERSION_NUMBER,
+        major_version_path=_as1.MAJOR_VERSION_PATH,
+        pre=False,
+    )
+
+
 # N.B., here we use pytest_cases to parametrize tests. Each
 # function whose name begins with "case_" defines a set of
 # inputs to the test functions. See the documentation for
@@ -88,6 +102,10 @@ def case_adir1_sim(adir1_sim_fixture, adir1_sim_api):
 
 def case_amin1_sim(amin1_sim_fixture, amin1_sim_api):
     return amin1_sim_fixture, amin1_sim_api
+
+
+def case_as1_sim(as1_sim_fixture, as1_sim_api):
+    return as1_sim_fixture, as1_sim_api
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -411,3 +429,28 @@ def test_sample_sets_no_terms_of_use(ag3_sim_fixture):
     finally:
         for mp, bp in zip(manifest_paths, backups):
             shutil.move(bp, mp)
+
+
+class TestSurveillanceFlagsBaseFallback:
+    """Tests for issue #1206: base _surveillance_flags graceful fallback."""
+
+    def test_surveillance_flags_base_returns_empty_and_warns(self, ag3_sim_api):
+        """Base implementation returns empty DataFrame with correct schema and warns."""
+        with pytest.warns(UserWarning, match="Surveillance flags not implemented"):
+            df = ag3_sim_api._surveillance_flags(sample_sets=["AG1000G-AO"])
+
+        assert isinstance(df, pd.DataFrame)
+        assert list(df.columns) == ["sample_id", "is_surveillance"]
+        assert df["sample_id"].dtype == object
+        assert pd.api.types.is_bool_dtype(df["is_surveillance"])
+        assert len(df) == 0
+
+    def test_sample_set_has_surveillance_data_returns_false_when_fallback(
+        self, ag3_sim_api
+    ):
+        """_sample_set_has_surveillance_data returns False when base fallback is used."""
+        with pytest.warns(UserWarning, match="Surveillance flags not implemented"):
+            result = ag3_sim_api._sample_set_has_surveillance_data(
+                sample_set="AG1000G-AO"
+            )
+        assert not result

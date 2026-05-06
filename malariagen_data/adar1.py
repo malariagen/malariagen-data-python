@@ -130,7 +130,6 @@ class Adar1(AnophelesDataResource):
             tqdm_class=tqdm_class,
             taxon_colors=TAXON_COLORS,
             virtual_contigs=None,
-            gene_names=None,
             inversion_tag_path=None,
             unrestricted_use_only=unrestricted_use_only,
             surveillance_use_only=surveillance_use_only,
@@ -153,7 +152,7 @@ class Adar1(AnophelesDataResource):
             f"Please note that data are subject to terms of use,\n"
             f"for more information see https://www.malariagen.net/data\n"
             f"or contact support@malariagen.net. For API documentation see \n"
-            f"https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Adir1.html"
+            f"https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Adar1.html"
         )
         return text
 
@@ -168,7 +167,7 @@ class Adar1(AnophelesDataResource):
                         Please note that data are subject to terms of use,
                         for more information see <a href="https://www.malariagen.net/data">
                         the MalariaGEN website</a> or contact support@malariagen.net.
-                        See also the <a href="https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Adir1.html">Adir1 API docs</a>.
+                        See also the <a href="https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Adar1.html">Adar1 API docs</a>.
                     </td></tr>
                 </thead>
                 <tbody>
@@ -182,7 +181,7 @@ class Adar1(AnophelesDataResource):
                         <th style="text-align: left">
                             Data releases available
                         </th>
-                        <td>{', '.join(self._available_releases)}</td>
+                        <td>{", ".join(self._available_releases)}</td>
                     </tr>
                     <tr>
                         <th style="text-align: left">
@@ -230,7 +229,7 @@ class Adar1(AnophelesDataResource):
                         <th style="text-align: left">
                             Relevant data releases
                         </th>
-                        <td>{', '.join(self.releases)}</td>
+                        <td>{", ".join(self.releases)}</td>
                     </tr>
                 </tbody>
             </table>
