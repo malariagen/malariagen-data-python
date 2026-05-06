@@ -19,6 +19,7 @@ GCS_REGION_URLS = {
 }
 XPEHH_GWSS_CACHE_NAME = "ag3_xpehh_gwss_v1"
 IHS_GWSS_CACHE_NAME = "ag3_ihs_gwss_v1"
+ROH_HMM_CACHE_NAME = "ag3_roh_hmm_v1"
 VIRTUAL_CONTIGS = {
     "2RL": ("2R", "2L"),
     "3RL": ("3R", "3L"),
@@ -94,9 +95,6 @@ AIM_METADATA_DTYPE = {
     "aim_species_gambiae_coluzzii": "object",
     "aim_species": "object",
 }
-
-ROH_HMM_CACHE_NAME = "ag3_roh_hmm_v1"
-
 
 class Ag3(AnophelesDataResource):
     """Provides access to data from Ag3.x releases.
