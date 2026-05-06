@@ -96,6 +96,7 @@ AIM_METADATA_DTYPE = {
     "aim_species": "object",
 }
 
+
 class Ag3(AnophelesDataResource):
     """Provides access to data from Ag3.x releases.
 
