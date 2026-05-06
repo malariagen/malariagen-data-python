@@ -708,7 +708,7 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         def _update_map(variant, taxon, period):
             if variant is None or taxon is None or period is None:
                 return
-            
+
             self.plot_frequencies_map_markers(
                 m=freq_map,
                 ds=ds,
@@ -748,4 +748,3 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         out = ipywidgets.VBox(components)
 
         return out
-    
