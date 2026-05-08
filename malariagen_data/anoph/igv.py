@@ -99,7 +99,7 @@ class AnophelesIgv(
         # Locate record for sample.
         cat_rec = df_cat.set_index("sample_id").loc[sample]
         bam_url = cat_rec["alignments_bam"]
-        vcf_url = cat_rec["snp_genotypes_vcf"]
+        # vcf_url = cat_rec["snp_genotypes_vcf"]
 
         # Set up site filters tracks.
         contig = region.contig
@@ -112,8 +112,8 @@ class AnophelesIgv(
         tracks.append(
             {
                 "name": "SNPs",
-                "url": vcf_url,
-                "indexURL": f"{vcf_url}.tbi",
+                "url": "https://ftp.sra.ebi.ac.uk/vol1/analysis/ERZ290/ERZ29061242/AB0302-C.var.vcf.gz",
+                "indexURL": "https://ftp.sra.ebi.ac.uk/vol1/analysis/ERZ290/ERZ29061242/AB0302-C.var.vcf.csi",
                 "format": "vcf",
                 "type": "variant",
                 "visibilityWindow": visibility_window,  # bp
