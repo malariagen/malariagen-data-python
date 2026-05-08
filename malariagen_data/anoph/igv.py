@@ -112,7 +112,7 @@ class AnophelesIgv(
         tracks.append(
             {
                 "name": "SNPs",
-                "url": "https://ftp.sra.ebi.ac.uk/vol1/analysis/ERZ290/ERZ29061242/AB0302-C.var.vcf.gz",
+                "url": "https://storage.googleapis.com/jon_brenas_bucket/AB0302-C.var.vcf.gz",
                 "indexURL": "https://storage.googleapis.com/jon_brenas_bucket/AB0302-C.var.vcf.gz.tbi",
                 "format": "vcf",
                 "type": "variant",
