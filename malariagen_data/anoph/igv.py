@@ -84,22 +84,22 @@ class AnophelesIgv(
         visibility_window: int = 20_000,
     ):
         # Look up sample set for sample.
-        try:
-            sample_rec = self.sample_metadata().set_index("sample_id").loc[sample]
-        except KeyError as e:
-            raise ValueError(
-                f"No data found for sample {sample!r}. This sample might be unavailable or irrelevant with respect to settings."
-            ) from e
+        # try:
+        #    sample_rec = self.sample_metadata().set_index("sample_id").loc[sample]
+        # except KeyError as e:
+        #    raise ValueError(
+        #        f"No data found for sample {sample!r}. This sample might be unavailable or irrelevant with respect to settings."
+        #    ) from e
 
-        sample_set = sample_rec["sample_set"]
+        # sample_set = sample_rec["sample_set"]
 
         # Load data catalog.
-        df_cat = self.wgs_data_catalog(sample_set=sample_set)
+        # df_cat = self.wgs_data_catalog(sample_set=sample_set)
 
         # Locate record for sample.
-        cat_rec = df_cat.set_index("sample_id").loc[sample]
+        # cat_rec = df_cat.set_index("sample_id").loc[sample]
         # bam_url = cat_rec["alignments_bam"]
-        vcf_url = cat_rec["snp_genotypes_vcf"]
+        # vcf_url = cat_rec["snp_genotypes_vcf"]
 
         # Set up site filters tracks.
         contig = region.contig
@@ -112,8 +112,8 @@ class AnophelesIgv(
         tracks.append(
             {
                 "name": "SNPs",
-                "url": vcf_url,
-                "indexURL": f"{vcf_url}.tbi",
+                "url": "https://ftp.sra.ebi.ac.uk/vol1/analysis/ERZ290/ERZ29061242/AB0302-C.var.vcf.gz",
+                "indexURL": "https://ftp.sra.ebi.ac.uk/vol1/analysis/ERZ290/ERZ29061242/AB0302-C.var.vcf.csi",
                 "format": "vcf",
                 "type": "variant",
                 "visibilityWindow": visibility_window,  # bp
