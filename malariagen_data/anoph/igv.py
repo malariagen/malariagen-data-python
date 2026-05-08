@@ -125,8 +125,8 @@ class AnophelesIgv(
         tracks.append(
             {
                 "name": "Alignments",
-                "url": "ftp://ftp.sra.ebi.ac.uk/vol1/analysis/ERZ169/ERZ1695642/AB0302-C.bam",
-                "indexURL": "ftp://ftp.sra.ebi.ac.uk/vol1/analysis/ERZ169/ERZ1695642/AB0302-C.bam.bai",
+                "url": "https://ftp.sra.ebi.ac.uk/vol1/analysis/ERZ169/ERZ1695642/AB0302-C.bam",
+                "indexURL": "https://ftp.sra.ebi.ac.uk/vol1/analysis/ERZ169/ERZ1695642/AB0302-C.bam.bai",
                 "format": "bam",
                 "type": "alignment",
                 "visibilityWindow": visibility_window,  # bp
