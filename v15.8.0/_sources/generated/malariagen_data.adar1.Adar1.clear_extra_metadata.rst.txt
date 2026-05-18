@@ -1,0 +1,6 @@
+﻿malariagen\_data.adar1.Adar1.clear\_extra\_metadata
+===================================================
+
+.. currentmodule:: malariagen_data.adar1
+
+.. automethod:: Adar1.clear_extra_metadata

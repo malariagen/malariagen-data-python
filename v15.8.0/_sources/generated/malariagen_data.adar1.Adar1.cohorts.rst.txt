@@ -1,0 +1,6 @@
+﻿malariagen\_data.adar1.Adar1.cohorts
+====================================
+
+.. currentmodule:: malariagen_data.adar1
+
+.. automethod:: Adar1.cohorts

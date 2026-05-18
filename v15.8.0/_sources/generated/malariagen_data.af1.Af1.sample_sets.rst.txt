@@ -1,0 +1,6 @@
+﻿malariagen\_data.af1.Af1.sample\_sets
+=====================================
+
+.. currentmodule:: malariagen_data.af1
+
+.. automethod:: Af1.sample_sets

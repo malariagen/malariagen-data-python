@@ -1,0 +1,6 @@
+﻿malariagen\_data.adar1.Adar1.average\_fst
+=========================================
+
+.. currentmodule:: malariagen_data.adar1
+
+.. automethod:: Adar1.average_fst

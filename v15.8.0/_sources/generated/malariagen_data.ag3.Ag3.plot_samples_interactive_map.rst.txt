@@ -1,0 +1,6 @@
+﻿malariagen\_data.ag3.Ag3.plot\_samples\_interactive\_map
+========================================================
+
+.. currentmodule:: malariagen_data.ag3
+
+.. automethod:: Ag3.plot_samples_interactive_map

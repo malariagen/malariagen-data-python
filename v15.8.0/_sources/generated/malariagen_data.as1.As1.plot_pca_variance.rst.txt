@@ -1,0 +1,6 @@
+﻿malariagen\_data.as1.As1.plot\_pca\_variance
+============================================
+
+.. currentmodule:: malariagen_data.as1
+
+.. automethod:: As1.plot_pca_variance

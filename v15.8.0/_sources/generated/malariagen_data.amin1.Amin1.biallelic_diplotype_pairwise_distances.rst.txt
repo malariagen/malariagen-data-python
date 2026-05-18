@@ -1,0 +1,6 @@
+﻿malariagen\_data.amin1.Amin1.biallelic\_diplotype\_pairwise\_distances
+======================================================================
+
+.. currentmodule:: malariagen_data.amin1
+
+.. automethod:: Amin1.biallelic_diplotype_pairwise_distances

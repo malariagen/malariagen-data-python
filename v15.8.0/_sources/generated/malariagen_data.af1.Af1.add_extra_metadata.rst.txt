@@ -1,0 +1,6 @@
+﻿malariagen\_data.af1.Af1.add\_extra\_metadata
+=============================================
+
+.. currentmodule:: malariagen_data.af1
+
+.. automethod:: Af1.add_extra_metadata
