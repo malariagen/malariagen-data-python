@@ -342,7 +342,7 @@ def test_h12_gwss_multi_param_forwarding(fixture, api: AnophelesH12Analysis):
     cohort2_query = f"country == '{country2}'"
 
     h12_params = dict(
-        contig=str(np.random.choice(api.contigs)),
+        region=str(np.random.choice(api.contigs)),
         sample_sets=all_sample_sets,
         window_size=200,
         min_cohort_size=1,
