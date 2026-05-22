@@ -34,6 +34,8 @@ window_size: TypeAlias = Annotated[
     """,
 ]
 
+DEFAULT_SITE_PARAMETER: sites = "segregating"
+
 min_cohort_size_default: base_params.min_cohort_size = 20
 
 max_cohort_size_default: base_params.max_cohort_size = 50

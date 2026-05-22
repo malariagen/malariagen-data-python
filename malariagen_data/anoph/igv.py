@@ -3,7 +3,7 @@ from typing import List, Optional
 import igv_notebook  # type: ignore
 from numpydoc_decorator import doc  # type: ignore
 
-from ..util import Region, check_types, parse_single_region
+from ..util import Region, _check_types, _parse_single_region
 from . import base_params
 from .snp_data import AnophelesSnpData
 
@@ -84,7 +84,13 @@ class AnophelesIgv(
         visibility_window: int = 20_000,
     ):
         # Look up sample set for sample.
-        sample_rec = self.sample_metadata().set_index("sample_id").loc[sample]
+        try:
+            sample_rec = self.sample_metadata().set_index("sample_id").loc[sample]
+        except KeyError as e:
+            raise ValueError(
+                f"No data found for sample {sample!r}. This sample might be unavailable or irrelevant with respect to settings."
+            ) from e
+
         sample_set = sample_rec["sample_set"]
 
         # Load data catalog.
@@ -130,7 +136,7 @@ class AnophelesIgv(
 
         return tracks
 
-    @check_types
+    @_check_types
     @doc(
         summary="Create an IGV browser and inject into the current notebook.",
         parameters=dict(
@@ -146,7 +152,7 @@ class AnophelesIgv(
         init: bool = True,
     ) -> igv_notebook.Browser:
         # Parse region.
-        region_prepped: Region = parse_single_region(self, region)
+        region_prepped: Region = _parse_single_region(self, region)
         del region
 
         # Create config.
@@ -164,7 +170,7 @@ class AnophelesIgv(
 
         return browser
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Launch IGV and view sequence read alignments and SNP genotypes from
@@ -187,7 +193,7 @@ class AnophelesIgv(
         init: bool = True,
     ):
         # Parse region.
-        region_prepped: Region = parse_single_region(self, region)
+        region_prepped: Region = _parse_single_region(self, region)
         del region
 
         # Create tracks.

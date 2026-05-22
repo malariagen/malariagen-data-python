@@ -9,7 +9,7 @@ class Pf8(PlasmodiumDataResource):
     Parameters
     ----------
     url : str, optional
-        Base path to data. Default uses Google Cloud Storage "gs://pf8-release/",
+        Base path to data. Default uses Google Cloud Storage "gs://pf8-release/" which requires authentication (https://malariagen.github.io/parasite-data/cloud_data_access/parasite-cloud-data-access.html#),
         or specify a local path on your file system if data have been downloaded.
     data_config : str, optional
         Path to config for structure of Pf8 data resource. Defaults to config included

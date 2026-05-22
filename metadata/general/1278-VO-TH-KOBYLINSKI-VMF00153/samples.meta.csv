@@ -1,0 +1,220 @@
+sample_id,partner_sample_id,contributor,country,location,year,month,latitude,longitude,sex_call
+VBS45974-6296STDY9478582,329,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, A",2019,2,9.110,98.878,UKN
+VBS45976-6296STDY9478584,339,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, A/2",2019,2,9.110,98.878,UKN
+VBS45979-6296STDY9478587,920,Kevin Kobylinski,Thailand,"Khirirat Nikhom, nine, C2",2019,3,9.134,98.888,UKN
+VBS45982-6296STDY9478589,1007,Kevin Kobylinski,Thailand,"Khirirat Nikhom, nine, C2",2019,4,9.134,98.888,UKN
+VBS46005-6296STDY9478612,1845,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46042-6296STDY9478649,2014,Kevin Kobylinski,Thailand,"Phanom, one, B2",2019,5,8.869,98.631,UKN
+VBS46050-6296STDY9478657,2043,Kevin Kobylinski,Thailand,"Phanom, three, B1",2019,5,8.896,98.663,UKN
+VBS46059-6296STDY9478666,2523,Kevin Kobylinski,Thailand,"Khirirat Nikhom, six, E2",2019,5,9.068,98.846,UKN
+VBS46066-6296STDY9478673,2909,Kevin Kobylinski,Thailand,"Phanom, three, C1",2019,6,8.890,98.664,UKN
+VBS46067-6296STDY9478674,2935,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, G",2019,6,9.108,98.885,UKN
+VBS46078-6296STDY9478687,3109,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, F",2019,6,9.105,98.891,UKN
+VBS46083-6296STDY9478692,3185,Kevin Kobylinski,Thailand,"Khirirat Nikhom, six, G",2019,6,9.082,98.861,UKN
+VBS46084-6296STDY9478693,3191,Kevin Kobylinski,Thailand,"Khirirat Nikhom, six, F",2019,6,9.081,98.864,UKN
+VBS46087-6296STDY9478696,3325,Kevin Kobylinski,Thailand,"Khirirat Nikhom, six, F",2019,6,9.081,98.864,UKN
+VBS46088-6296STDY9478697,3330,Kevin Kobylinski,Thailand,"Khirirat Nikhom, six, F",2019,6,9.081,98.864,UKN
+VBS46098-6296STDY9478707,3932_1278,Kevin Kobylinski,Thailand,"Vibhavadi, ten, D",2019,3,9.340,98.880,UKN
+VBS46121-6296STDY9478730,4591,Kevin Kobylinski,Thailand,"Khirirat Nikhom, seven, B",2019,8,9.099,98.898,UKN
+VBS46141-6296STDY9478750,5202,Kevin Kobylinski,Thailand,"Phanom, one, E",2019,10,8.871,98.641,UKN
+VBS46145-6296STDY9478754,5206,Kevin Kobylinski,Thailand,"Phanom, one, E",2019,10,8.871,98.641,UKN
+VBS46146-6296STDY9478755,5209,Kevin Kobylinski,Thailand,"Phanom, one, E",2019,10,8.871,98.641,UKN
+VBS46154-6296STDY9478763,5221,Kevin Kobylinski,Thailand,"Phanom, one, G",2019,10,8.877,98.646,UKN
+VBS46168-6296STDY9478779,5244,Kevin Kobylinski,Thailand,"Vibhavadi, six, A",2019,10,9.252,98.850,UKN
+VBS46172-6296STDY9478782,5265,Kevin Kobylinski,Thailand,"Vibhavadi, ten, D",2019,10,9.340,98.880,UKN
+VBS46173-6296STDY9478783,5313,Kevin Kobylinski,Thailand,"Vibhavadi, ten, F",2019,10,9.353,98.875,UKN
+VBS46175-6296STDY9478785,5496,Kevin Kobylinski,Thailand,"Vibhavadi, nine, E",2019,10,9.329,98.873,UKN
+VBS46180-6296STDY9478790,5506_1278,Kevin Kobylinski,Thailand,"Vibhavadi, nine, E",2019,10,9.329,98.873,UKN
+VBS46183-6296STDY9478793,5592,Kevin Kobylinski,Thailand,"Vibhavadi, eight, I",2019,10,9.296,98.886,UKN
+VBS46187-6296STDY9478797,5614,Kevin Kobylinski,Thailand,"Khirirat Nikhom, six, L",2019,10,9.083,98.859,UKN
+VBS46188-6296STDY9478798,5619,Kevin Kobylinski,Thailand,"Khirirat Nikhom, six, L",2019,10,9.083,98.859,UKN
+VBS46189-6296STDY9478799,5647,Kevin Kobylinski,Thailand,"Khirirat Nikhom, seven, D",2019,10,9.097,98.902,UKN
+VBS46190-6296STDY9478800,5649,Kevin Kobylinski,Thailand,"Khirirat Nikhom, seven, D",2019,10,9.097,98.902,UKN
+VBS46192-6296STDY9478801,5683,Kevin Kobylinski,Thailand,"Khirirat Nikhom, six, N",2019,10,9.083,98.878,UKN
+VBS46198-6296STDY9478807,5736,Kevin Kobylinski,Thailand,"Khirirat Nikhom, seven, D",2019,10,9.097,98.902,UKN
+VBS45975-6296STDY10244530,331,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, A",2019,2,9.110,98.878,UKN
+VBS45983-6296STDY10244537,1200,Kevin Kobylinski,Thailand,"Khirirat Nikhom, six, C1",2019,4,9.080,98.879,UKN
+VBS45984-6296STDY10244538,1363,Kevin Kobylinski,Thailand,"Phanom, three, A2",2019,4,8.894,98.667,UKN
+VBS45985-6296STDY10244539,1364,Kevin Kobylinski,Thailand,"Phanom, three, A2",2019,4,8.894,98.667,UKN
+VBS45986-6296STDY10244540,1494,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, D1",2019,4,9.107,98.869,UKN
+VBS45987-6296STDY10244541,1498,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, D2",2019,4,9.107,98.869,UKN
+VBS45988-6296STDY10244542,1687,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS45989-6296STDY10244543,1688,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS45991-6296STDY10244545,1711,Kevin Kobylinski,Thailand,"Phanom, one, B2",2019,5,8.869,98.631,UKN
+VBS45992-6296STDY10244546,1719,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS45993-6296STDY10244547,1738,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS45994-6296STDY10244548,1750,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS45995-6296STDY10244549,1759,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS45996-6296STDY10244550,1771,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS45997-6296STDY10244551,1774,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS45998-6296STDY10244552,1780,Kevin Kobylinski,Thailand,"Phanom, one, B2",2019,5,8.869,98.631,UKN
+VBS45999-6296STDY10244553,1793,Kevin Kobylinski,Thailand,"Phanom, one, B2",2019,5,8.869,98.631,UKN
+VBS46000-6296STDY10244554,1810,Kevin Kobylinski,Thailand,"Phanom, three, B1",2019,5,8.896,98.663,UKN
+VBS46001-6296STDY10244555,1818,Kevin Kobylinski,Thailand,"Phanom, three, B1",2019,5,8.896,98.663,UKN
+VBS46002-6296STDY10244556,1826_1278,Kevin Kobylinski,Thailand,"Phanom, three, B1",2019,5,8.896,98.663,UKN
+VBS46003-6296STDY10244557,1830,Kevin Kobylinski,Thailand,"Phanom, three, B1",2019,5,8.896,98.663,UKN
+VBS46004-6296STDY10244558,1840,Kevin Kobylinski,Thailand,"Phanom, three, B1",2019,5,8.896,98.663,UKN
+VBS46006-6296STDY10244560,1854,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46007-6296STDY10244561,1859,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46008-6296STDY10244562,1860,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46009-6296STDY10244563,1866,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46010-6296STDY10244564,1871,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46011-6296STDY10244565,1872,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46012-6296STDY10244566,1875,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46013-6296STDY10244567,1881,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46014-6296STDY10244568,1887,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46016-6296STDY10244570,1908,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46017-6296STDY10244571,1912,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46019-6296STDY10244573,1931,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46020-6296STDY10244574,1932,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46021-6296STDY10244575,1934,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46022-6296STDY10244576,1936,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46025-6296STDY10244579,1946,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46026-6296STDY10244580,1949,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46027-6296STDY10244581,1950,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46028-6296STDY10244582,1951,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46029-6296STDY10244583,1954,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46030-6296STDY10244584,1956,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46031-6296STDY10244585,1960,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46032-6296STDY10244586,1966,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46033-6296STDY10244587,1975,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46034-6296STDY10244588,1977,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46035-6296STDY10244589,1978,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46036-6296STDY10244590,1989,Kevin Kobylinski,Thailand,"Phanom, one, B1",2019,5,8.870,98.631,UKN
+VBS46037-6296STDY10244591,1999,Kevin Kobylinski,Thailand,"Phanom, one, B2",2019,5,8.869,98.631,UKN
+VBS46038-6296STDY10244592,2000,Kevin Kobylinski,Thailand,"Phanom, one, B2",2019,5,8.869,98.631,UKN
+VBS46039-6296STDY10244593,2003,Kevin Kobylinski,Thailand,"Phanom, one, B2",2019,5,8.869,98.631,UKN
+VBS46040-6296STDY10244594,2006,Kevin Kobylinski,Thailand,"Phanom, one, B2",2019,5,8.869,98.631,UKN
+VBS46041-6296STDY10244595,2011,Kevin Kobylinski,Thailand,"Phanom, one, B2",2019,5,8.869,98.631,UKN
+VBS46043-6296STDY10244597,2017,Kevin Kobylinski,Thailand,"Phanom, one, B2",2019,5,8.869,98.631,UKN
+VBS46044-6296STDY10244598,2018,Kevin Kobylinski,Thailand,"Phanom, one, B2",2019,5,8.869,98.631,UKN
+VBS46045-6296STDY10244599,2028,Kevin Kobylinski,Thailand,"Phanom, three, B1",2019,5,8.896,98.663,UKN
+VBS46046-6296STDY10244600,2037,Kevin Kobylinski,Thailand,"Phanom, three, B2",2019,5,8.896,98.663,UKN
+VBS46047-6296STDY10244601,2039,Kevin Kobylinski,Thailand,"Phanom, three, B2",2019,5,8.896,98.663,UKN
+VBS46048-6296STDY10244602,2040,Kevin Kobylinski,Thailand,"Phanom, three, B2",2019,5,8.896,98.663,UKN
+VBS46049-6296STDY10244603,2041,Kevin Kobylinski,Thailand,"Phanom, three, B1",2019,5,8.896,98.663,UKN
+VBS46051-6296STDY10244605,2044,Kevin Kobylinski,Thailand,"Phanom, three, B1",2019,5,8.896,98.663,UKN
+VBS46052-6296STDY10244606,2045,Kevin Kobylinski,Thailand,"Phanom, three, B1",2019,5,8.896,98.663,UKN
+VBS46053-6296STDY10244607,2047,Kevin Kobylinski,Thailand,"Phanom, three, B1",2019,5,8.896,98.663,UKN
+VBS46054-6296STDY10244608,2431,Kevin Kobylinski,Thailand,"Khirirat Nikhom, six, E1",2019,5,9.068,98.846,UKN
+VBS46055-6296STDY10244609,2444,Kevin Kobylinski,Thailand,"Khirirat Nikhom, six, E2",2019,5,9.068,98.846,UKN
+VBS46056-6296STDY10244610,2499,Kevin Kobylinski,Thailand,"Khirirat Nikhom, six, E2",2019,5,9.068,98.846,UKN
+VBS46057-6296STDY10244611,2503,Kevin Kobylinski,Thailand,"Khirirat Nikhom, six, E2",2019,5,9.068,98.846,UKN
+VBS46060-6296STDY10244614,2569,Kevin Kobylinski,Thailand,"Vibhavadi, eleven, A",2019,5,9.360,98.876,UKN
+VBS46061-6296STDY10244615,2688,Kevin Kobylinski,Thailand,"Vibhavadi, nine, A3",2019,1,9.331,98.878,UKN
+VBS46063-6296STDY10244617,2841,Kevin Kobylinski,Thailand,"Phanom, three, C2",2019,6,8.890,98.663,UKN
+VBS46064-6296STDY10244618,2889,Kevin Kobylinski,Thailand,"Phanom, three, C1",2019,6,8.890,98.664,UKN
+VBS46065-6296STDY10244619,2894,Kevin Kobylinski,Thailand,"Phanom, three, C1",2019,6,8.890,98.664,UKN
+VBS46068-6296STDY10244622,2937,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, G",2019,6,9.108,98.885,UKN
+VBS46069-6296STDY10244625,2944,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, F",2019,6,9.105,98.891,UKN
+VBS46070-6296STDY10244626,2960,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, F",2019,6,9.105,98.891,UKN
+VBS46071-6296STDY10244627,2961,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, F",2019,6,9.105,98.891,UKN
+VBS46072-6296STDY10244628,3007,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, F",2019,6,9.105,98.891,UKN
+VBS46073-6296STDY10244629,3037,Kevin Kobylinski,Thailand,"Khirirat Nikhom, nine, H",2019,6,9.136,98.881,UKN
+VBS46074-6296STDY10244630,3041,Kevin Kobylinski,Thailand,"Khirirat Nikhom, nine, H",2019,6,9.136,98.881,UKN
+VBS46075-6296STDY10244631,3062,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, F",2019,6,9.105,98.891,UKN
+VBS46076-6296STDY10244632,3077,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, G",2019,6,9.108,98.885,UKN
+VBS46077-6296STDY10244633,3079,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, G",2019,6,9.108,98.885,UKN
+VBS46079-6296STDY10244635,3129,Kevin Kobylinski,Thailand,"Khirirat Nikhom, nine, G",2019,6,9.135,98.882,UKN
+VBS46080-6296STDY10244636,3142,Kevin Kobylinski,Thailand,"Khirirat Nikhom, four, G",2019,6,9.063,98.877,UKN
+VBS46081-6296STDY10244637,3170,Kevin Kobylinski,Thailand,"Khirirat Nikhom, six, G",2019,6,9.082,98.861,UKN
+VBS46082-6296STDY10244638,3183,Kevin Kobylinski,Thailand,"Khirirat Nikhom, six, G",2019,6,9.082,98.861,UKN
+VBS46085-6296STDY10244641,3249,Kevin Kobylinski,Thailand,"Khirirat Nikhom, six, G",2019,6,9.082,98.861,UKN
+VBS46086-6296STDY10244642,3316,Kevin Kobylinski,Thailand,"Khirirat Nikhom, six, F",2019,6,9.081,98.864,UKN
+VBS46089-6296STDY10244645,3388,Kevin Kobylinski,Thailand,"Vibhavadi, eight, B1",2019,7,9.304,98.885,UKN
+VBS46090-6296STDY10244646,3396,Kevin Kobylinski,Thailand,"Vibhavadi, eight, B1",2019,7,9.304,98.885,UKN
+VBS46091-6296STDY10244647,3397,Kevin Kobylinski,Thailand,"Vibhavadi, eight, B2",2019,7,9.304,98.886,UKN
+VBS46092-6296STDY10244648,3581,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, H",2019,7,9.110,98.880,UKN
+VBS46093-6296STDY10244649,3623,Kevin Kobylinski,Thailand,"Khirirat Nikhom, four, I",2019,7,9.052,98.865,UKN
+VBS46094-6296STDY10244650,3710,Kevin Kobylinski,Thailand,"Khirirat Nikhom, nine, I",2019,7,9.140,98.881,UKN
+VBS46095-6296STDY10244651,3745,Kevin Kobylinski,Thailand,"Khirirat Nikhom, four, I",2019,7,9.052,98.865,UKN
+VBS46096-6296STDY10244652,3780,Kevin Kobylinski,Thailand,"Khirirat Nikhom, six, G",2019,7,9.082,98.861,UKN
+VBS46097-6296STDY10244653,3840,Kevin Kobylinski,Thailand,"Vibhavadi, ten, D",2019,3,9.340,98.880,UKN
+VBS46099-6296STDY10244655,3954,Kevin Kobylinski,Thailand,"Vibhavadi, ten, D",2019,3,9.340,98.880,UKN
+VBS46100-6296STDY10244656,4148,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, J",2019,8,9.111,98.881,UKN
+VBS46101-6296STDY10244657,4149,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, J",2019,8,9.111,98.881,UKN
+VBS46102-6296STDY10244658,4151,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, J",2019,8,9.111,98.881,UKN
+VBS46103-6296STDY10244659,4156_1278,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, I",2019,8,9.105,98.889,UKN
+VBS46104-6296STDY10244660,4235,Kevin Kobylinski,Thailand,"Khirirat Nikhom, nine, M",2019,8,9.126,98.903,UKN
+VBS46105-6296STDY10244661,4274,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, I",2019,8,9.105,98.889,UKN
+VBS46106-6296STDY10244662,4310,Kevin Kobylinski,Thailand,"Khirirat Nikhom, seven, A",2019,8,9.100,98.896,UKN
+VBS46107-6296STDY10244663,4321,Kevin Kobylinski,Thailand,"Khirirat Nikhom, seven, A",2019,8,9.100,98.896,UKN
+VBS46108-6296STDY10244664,4407,Kevin Kobylinski,Thailand,"Khirirat Nikhom, six, K",2019,8,9.084,98.876,UKN
+VBS46109-6296STDY10244665,4430,Kevin Kobylinski,Thailand,"Khirirat Nikhom, six, K",2019,8,9.084,98.876,UKN
+VBS46110-6296STDY10244666,4472,Kevin Kobylinski,Thailand,"Khirirat Nikhom, four, J",2019,8,9.053,98.852,UKN
+VBS46111-6296STDY10244667,4488,Kevin Kobylinski,Thailand,"Khirirat Nikhom, four, K",2019,8,9.052,98.857,UKN
+VBS46112-6296STDY10244668,4511,Kevin Kobylinski,Thailand,"Khirirat Nikhom, six, K",2019,8,9.084,98.876,UKN
+VBS46113-6296STDY10244669,4556,Kevin Kobylinski,Thailand,"Khirirat Nikhom, seven, A",2019,8,9.100,98.896,UKN
+VBS46114-6296STDY10244670,4560,Kevin Kobylinski,Thailand,"Khirirat Nikhom, seven, A",2019,8,9.100,98.896,UKN
+VBS46115-6296STDY10244671,4577,Kevin Kobylinski,Thailand,"Khirirat Nikhom, seven, A",2019,8,9.100,98.896,UKN
+VBS46116-6296STDY10244672,4578,Kevin Kobylinski,Thailand,"Khirirat Nikhom, seven, A",2019,8,9.100,98.896,UKN
+VBS46117-6296STDY10244673,4579,Kevin Kobylinski,Thailand,"Khirirat Nikhom, seven, A",2019,8,9.100,98.896,UKN
+VBS46118-6296STDY10244674,4585,Kevin Kobylinski,Thailand,"Khirirat Nikhom, seven, A",2019,8,9.100,98.896,UKN
+VBS46119-6296STDY10244675,4589,Kevin Kobylinski,Thailand,"Khirirat Nikhom, seven, B",2019,8,9.099,98.898,UKN
+VBS46120-6296STDY10244676,4590,Kevin Kobylinski,Thailand,"Khirirat Nikhom, seven, B",2019,8,9.099,98.898,UKN
+VBS46122-6296STDY10244678,4596,Kevin Kobylinski,Thailand,"Khirirat Nikhom, seven, B",2019,8,9.099,98.898,UKN
+VBS46123-6296STDY10244679,4609,Kevin Kobylinski,Thailand,"Khirirat Nikhom, seven, B",2019,8,9.099,98.898,UKN
+VBS46124-6296STDY10244680,4666,Kevin Kobylinski,Thailand,"Vibhavadi, eight, F",2019,2,9.307,98.885,UKN
+VBS46125-6296STDY10244681,4768,Kevin Kobylinski,Thailand,"Vibhavadi, nine, B",2019,2,9.326,98.876,UKN
+VBS46126-6296STDY10244682,4778,Kevin Kobylinski,Thailand,"Vibhavadi, nine, B",2019,2,9.326,98.876,UKN
+VBS46127-6296STDY10244683,4779,Kevin Kobylinski,Thailand,"Vibhavadi, nine, B",2019,2,9.326,98.876,UKN
+VBS46128-6296STDY10244684,4788,Kevin Kobylinski,Thailand,"Vibhavadi, nine, B",2019,2,9.326,98.876,UKN
+VBS46129-6296STDY10244685,4809,Kevin Kobylinski,Thailand,"Vibhavadi, nine, B",2019,2,9.326,98.876,UKN
+VBS46130-6296STDY10244686,4875,Kevin Kobylinski,Thailand,"Vibhavadi, ten, D",2019,2,9.340,98.880,UKN
+VBS46131-6296STDY10244687,5191_1278,Kevin Kobylinski,Thailand,"Phanom, one, F",2019,10,8.869,98.638,UKN
+VBS46132-6296STDY10244688,5192,Kevin Kobylinski,Thailand,"Phanom, one, F",2019,10,8.869,98.638,UKN
+VBS46133-6296STDY10244689,5194,Kevin Kobylinski,Thailand,"Phanom, one, E",2019,10,8.871,98.641,UKN
+VBS46134-6296STDY10244690,5195,Kevin Kobylinski,Thailand,"Phanom, one, E",2019,10,8.871,98.641,UKN
+VBS46135-6296STDY10244691,5196,Kevin Kobylinski,Thailand,"Phanom, one, E",2019,10,8.871,98.641,UKN
+VBS46136-6296STDY10244692,5197,Kevin Kobylinski,Thailand,"Phanom, one, E",2019,10,8.871,98.641,UKN
+VBS46137-6296STDY10244693,5198,Kevin Kobylinski,Thailand,"Phanom, one, E",2019,10,8.871,98.641,UKN
+VBS46138-6296STDY10244694,5199,Kevin Kobylinski,Thailand,"Phanom, one, E",2019,10,8.871,98.641,UKN
+VBS46139-6296STDY10244695,5200,Kevin Kobylinski,Thailand,"Phanom, one, E",2019,10,8.871,98.641,UKN
+VBS46140-6296STDY10244696,5201,Kevin Kobylinski,Thailand,"Phanom, one, E",2019,10,8.871,98.641,UKN
+VBS46142-6296STDY10244698,5203,Kevin Kobylinski,Thailand,"Phanom, one, E",2019,10,8.871,98.641,UKN
+VBS46143-6296STDY10244699,5204,Kevin Kobylinski,Thailand,"Phanom, one, E",2019,10,8.871,98.641,UKN
+VBS46144-6296STDY10244700,5205,Kevin Kobylinski,Thailand,"Phanom, one, E",2019,10,8.871,98.641,UKN
+VBS46147-6296STDY10244703,5214,Kevin Kobylinski,Thailand,"Phanom, one, G",2019,10,8.877,98.646,UKN
+VBS46148-6296STDY10244704,5215,Kevin Kobylinski,Thailand,"Phanom, one, G",2019,10,8.877,98.646,UKN
+VBS46149-6296STDY10244705,5216,Kevin Kobylinski,Thailand,"Phanom, one, G",2019,10,8.877,98.646,UKN
+VBS46150-6296STDY10244706,5217,Kevin Kobylinski,Thailand,"Phanom, one, G",2019,10,8.877,98.646,UKN
+VBS46151-6296STDY10244707,5218,Kevin Kobylinski,Thailand,"Phanom, one, G",2019,10,8.877,98.646,UKN
+VBS46152-6296STDY10244708,5219,Kevin Kobylinski,Thailand,"Phanom, one, G",2019,10,8.877,98.646,UKN
+VBS46153-6296STDY10244709,5220,Kevin Kobylinski,Thailand,"Phanom, one, G",2019,10,8.877,98.646,UKN
+VBS46155-6296STDY10244711,5222,Kevin Kobylinski,Thailand,"Phanom, one, G",2019,10,8.877,98.646,UKN
+VBS46156-6296STDY10244712,5223,Kevin Kobylinski,Thailand,"Phanom, one, G",2019,10,8.877,98.646,UKN
+VBS46157-6296STDY10244713,5226,Kevin Kobylinski,Thailand,"Phanom, one, G",2019,10,8.877,98.646,UKN
+VBS46158-6296STDY10244714,5227,Kevin Kobylinski,Thailand,"Phanom, one, G",2019,10,8.877,98.646,UKN
+VBS46160-6296STDY10244716,5230_1278,Kevin Kobylinski,Thailand,"Phanom, one, G",2019,10,8.877,98.646,UKN
+VBS46161-6296STDY10244717,5231,Kevin Kobylinski,Thailand,"Phanom, one, G",2019,10,8.877,98.646,UKN
+VBS46162-6296STDY10244718,5232,Kevin Kobylinski,Thailand,"Phanom, one, E",2019,10,8.871,98.641,UKN
+VBS46163-6296STDY10244721,5233,Kevin Kobylinski,Thailand,"Phanom, one, E",2019,10,8.871,98.641,UKN
+VBS46164-6296STDY10244722,5236,Kevin Kobylinski,Thailand,"Phanom, one, E",2019,10,8.871,98.641,UKN
+VBS46165-6296STDY10244723,5237,Kevin Kobylinski,Thailand,"Phanom, one, E",2019,10,8.871,98.641,UKN
+VBS46166-6296STDY10244724,5238,Kevin Kobylinski,Thailand,"Phanom, one, E",2019,10,8.871,98.641,UKN
+VBS46170-6296STDY10244727,5247,Kevin Kobylinski,Thailand,"Vibhavadi, nine, D",2019,10,9.327,98.877,UKN
+VBS46171-6296STDY10244728,5248,Kevin Kobylinski,Thailand,"Vibhavadi, nine, D",2019,10,9.327,98.877,UKN
+VBS46174-6296STDY10244731,5494,Kevin Kobylinski,Thailand,"Vibhavadi, nine, E",2019,10,9.329,98.873,UKN
+VBS46176-6296STDY10244733,5500,Kevin Kobylinski,Thailand,"Vibhavadi, nine, E",2019,10,9.329,98.873,UKN
+VBS46177-6296STDY10244734,5501,Kevin Kobylinski,Thailand,"Vibhavadi, nine, E",2019,10,9.329,98.873,UKN
+VBS46178-6296STDY10244735,5502,Kevin Kobylinski,Thailand,"Vibhavadi, nine, E",2019,10,9.329,98.873,UKN
+VBS46179-6296STDY10244736,5505,Kevin Kobylinski,Thailand,"Vibhavadi, nine, E",2019,10,9.329,98.873,UKN
+VBS46181-6296STDY10244738,5542,Kevin Kobylinski,Thailand,"Vibhavadi, eight, I",2019,10,9.296,98.886,UKN
+VBS46182-6296STDY10244739,5548,Kevin Kobylinski,Thailand,"Vibhavadi, eight, I",2019,10,9.296,98.886,UKN
+VBS46184-6296STDY10244741,5604,Kevin Kobylinski,Thailand,"Khirirat Nikhom, five, B",2019,10,9.043,98.894,UKN
+VBS46185-6296STDY10244742,5609,Kevin Kobylinski,Thailand,"Khirirat Nikhom, six, L",2019,10,9.083,98.859,UKN
+VBS46186-6296STDY10244743,5613,Kevin Kobylinski,Thailand,"Khirirat Nikhom, six, L",2019,10,9.083,98.859,UKN
+VBS46193-6296STDY10244749,5697,Kevin Kobylinski,Thailand,"Khirirat Nikhom, six, O",2019,10,9.076,98.868,UKN
+VBS46194-6296STDY10244750,5721,Kevin Kobylinski,Thailand,"Khirirat Nikhom, seven, D",2019,10,9.097,98.902,UKN
+VBS46195-6296STDY10244751,5725,Kevin Kobylinski,Thailand,"Khirirat Nikhom, seven, D",2019,10,9.097,98.902,UKN
+VBS46196-6296STDY10244752,5727,Kevin Kobylinski,Thailand,"Khirirat Nikhom, seven, D",2019,10,9.097,98.902,UKN
+VBS46197-6296STDY10244753,5728,Kevin Kobylinski,Thailand,"Khirirat Nikhom, seven, D",2019,10,9.097,98.902,UKN
+VBS46199-6296STDY10244755,5738,Kevin Kobylinski,Thailand,"Khirirat Nikhom, seven, D",2019,10,9.097,98.902,UKN
+VBS46200-6296STDY10244756,5765,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, K",2019,10,9.108,98.875,UKN
+VBS46201-6296STDY10244757,5771,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, K",2019,10,9.108,98.875,UKN
+VBS46202-6296STDY10244758,5777,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, L",2019,10,9.109,98.877,UKN
+VBS46203-6296STDY10244759,5895,Kevin Kobylinski,Thailand,"Khirirat Nikhom, nine, Q",2019,10,9.127,98.905,UKN
+VBS46204-6296STDY10244760,5972,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, M",2019,10,9.104,98.891,UKN
+VBS46205-6296STDY10244761,6024,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, M",2019,10,9.104,98.891,UKN
+VBS46206-6296STDY10244762,6036,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, N",2019,10,9.106,98.887,UKN
+VBS46207-6296STDY10244763,6037,Kevin Kobylinski,Thailand,"Khirirat Nikhom, eight, N",2019,10,9.106,98.887,UKN

@@ -34,11 +34,29 @@ df_pairwise_fst: TypeAlias = Annotated[
     """,
 ]
 
-annotation: TypeAlias = Annotated[
-    Optional[Literal["standard error", "Z score"]],
+min_snps_threshold: TypeAlias = Annotated[
+    int,
     """
-    How to annotate the upper-right corner of the plot. Default behaviour (None) is using Fst, other options
-    are using the standard error (if annotation is 'standard error') or the Z score of the two
-    cohorts being the same (if annotation is 'Z score').
+    Minimum number of SNP sites required for the Fst GWSS computation. If
+    fewer sites are available, a ValueError is raised.
+    """,
+]
+
+window_adjustment_factor: TypeAlias = Annotated[
+    int,
+    """
+    If window_size is >= the number of available SNP sites, the window_size
+    is automatically adjusted to number_of_snps // window_adjustment_factor.
+    """,
+]
+
+annotation: TypeAlias = Annotated[
+    Optional[Literal["standard error", "Z score", "lower triangle"]],
+    """
+    How to annotate the upper-right corner of the plot. Default behaviour (None)
+    is using Fst, other options are using the standard error (if annotation is
+    'standard error'), the Z score of the two cohorts being the same (if
+    annotation is 'Z score'), or leaving the upper triangle empty (if annotation
+    is 'lower triangle').
     """,
 ]
