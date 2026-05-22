@@ -641,7 +641,7 @@ class AnophelesH12Analysis(
         # Tidy up the plot.
         fig.yaxis.axis_label = "H12"
         fig.yaxis.ticker = [0, 1]
-        self._bokeh_style_genome_xaxis(fig, contig)
+        self._bokeh_style_genome_xaxis(fig, contig_idx)
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
