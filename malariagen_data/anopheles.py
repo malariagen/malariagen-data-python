@@ -19,7 +19,6 @@ from .anoph import (
     dash_params,
     gplt_params,
     hapnet_params,
-    het_params,
     ihs_params,
     plotly_params,
 )
@@ -54,7 +53,6 @@ from .util import (
     Region,  # noqa: F401 (re-exported via __init__.py)
     _check_types,
     _jackknife_ci,
-    _parse_single_region,
     _plotly_discrete_legend,
 )
 
@@ -652,7 +650,7 @@ class AnophelesDataResource(
         bar_plot_width = 300 + bar_width * len(df_stats)
 
         # Nucleotide diversity bar plot.
-        fig = px.bar(
+        fig1 = px.bar(
             data_frame=df_stats,
             x="cohort",
             y="theta_pi_estimate",
@@ -663,133 +661,49 @@ class AnophelesDataResource(
             **plot_kwargs,
         )
 
-        if show:  # pragma: no cover
-            bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
-
-    @_check_types
-    @doc(
-        summary="""
-            Plot windowed heterozygosity and inferred runs of homozygosity for a
-            single sample over a genome region.
-        """,
-    )
-    def plot_roh(
-        self,
-        sample: base_params.sample,
-        region: base_params.region,
-        window_size: het_params.window_size = het_params.window_size_default,
-        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
-        sample_set: Optional[base_params.sample_set] = None,
-        phet_roh: het_params.phet_roh = het_params.phet_roh_default,
-        phet_nonroh: het_params.phet_nonroh = het_params.phet_nonroh_default,
-        transition: het_params.transition = het_params.transition_default,
-        y_max: het_params.y_max = het_params.y_max_default,
-        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
-        width: gplt_params.width = gplt_params.width_default,
-        heterozygosity_height: gplt_params.height = 170,
-        roh_height: gplt_params.height = 40,
-        genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
-        circle_kwargs: Optional[gplt_params.circle_kwargs] = None,
-        show: gplt_params.show = True,
-        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-        chunks: base_params.chunks = base_params.native_chunks,
-        inline_array: base_params.inline_array = base_params.inline_array_default,
-        gene_labels: Optional[gplt_params.gene_labels] = None,
-        gene_labelset: Optional[gplt_params.gene_labelset] = None,
-    ) -> gplt_params.optional_figure:
-        debug = self._log.debug
-
-        resolved_region: Region = _parse_single_region(self, region)
-        del region
-
-        debug("compute windowed heterozygosity")
-        sample_id, sample_set, windows, counts = self._sample_count_het(
-            sample=sample,
-            region=resolved_region,
-            site_mask=site_mask,
-            window_size=window_size,
-            sample_set=sample_set,
-            chunks=chunks,
-            inline_array=inline_array,
+        # Watterson's estimator bar plot.
+        fig2 = px.bar(
+            data_frame=df_stats,
+            x="cohort",
+            y="theta_w_estimate",
+            error_y="theta_w_ci_err",
+            title="Watterson's estimator",
+            height=bar_plot_height,
+            width=bar_plot_width,
+            **plot_kwargs,
         )
 
-        debug("plot_heterozygosity track")
-        fig_het = self._plot_heterozygosity_track(
-            sample_id=sample_id,
-            sample_set=sample_set,
-            windows=windows,
-            counts=counts,
-            region=resolved_region,
-            window_size=window_size,
-            y_max=y_max,
-            sizing_mode=sizing_mode,
-            width=width,
-            height=heterozygosity_height,
-            circle_kwargs=circle_kwargs,
-            show=False,
-            x_range=None,
-            output_backend=output_backend,
-        )
-        fig_het.xaxis.visible = False
-        figs = [fig_het]
-
-        debug("compute runs of homozygosity")
-        df_roh = self._roh_hmm_predict(
-            windows=windows,
-            counts=counts,
-            phet_roh=phet_roh,
-            phet_nonroh=phet_nonroh,
-            transition=transition,
-            window_size=window_size,
-            sample_id=sample_id,
-            contig=resolved_region.contig,
+        # Tajima's D bar plot.
+        fig3 = px.bar(
+            data_frame=df_stats,
+            x="cohort",
+            y="tajima_d_estimate",
+            error_y="tajima_d_ci_err",
+            title="Tajima's D",
+            height=bar_plot_height,
+            width=bar_plot_width,
+            **plot_kwargs,
         )
 
-        debug("plot roh track")
-        fig_roh = self.plot_roh_track(
-            df_roh,
-            region=resolved_region,
-            sizing_mode=sizing_mode,
-            width=width,
-            height=roh_height,
-            show=False,
-            x_range=fig_het.x_range,
-            output_backend=output_backend,
-        )
-        fig_roh.xaxis.visible = False
-        figs.append(fig_roh)
-
-        debug("plot genes track")
-        fig_genes = self.plot_genes(
-            region=resolved_region,
-            sizing_mode=sizing_mode,
-            width=width,
-            height=genes_height,
-            x_range=fig_het.x_range,
-            show=False,
-            output_backend=output_backend,
-            gene_labels=gene_labels,
-            gene_labelset=gene_labelset,
-        )
-        figs.append(fig_genes)
-
-        debug("combine plots into a single figure")
-        fig_all = bokeh.layouts.gridplot(
-            figs,
-            ncols=1,
-            toolbar_location="above",
-            merge_tools=True,
-            sizing_mode=sizing_mode,
+        # Scatter plot comparing diversity estimators.
+        fig4 = px.scatter(
+            data_frame=df_stats,
+            x="theta_pi_estimate",
+            y="theta_w_estimate",
+            error_x="theta_pi_ci_err",
+            error_y="theta_w_ci_err",
+            title="Diversity estimators",
+            width=scatter_plot_width,
+            height=scatter_plot_height,
+            **plot_kwargs,
         )
 
         if show:  # pragma: no cover
-            bokeh.plotting.show(fig_all)
-            return None
-        else:
-            return fig_all
+            fig1.show(renderer=renderer)
+            fig2.show(renderer=renderer)
+            fig3.show(renderer=renderer)
+            fig4.show(renderer=renderer)
+        return (fig1, fig2, fig3, fig4)
 
     @_check_types
     @doc(
@@ -1123,7 +1037,7 @@ class AnophelesDataResource(
     )
     def plot_ihs_gwss(
         self,
-        contig: base_params.contig,
+        region: base_params.region,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
@@ -1163,7 +1077,7 @@ class AnophelesDataResource(
     ) -> gplt_params.optional_figure:
         # gwss track
         fig1 = self.plot_ihs_gwss_track(
-            contig=contig,
+            region=region,
             analysis=analysis,
             sample_sets=sample_sets,
             sample_query=sample_query,
@@ -1199,7 +1113,7 @@ class AnophelesDataResource(
 
         # plot genes
         fig2 = self.plot_genes(
-            region=contig,
+            region=region,
             sizing_mode=sizing_mode,
             width=width,
             height=genes_height,
