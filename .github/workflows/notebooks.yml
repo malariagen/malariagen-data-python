@@ -17,13 +17,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup python
-        uses: actions/setup-python@v5
+        uses: ./.github/actions/setup-python
         with:
           python-version: "3.12"
-          cache: "pip"
-
-      - name: Install package
-        run: pip install .[dev]
 
       - id: 'auth'
         name: 'Set up Google Cloud authentication'
@@ -46,7 +42,7 @@ jobs:
           key: gcs_cache_notebooks_20240922
 
       - name: Run notebooks
-        run: jupyter nbconvert --execute notebooks/*.ipynb --inplace
+        run: poetry run jupyter nbconvert --execute notebooks/*.ipynb --inplace
 
       - name: Save GCS cache
         uses: actions/cache/save@v3

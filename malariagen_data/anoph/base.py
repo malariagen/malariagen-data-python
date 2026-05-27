@@ -1,4 +1,5 @@
 import os
+import warnings
 
 import json
 from contextlib import nullcontext
@@ -27,6 +28,8 @@ import zarr  # type: ignore
 from numpydoc_decorator import doc  # type: ignore
 from tqdm.auto import tqdm as tqdm_auto  # type: ignore
 from tqdm.dask import TqdmCallback  # type: ignore
+
+from .safe_query import validate_query
 from yaspin import yaspin  # type: ignore
 import xarray as xr
 
@@ -134,7 +137,7 @@ class AnophelesBase:
             storage_options = dict()
         try:
             self._fs, self._base_path = _init_filesystem(self._url, **storage_options)
-        except Exception as exc:  # pragma: no cover
+        except (OSError, ImportError) as exc:  # pragma: no cover
             raise IOError(
                 "An error occurred establishing a connection to the storage system. Please see the nested exception for more details."
             ) from exc
@@ -143,7 +146,7 @@ class AnophelesBase:
         try:
             with self.open_file(self._config_path) as f:
                 self._config = json.load(f)
-        except Exception as exc:  # pragma: no cover
+        except (OSError, json.JSONDecodeError) as exc:  # pragma: no cover
             if (isinstance(exc, OSError) and "forbidden" in str(exc).lower()) or (
                 getattr(exc, "status", None) == 403
             ):
@@ -233,6 +236,10 @@ class AnophelesBase:
         paths: Iterable[str],
         on_error: Literal["raise", "omit", "return"] = "return",
     ) -> Mapping[str, Union[bytes, Exception]]:
+        # Pydantic validate_call with strict=True converts Iterable into a
+        # generator, which can be exhausted. Convert to a tuple first.
+        paths = tuple(paths)
+
         # Check for any cached files.
         files = {
             path: data for path, data in self._cache_files.items() if path in paths
@@ -496,7 +503,20 @@ class AnophelesBase:
         return location
 
     def _surveillance_flags(self, sample_sets: List[str]):
-        raise NotImplementedError("Subclasses must implement `_surveillance_flags`.")
+        """Return surveillance flags for sample sets. Subclasses should override to
+        load real data; this base implementation returns empty data and warns.
+        """
+        warnings.warn(
+            "Surveillance flags not implemented for this resource; returning empty data.",
+            UserWarning,
+            stacklevel=2,
+        )
+        return pd.DataFrame(
+            {
+                "sample_id": pd.Series(dtype="object"),
+                "is_surveillance": pd.Series(dtype="boolean"),
+            }
+        )
 
     def _release_has_unrestricted_data(self, *, release: str):
         """Return `True` if the specified release has any unrestricted data. Otherwise return `False`."""
@@ -562,6 +582,13 @@ class AnophelesBase:
         release_manifest_df = self._read_sample_sets_manifest(
             single_release=sample_set_release
         )
+
+        if "unrestricted_use" not in release_manifest_df.columns:
+            raise ValueError(
+                f"Column 'unrestricted_use' missing from manifest for sample set '{sample_set}'. "
+                "This indicates a data integrity issue in the release manifest."
+            )
+
         sample_set_records_srs = release_manifest_df.loc[
             release_manifest_df["sample_set"] == sample_set, "unrestricted_use"
         ]
@@ -600,9 +627,9 @@ class AnophelesBase:
             # Get today's date in ISO format
             today_date_iso = date.today().isoformat()
             # Add an "unrestricted_use" column, set to True if terms-of-use expiry date <= today's date.
-            df["unrestricted_use"] = df[terms_of_use_expiry_date_column].apply(
-                lambda d: True if pd.isna(d) else (d <= today_date_iso)
-            )
+            # Vectorized operation: True if NaN, else (d <= today_date_iso)
+            s = df[terms_of_use_expiry_date_column]
+            df["unrestricted_use"] = s.isna() | (s <= today_date_iso)
             # Make the "unrestricted_use" column a nullable boolean, to allow missing data.
             df["unrestricted_use"] = df["unrestricted_use"].astype(pd.BooleanDtype())
 
@@ -824,12 +851,19 @@ class AnophelesBase:
     def lookup_terms_of_use_info(self, sample_set: base_params.sample_set) -> dict:
         if self._cache_sample_set_to_terms_of_use_info is None:
             df_sample_sets = self._available_sample_sets().set_index("sample_set")
+            expected_cols = [
+                "terms_of_use_expiry_date",
+                "terms_of_use_url",
+                "unrestricted_use",
+            ]
+            missing_cols = [c for c in expected_cols if c not in df_sample_sets.columns]
+            if missing_cols:
+                raise ValueError(
+                    f"Terms-of-use columns missing from manifest: {missing_cols}. "
+                    "This indicates a data integrity issue in the release manifest."
+                )
             self._cache_sample_set_to_terms_of_use_info = df_sample_sets[
-                [
-                    "terms_of_use_expiry_date",
-                    "terms_of_use_url",
-                    "unrestricted_use",
-                ]
+                expected_cols
             ].to_dict(orient="index")
         try:
             return self._cache_sample_set_to_terms_of_use_info[sample_set]
@@ -948,10 +982,9 @@ class AnophelesBase:
 
         # Determine which samples match the sample query.
         if sample_query != "":
-            # Use the python engine in order to support extension array dtypes, e.g. Float64, Int64, boolean.
-            loc_samples = df_samples.eval(
-                sample_query, **sample_query_options, engine="python"
-            )
+            # Validate the query to prevent arbitrary code execution (GH-1292).
+            validate_query(sample_query)
+            loc_samples = df_samples.eval(sample_query, **sample_query_options)
         else:
             loc_samples = pd.Series(True, index=df_samples.index)
 
