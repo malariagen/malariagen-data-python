@@ -1,3 +1,4 @@
+import warnings
 from typing import Tuple, Optional
 
 import numpy as np
@@ -43,6 +44,8 @@ class AnophelesFstAnalysis(
         inline_array,
         chunks,
         clip_min,
+        min_snps_threshold,
+        window_adjustment_factor,
     ):
         # Compute allele counts.
         ac1 = self.snp_allele_counts(
@@ -81,6 +84,24 @@ class AnophelesFstAnalysis(
                 chunks=chunks,
             ).compute()
 
+        n_snps = len(pos)
+        if n_snps < min_snps_threshold:
+            raise ValueError(
+                f"Too few SNP sites ({n_snps}) available for Fst GWSS. "
+                f"At least {min_snps_threshold} sites are required. "
+                "Try a larger genomic region or different site selection criteria."
+            )
+        if window_size >= n_snps:
+            adjusted_window_size = max(1, n_snps // window_adjustment_factor)
+            warnings.warn(
+                f"window_size ({window_size}) is >= the number of SNP sites "
+                f"available ({n_snps}); automatically adjusting window_size to "
+                f"{adjusted_window_size} (= {n_snps} // {window_adjustment_factor}).",
+                UserWarning,
+                stacklevel=2,
+            )
+            window_size = adjusted_window_size
+
         with self._spinner(desc="Compute Fst"):
             with np.errstate(divide="ignore", invalid="ignore"):
                 fst = allel.moving_hudson_fst(ac1, ac2, size=window_size)
@@ -96,8 +117,23 @@ class AnophelesFstAnalysis(
     @doc(
         summary="""
             Run a Fst genome-wide scan to investigate genetic differentiation
-            between two cohorts.
+            between two cohorts. If window_size is >= the number of available
+            SNP sites, a UserWarning is issued and window_size is automatically
+            adjusted to number_of_snps // window_adjustment_factor. A ValueError
+            is raised if the number of available SNP sites is below
+            min_snps_threshold.
         """,
+        parameters=dict(
+            min_snps_threshold="""
+                Minimum number of SNP sites required. If fewer sites are
+                available a ValueError is raised.
+            """,
+            window_adjustment_factor="""
+                If window_size is >= the number of available SNP sites,
+                window_size is automatically set to
+                number_of_snps // window_adjustment_factor.
+            """,
+        ),
         returns=dict(
             x="An array containing the window centre point genomic positions",
             fst="An array with Fst statistic values for each window.",
@@ -123,6 +159,8 @@ class AnophelesFstAnalysis(
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
         clip_min: fst_params.clip_min = 0.0,
+        min_snps_threshold: fst_params.min_snps_threshold = 1000,
+        window_adjustment_factor: fst_params.window_adjustment_factor = 10,
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
@@ -147,7 +185,13 @@ class AnophelesFstAnalysis(
             results = self.results_cache_get(name=name, params=params)
 
         except CacheMiss:
-            results = self._fst_gwss(**params, inline_array=inline_array, chunks=chunks)
+            results = self._fst_gwss(
+                **params,
+                inline_array=inline_array,
+                chunks=chunks,
+                min_snps_threshold=min_snps_threshold,
+                window_adjustment_factor=window_adjustment_factor,
+            )
             self.results_cache_set(name=name, params=params, results=results)
 
         x = results["x"]
@@ -235,7 +279,7 @@ class AnophelesFstAnalysis(
             height=height,
             toolbar_location="above",
             x_range=x_range,
-            y_range=(0, 1),
+            y_range=(clip_min, 1),
             output_backend=output_backend,
         )
 
@@ -252,14 +296,12 @@ class AnophelesFstAnalysis(
 
         # tidy up the plot
         fig.yaxis.axis_label = "Fst"
-        fig.yaxis.ticker = [0, 1]
+        fig.yaxis.ticker = sorted(set([clip_min, 0, 1]))
         self._bokeh_style_genome_xaxis(fig, contig)
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -345,9 +387,7 @@ class AnophelesFstAnalysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -360,10 +400,10 @@ class AnophelesFstAnalysis(
     )
     def average_fst(
         self,
-        region: base_params.region,
+        region: base_params.regions,
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
-        sample_query_options: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
         min_cohort_size: Optional[
@@ -404,8 +444,14 @@ class AnophelesFstAnalysis(
         )
 
         # Calculate block length for jackknife.
-        n_sites = ac1.shape[0]  # number of sites
-        block_length = n_sites // n_jack  # number of sites in each block
+        n_sites = ac1.shape[0]
+        block_length = n_sites // n_jack
+
+        if block_length < 1:
+            raise ValueError(
+                f"Not enough sites ({n_sites}) for {n_jack} jackknife blocks. "
+                "Choose a larger region or reduce n_jack."
+            )
 
         # Calculate average Fst.
         fst, se, _, _ = allel.blockwise_hudson_fst(ac1, ac2, blen=block_length)
@@ -429,7 +475,7 @@ class AnophelesFstAnalysis(
     )
     def pairwise_average_fst(
         self,
-        region: base_params.region,
+        region: base_params.regions,
         cohorts: base_params.cohorts,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
@@ -471,6 +517,7 @@ class AnophelesFstAnalysis(
                     cohort1_query=cohort_queries[i],
                     cohort2_query=cohort_queries[j],
                     sample_sets=sample_sets,
+                    sample_query_options=sample_query_options,
                     cohort_size=cohort_size,
                     min_cohort_size=min_cohort_size,
                     max_cohort_size=max_cohort_size,
@@ -530,7 +577,7 @@ class AnophelesFstAnalysis(
 
         # Set up plot title.
         title = "<i>F</i><sub>ST</sub>"
-        if annotation is not None:
+        if annotation is not None and annotation != "lower triangle":
             title += " ⧅ " + annotation
 
         # Fill the figure dataframe from the Fst dataframe.
@@ -539,17 +586,19 @@ class AnophelesFstAnalysis(
             if annotation == "standard error":
                 fig_df.loc[cohort1, cohort2] = se
             elif annotation == "Z score":
-                try:
-                    zs = fst / se
-                    fig_df.loc[cohort1, cohort2] = zs
-                except ZeroDivisionError:
+                if se == 0:
                     fig_df.loc[cohort1, cohort2] = np.nan
+                else:
+                    fig_df.loc[cohort1, cohort2] = fst / se
+            elif annotation == "lower triangle":
+                # Leave the upper triangle as NaN (empty).
+                pass
             else:
                 fig_df.loc[cohort1, cohort2] = fst
 
         # Don't colour the plot if the upper triangle is SE or Z score,
         # as the colouring doesn't really make sense.
-        if annotation is not None and zmax is None:
+        if annotation is not None and annotation != "lower triangle" and zmax is None:
             zmax = 1e9
 
         # Dynamically size the figure based on number of cohorts.
@@ -581,6 +630,4 @@ class AnophelesFstAnalysis(
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig

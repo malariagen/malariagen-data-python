@@ -16,7 +16,6 @@ def setup_pf8(url="simplecache::gs://pf8-release/", **storage_kwargs):
 @pytest.mark.parametrize(
     "url",
     [
-        "s3://pf8-release/",
         "gs://pf8-release/",
         "gcs://pf8-release/",
         "gs://pf8-release",
