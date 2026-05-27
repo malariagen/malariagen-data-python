@@ -6,16 +6,18 @@ from numpydoc_decorator import doc  # type: ignore
 
 from ..util import (
     Region,
-    check_types,
-    da_from_zarr,
-    init_zarr_store,
-    parse_single_region,
+    _check_types,
+    _da_from_zarr,
+    _init_zarr_store,
+    _parse_single_region,
 )
 from . import base_params
 from .base import AnophelesBase
 
 
 class AnophelesGenomeSequenceData(AnophelesBase):
+    _cache_genome: Optional[zarr.hierarchy.Group]
+
     def __init__(
         self, virtual_contigs: Optional[Mapping[str, Sequence[str]]] = None, **kwargs
     ):
@@ -28,9 +30,6 @@ class AnophelesGenomeSequenceData(AnophelesBase):
         if virtual_contigs is None:
             virtual_contigs = dict()
         self._virtual_contigs = virtual_contigs
-
-        # Initialize cache attributes.
-        self._cache_genome = None
 
     @property
     def contigs(self) -> Tuple[str, ...]:
@@ -62,15 +61,11 @@ class AnophelesGenomeSequenceData(AnophelesBase):
     def _genome_ref_name(self) -> str:
         return self.config["GENOME_REF_NAME"]
 
-    @check_types
-    @doc(
-        summary="Open the reference genome zarr.",
-        returns="Zarr hierarchy containing the reference genome sequence.",
-    )
     def open_genome(self) -> zarr.hierarchy.Group:
-        if self._cache_genome is None:
+        """Open the reference genome zarr."""
+        if not hasattr(self, "_cache_genome") or self._cache_genome is None:
             path = f"{self._base_path}/{self._genome_zarr_path}"
-            store = init_zarr_store(fs=self._fs, path=path)
+            store = _init_zarr_store(fs=self._fs, path=path)
             self._cache_genome = zarr.open_consolidated(store=store)
         return self._cache_genome
 
@@ -91,13 +86,17 @@ class AnophelesGenomeSequenceData(AnophelesBase):
 
         # Handle normal contigs in the reference genome.
         else:
-            assert contig in self.contigs
+            if contig not in self.contigs:
+                raise ValueError(
+                    f"Contig {contig!r} not found. "
+                    f"Available contigs: {self.contigs}"
+                )
             root = self.open_genome()
             z = root[contig]
-            d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            d = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             return d
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access the reference genome sequence.",
         returns="""
@@ -112,7 +111,7 @@ class AnophelesGenomeSequenceData(AnophelesBase):
         chunks: base_params.chunks = base_params.native_chunks,
     ) -> da.Array:
         # Parse the region parameter into a Region object.
-        resolved_region: Region = parse_single_region(self, region)
+        resolved_region: Region = _parse_single_region(self, region)
         del region
 
         # Obtain complete sequence for the requested contig.
@@ -122,9 +121,13 @@ class AnophelesGenomeSequenceData(AnophelesBase):
 
         # Deal with region start and stop.
         slice_start = slice_stop = None
-        if resolved_region.start:
+        if resolved_region.start is not None:
+            if resolved_region.start < 1:
+                raise ValueError("Region start must be >= 1 or None.")
             slice_start = resolved_region.start - 1
-        if resolved_region.end:
+        if resolved_region.end is not None:
+            if resolved_region.end < 1:
+                raise ValueError("Region end must be >= 1 or None.")
             slice_stop = resolved_region.end
         loc_region = slice(slice_start, slice_stop)
 

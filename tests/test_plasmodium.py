@@ -256,12 +256,12 @@ class TestPlasmodiumDataResource(unittest.TestCase):
         mock_read_csv.assert_called_once()
 
     @patch(
-        "malariagen_data.plasmodium.init_zarr_store", return_value="Safe store object"
+        "malariagen_data.plasmodium._init_zarr_store", return_value="Safe store object"
     )
     @patch("malariagen_data.plasmodium.zarr.open_consolidated")
     def test_open_variant_calls_zarr_uses_cache(self, mock_zarr, mock_safestore):
         with patch(
-            "malariagen_data.plasmodium.init_filesystem",
+            "malariagen_data.plasmodium._init_filesystem",
             return_value=["fs", self.test_data_path],
         ):
             plas_mock_fs = PlasmodiumDataResource(
@@ -424,8 +424,8 @@ class TestPlasmodiumDataResource(unittest.TestCase):
             ],
         )
 
-    @patch("malariagen_data.plasmodium.unpack_gff3_attributes")
-    @patch("malariagen_data.plasmodium.read_gff3")
+    @patch("malariagen_data.plasmodium._unpack_gff3_attributes")
+    @patch("malariagen_data.plasmodium._read_gff3")
     @patch("builtins.open", new_callable=mock_open)
     def test_genome_features(self, mock_open, mock_read_gff, mock_unpack):
         mock_read_gff.return_value = self.test_annotations_df
@@ -441,7 +441,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
             attributes=tuple(["ID", "Parent", "Name"]),
         )
 
-    @patch("malariagen_data.plasmodium.read_gff3")
+    @patch("malariagen_data.plasmodium._read_gff3")
     @patch("builtins.open", new_callable=mock_open)
     def test_genome_features_with_default_attributes_no_cache(
         self, mock_open, mock_read_gff
@@ -469,8 +469,8 @@ class TestPlasmodiumDataResource(unittest.TestCase):
             TypeError, self.test_plasmodium_class.genome_features, "bad_attribute"
         )
 
-    @patch("malariagen_data.plasmodium.unpack_gff3_attributes")
-    @patch("malariagen_data.plasmodium.read_gff3")
+    @patch("malariagen_data.plasmodium._unpack_gff3_attributes")
+    @patch("malariagen_data.plasmodium._read_gff3")
     @patch("builtins.open", new_callable=mock_open)
     def test_genome_features_uses_cache(self, mock_open, mock_read_gff, mock_unpack):
         mock_read_gff.return_value = self.test_annotations_df
@@ -481,7 +481,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
         mock_read_gff.assert_called_once()
         mock_unpack.assert_called_once()
 
-    @patch("malariagen_data.plasmodium.read_gff3")
+    @patch("malariagen_data.plasmodium._read_gff3")
     @patch("builtins.open", new_callable=mock_open)
     def test_genome_features_with_all_attributes(self, mock_open, mock_read_gff):
         mock_read_gff.return_value = self.test_annotations_df
@@ -503,7 +503,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
         )
         self.assertEqual(annotations.shape, (5, len(expected_columns)))
 
-    @patch("malariagen_data.plasmodium.read_gff3")
+    @patch("malariagen_data.plasmodium._read_gff3")
     @patch("builtins.open", new_callable=mock_open)
     def test_genome_features_with_attribute_list(self, mock_open, mock_read_gff):
         mock_read_gff.return_value = self.test_annotations_df
@@ -524,7 +524,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
         )
         self.assertEqual(annotations.shape, (5, len(expected_columns)))
 
-    @patch("malariagen_data.plasmodium.read_gff3")
+    @patch("malariagen_data.plasmodium._read_gff3")
     @patch("builtins.open", new_callable=mock_open)
     def test_genome_features_with_attribute_tuple(self, mock_open, mock_read_gff):
         mock_read_gff.return_value = self.test_annotations_df
@@ -546,12 +546,12 @@ class TestPlasmodiumDataResource(unittest.TestCase):
         self.assertEqual(annotations.shape, (5, len(expected_columns)))
 
     @patch(
-        "malariagen_data.plasmodium.init_zarr_store", return_value="Safe store object"
+        "malariagen_data.plasmodium._init_zarr_store", return_value="Safe store object"
     )
     @patch("malariagen_data.plasmodium.zarr.open_consolidated")
     def test_open_genome_without_cache(self, mock_zarr, mock_safestore):
         with patch(
-            "malariagen_data.plasmodium.init_filesystem",
+            "malariagen_data.plasmodium._init_filesystem",
             return_value=["fs", self.test_data_path],
         ):
             plas_mock_fs = PlasmodiumDataResource(
@@ -565,12 +565,12 @@ class TestPlasmodiumDataResource(unittest.TestCase):
         mock_zarr.assert_called_once_with(store="Safe store object")
 
     @patch(
-        "malariagen_data.plasmodium.init_zarr_store", return_value="Safe store object"
+        "malariagen_data.plasmodium._init_zarr_store", return_value="Safe store object"
     )
     @patch("malariagen_data.plasmodium.zarr.open_consolidated")
     def test_open_genome_with_cache(self, mock_zarr, mock_safestore):
         with patch(
-            "malariagen_data.plasmodium.init_filesystem",
+            "malariagen_data.plasmodium._init_filesystem",
             return_value=["fs", self.test_data_path],
         ):
             plas_mock_fs = PlasmodiumDataResource(

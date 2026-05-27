@@ -15,7 +15,7 @@ All the functions below can then be accessed as methods on the ``ag3`` object. E
     df_samples = ag3.sample_metadata()
 
 For more information about the data and terms of use, please see the
-`MalariaGEN Anopheles gambiae genomic surveillance project <https://www.malariagen.net/anopheles-gambiae-genomic-surveillance-project>`_
+`MalariaGEN Anopheles gambiae genomic surveillance project <https://www.malariagen.net/project/anopheles-gambiae-genomic-surveillance-project>`_
 home page.
 
 .. currentmodule:: malariagen_data.ag3.Ag3

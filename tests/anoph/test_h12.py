@@ -1,4 +1,3 @@
-import random
 import pytest
 from pytest_cases import parametrize_with_cases
 import numpy as np
@@ -7,7 +6,7 @@ import bokeh.models
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
-from malariagen_data.anoph.h12 import AnophelesH12Analysis, haplotype_frequencies
+from malariagen_data.anoph.h12 import AnophelesH12Analysis, _haplotype_frequencies
 
 
 @pytest.fixture
@@ -89,7 +88,7 @@ def test_haplotype_frequencies():
         dtype="i1",
     )
 
-    f, c, o = haplotype_frequencies(h1)
+    f, c, o = _haplotype_frequencies(h1)
     assert isinstance(f, dict)
     assert isinstance(c, dict)
     assert isinstance(o, dict)
@@ -104,11 +103,13 @@ def test_haplotype_frequencies():
 def test_h12_calibration(fixture, api: AnophelesH12Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    window_sizes = np.random.randint(100, 500, size=random.randint(2, 5)).tolist()
+    window_sizes = np.random.randint(
+        100, 500, size=int(np.random.randint(2, 6))
+    ).tolist()
     window_sizes = sorted(set([int(x) for x in window_sizes]))
     h12_params = dict(
-        contig=random.choice(api.contigs),
-        sample_sets=[random.choice(all_sample_sets)],
+        contig=str(np.random.choice(api.contigs)),
+        sample_sets=[str(np.random.choice(all_sample_sets))],
         window_sizes=window_sizes,
         min_cohort_size=5,
     )
@@ -170,9 +171,9 @@ def test_h12_gwss_with_default_analysis(fixture, api: AnophelesH12Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     h12_params = dict(
-        contig=random.choice(api.contigs),
-        sample_sets=[random.choice(all_sample_sets)],
-        window_size=random.randint(100, 500),
+        contig=str(np.random.choice(api.contigs)),
+        sample_sets=[str(np.random.choice(all_sample_sets))],
+        window_size=int(np.random.randint(100, 501)),
         min_cohort_size=5,
     )
 
@@ -184,9 +185,9 @@ def test_h12_gwss_with_default_analysis(fixture, api: AnophelesH12Analysis):
 def test_h12_gwss_with_analysis(fixture, api: AnophelesH12Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = [random.choice(all_sample_sets)]
-    contig = random.choice(api.contigs)
-    window_size = random.randint(100, 500)
+    sample_sets = [str(np.random.choice(all_sample_sets))]
+    contig = str(np.random.choice(api.contigs))
+    window_size = int(np.random.randint(100, 501))
 
     for analysis in api.phasing_analysis_ids:
         # Check if any samples available for the given phasing analysis.
@@ -234,13 +235,13 @@ def test_h12_gwss_multi_with_default_analysis(fixture, api: AnophelesH12Analysis
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     all_countries = api.sample_metadata()["country"].unique().tolist()
-    country1, country2 = random.sample(all_countries, 2)
+    country1, country2 = np.random.choice(all_countries, size=2, replace=False).tolist()
     cohort1_query = f"country == '{country1}'"
     cohort2_query = f"country == '{country2}'"
     h12_params = dict(
-        contig=random.choice(api.contigs),
+        contig=str(np.random.choice(api.contigs)),
         sample_sets=all_sample_sets,
-        window_size=random.randint(100, 500),
+        window_size=int(np.random.randint(100, 501)),
         min_cohort_size=1,
         cohorts={"cohort1": cohort1_query, "cohort2": cohort2_query},
     )
@@ -254,15 +255,15 @@ def test_h12_gwss_multi_with_window_size_dict(fixture, api: AnophelesH12Analysis
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     all_countries = api.sample_metadata()["country"].unique().tolist()
-    country1, country2 = random.sample(all_countries, 2)
+    country1, country2 = np.random.choice(all_countries, size=2, replace=False).tolist()
     cohort1_query = f"country == '{country1}'"
     cohort2_query = f"country == '{country2}'"
     h12_params = dict(
-        contig=random.choice(api.contigs),
+        contig=str(np.random.choice(api.contigs)),
         sample_sets=all_sample_sets,
         window_size={
-            "cohort1": random.randint(100, 500),
-            "cohort2": random.randint(100, 500),
+            "cohort1": int(np.random.randint(100, 501)),
+            "cohort2": int(np.random.randint(100, 501)),
         },
         min_cohort_size=1,
         cohorts={"cohort1": cohort1_query, "cohort2": cohort2_query},
@@ -277,10 +278,10 @@ def test_h12_gwss_multi_with_analysis(fixture, api: AnophelesH12Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     all_countries = api.sample_metadata()["country"].unique().tolist()
-    country1, country2 = random.sample(all_countries, 2)
+    country1, country2 = np.random.choice(all_countries, size=2, replace=False).tolist()
     cohort1_query = f"country == '{country1}'"
     cohort2_query = f"country == '{country2}'"
-    contig = random.choice(api.contigs)
+    contig = str(np.random.choice(api.contigs))
 
     for analysis in api.phasing_analysis_ids:
         # Check if any samples available for the given phasing analysis.
@@ -313,7 +314,7 @@ def test_h12_gwss_multi_with_analysis(fixture, api: AnophelesH12Analysis):
                 analysis=analysis,
                 contig=contig,
                 sample_sets=all_sample_sets,
-                window_size=random.randint(100, 500),
+                window_size=int(np.random.randint(100, 501)),
                 min_cohort_size=min(n1, n2),
                 cohorts={"cohort1": cohort1_query, "cohort2": cohort2_query},
             )
@@ -328,3 +329,40 @@ def test_h12_gwss_multi_with_analysis(fixture, api: AnophelesH12Analysis):
             params["min_cohort_size"] = n2 + 1
             with pytest.raises(ValueError):
                 api.plot_h12_gwss_multi_panel(**params)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_h12_gwss_multi_param_forwarding(fixture, api: AnophelesH12Analysis):
+    """Verify sample_query_options, chunks, and inline_array are
+    forwarded through multi-cohort H12 plotting functions."""
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    all_countries = api.sample_metadata()["country"].unique().tolist()
+    country1, country2 = np.random.choice(all_countries, size=2, replace=False).tolist()
+    cohort1_query = f"country == '{country1}'"
+    cohort2_query = f"country == '{country2}'"
+
+    h12_params = dict(
+        contig=str(np.random.choice(api.contigs)),
+        sample_sets=all_sample_sets,
+        window_size=200,
+        min_cohort_size=1,
+        cohorts={"cohort1": cohort1_query, "cohort2": cohort2_query},
+        sample_query_options={"engine": "python"},
+        chunks="auto",
+        inline_array=False,
+    )
+
+    # Test multi-overlay — should not raise.
+    fig = api.plot_h12_gwss_multi_overlay(**h12_params, show=False)
+    assert isinstance(fig, bokeh.models.GridPlot)
+
+    # Test multi-panel — should not raise.
+    fig = api.plot_h12_gwss_multi_panel(**h12_params, show=False)
+    assert isinstance(fig, bokeh.models.GridPlot)
+
+
+def test_garud_h12_empty_window():
+    import numpy as np
+    from malariagen_data.anoph.h12 import _garud_h12
+
+    assert np.isnan(_garud_h12(np.empty((0, 0), dtype=int)))

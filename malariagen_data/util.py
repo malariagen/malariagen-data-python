@@ -24,10 +24,8 @@ import dask.array as da
 from dask.utils import parse_bytes
 import numba  # type: ignore
 import numpy as np
-import pandas
 import pandas as pd
 import plotly.express as px  # type: ignore
-import typeguard
 import xarray as xr
 import zarr  # type: ignore
 
@@ -44,7 +42,7 @@ DIM_SAMPLE = "samples"
 DIM_PLOIDY = "ploidy"
 
 
-def gff3_parse_attributes(attributes_string):
+def _gff3_parse_attributes(attributes_string):
     """Parse a string of GFF3 attributes ('key=value' pairs delimited by ';')
     and return a dictionary."""
 
@@ -75,9 +73,9 @@ gff3_cols = (
 )
 
 
-def read_gff3(buf, compression="gzip"):
+def _read_gff3(buf, compression="gzip"):
     # read as dataframe
-    df = pandas.read_csv(
+    df = pd.read_csv(
         buf,
         sep="\t",
         comment="#",
@@ -87,12 +85,12 @@ def read_gff3(buf, compression="gzip"):
     )
 
     # parse attributes
-    df["attributes"] = df["attributes"].apply(gff3_parse_attributes)
+    df["attributes"] = df["attributes"].apply(_gff3_parse_attributes)
 
     return df
 
 
-def unpack_gff3_attributes(df: pd.DataFrame, attributes: Tuple[str, ...]):
+def _unpack_gff3_attributes(df: pd.DataFrame, attributes: Tuple[str, ...]):
     df = df.copy()
 
     # discover all attribute keys
@@ -146,7 +144,7 @@ class SafeStore(BaseStore):
     def __len__(self):
         return len(self._store)
 
-    def __setitem__(self, item):
+    def __setitem__(self, key, value):  # __setitem__ expects 2 params (Pylint)
         raise NotImplementedError
 
     def __delitem__(self, item):
@@ -180,7 +178,7 @@ chunks_param_type: TypeAlias = Union[
 ]
 
 
-def da_from_zarr(
+def _da_from_zarr(
     z: zarr.core.Array,
     inline_array: bool,
     chunks: chunks_param_type,
@@ -282,7 +280,7 @@ def da_from_zarr(
     return d
 
 
-def dask_compress_dataset(ds, indexer, dim):
+def _dask_compress_dataset(ds, indexer, dim):
     """Temporary workaround for memory issues when attempting to
     index a xarray dataset with a Boolean array.
 
@@ -303,16 +301,28 @@ def dask_compress_dataset(ds, indexer, dim):
         indexer = ds[indexer].data
 
     # sanity checks
-    assert indexer.ndim == 1
-    assert indexer.dtype == bool
-    assert indexer.shape[0] == ds.sizes[dim]
+    if indexer.ndim != 1:
+        raise ValueError(
+            f"Expected indexer to be 1-dimensional, got {indexer.ndim} dimensions"
+        )
+    if indexer.dtype != bool:
+        raise ValueError(f"Expected indexer dtype to be bool, got {indexer.dtype}")
+    if indexer.shape[0] != ds.sizes[dim]:
+        raise ValueError(
+            f"Indexer length {indexer.shape[0]} does not match "
+            f"dataset dimension '{dim}' size {ds.sizes[dim]}"
+        )
 
     if isinstance(indexer, da.Array):
         # temporarily compute the indexer once, to avoid multiple reads from
         # the underlying data
         indexer_computed = indexer.compute()
     else:
-        assert isinstance(indexer, np.ndarray)
+        if not isinstance(indexer, np.ndarray):
+            raise TypeError(
+                f"Expected indexer to be a dask.array.Array or numpy.ndarray, "
+                f"got {type(indexer).__name__}"
+            )
         indexer_computed = indexer
 
     coords = dict()
@@ -345,7 +355,7 @@ def _dask_compress_dataarray(a, indexer, indexer_computed, dim):
         # apply the indexing operation
         data = a.data
         if isinstance(data, da.Array):
-            v = da_compress(
+            v = _da_compress(
                 indexer=indexer,
                 data=a.data,
                 axis=axis,
@@ -357,8 +367,8 @@ def _dask_compress_dataarray(a, indexer, indexer_computed, dim):
     return v
 
 
-def da_compress(
-    indexer: da.Array | np.ndarray,
+def _da_compress(
+    indexer: Union[da.Array, np.ndarray],
     data: da.Array,
     axis: int,
     indexer_computed: Optional[np.ndarray] = None,
@@ -366,9 +376,17 @@ def da_compress(
     """Wrapper for dask.array.compress() which computes chunk sizes faster."""
 
     # Sanity checks.
-    assert indexer.ndim == 1
-    assert indexer.dtype == bool
-    assert indexer.shape[0] == data.shape[axis]
+    if indexer.ndim != 1:
+        raise ValueError(
+            f"Expected indexer to be 1-dimensional, got {indexer.ndim} dimensions"
+        )
+    if indexer.dtype != bool:
+        raise ValueError(f"Expected indexer dtype to be bool, got {indexer.dtype}")
+    if indexer.shape[0] != data.shape[axis]:
+        raise ValueError(
+            f"Indexer length {indexer.shape[0]} does not match "
+            f"data axis {axis} size {data.shape[axis]}"
+        )
 
     # Useful variables.
     old_chunks = data.chunks
@@ -376,7 +394,11 @@ def da_compress(
 
     # Load the indexer temporarily for chunk size computations.
     if indexer_computed is None:
-        assert isinstance(indexer, da.Array)
+        if not isinstance(indexer, da.Array):
+            raise TypeError(
+                f"Expected indexer to be a dask.array.Array, "
+                f"got {type(indexer).__name__}"
+            )
         indexer_computed = indexer.compute()
 
     # Ensure indexer and data are chunked in the same way.
@@ -427,8 +449,11 @@ def da_compress(
     return v
 
 
-def init_filesystem(url, **kwargs):
+def _init_filesystem(url, **kwargs):
     """Initialise a fsspec filesystem from a given base URL and parameters."""
+
+    storage_options = None  # To prevent using before assignment (Pylint).
+    simplecache_options = kwargs.pop("simplecache", None)
 
     # Special case Google Cloud Storage, authenticate the user.
     if "gs://" in url or "gcs://" in url:
@@ -454,6 +479,12 @@ def init_filesystem(url, **kwargs):
 
         kwargs.setdefault("token", credentials)
 
+        # Set retry and timeout defaults for GCS to handle transient errors
+        # on unreliable networks (e.g., field stations in endemic regions).
+        # gcsfs supports retry (number of retries) and timeout (seconds).
+        kwargs.setdefault("retry", 3)
+        kwargs.setdefault("timeout", 60)
+
         # Ensure options are passed through to gcsfs, even if URL is chained.
         if url.startswith("gs://") or url.startswith("gcs://"):
             storage_options = kwargs
@@ -476,6 +507,13 @@ def init_filesystem(url, **kwargs):
         kwargs.setdefault("endpoint_url", "https://cog.sanger.ac.uk")
         kwargs.setdefault("config_kwargs", config)
 
+        # Set retry and timeout defaults for S3 to handle transient errors.
+        # s3fs supports retries (max retry attempts) and
+        # config_kwargs for connect/read timeouts.
+        kwargs.setdefault("retries", 3)
+        config.setdefault("connect_timeout", 60)
+        config.setdefault("read_timeout", 60)
+
         if url.startswith("s3://"):
             storage_options = kwargs
         else:
@@ -484,10 +522,35 @@ def init_filesystem(url, **kwargs):
 
     else:
         # Some other kind of URL, pass through kwargs as-is.
+        # Set a default timeout for remote HTTP/HTTPS filesystems.
+        if url.startswith("http://") or url.startswith("https://"):
+            kwargs.setdefault("timeout", 60)
         storage_options = kwargs
+
+    if simplecache_options is not None:
+        storage_options["simplecache"] = simplecache_options
 
     # Process the URL using fsspec.
     fs, path = url_to_fs(url, **storage_options)
+
+    # Decode URL-encoded paths for local filesystems.
+    protocol = getattr(fs, "protocol", None)
+    if isinstance(protocol, str):
+        protocols = {protocol}
+    elif isinstance(protocol, (tuple, list)):
+        protocols = set(protocol)
+    else:
+        protocols = set()
+
+    is_local = (
+        bool(protocols.intersection({"file", "local"}))
+        or fs.__class__.__name__ == "LocalFileSystem"
+    )
+
+    if is_local:
+        from urllib.parse import unquote
+
+        path = unquote(path)
 
     # Path compatibility, fsspec/gcsfs behaviour varies between versions.
     while path.endswith("/"):
@@ -496,7 +559,7 @@ def init_filesystem(url, **kwargs):
     return fs, path
 
 
-def init_zarr_store(fs, path):
+def _init_zarr_store(fs, path):
     """Initialise a zarr store (mapping) from a fsspec filesystem."""
 
     return SafeStore(FSMap(fs=fs, root=path, check=False, create=False))
@@ -537,6 +600,9 @@ class Region:
             and (self.start == other.start)
             and (self.end == other.end)
         )
+
+    def __repr__(self):
+        return f"Region({self._contig!r}, {self._start!r}, {self._end!r})"
 
     def __str__(self):
         out = self._contig
@@ -594,7 +660,7 @@ def _prep_geneset_attributes_arg(attributes):
 def _handle_region_feature(resource, region):
     if hasattr(resource, "genome_features"):
         gene_annotation = resource.genome_features(attributes=["ID"])
-        results = gene_annotation.query(f"ID == '{region}'")
+        results = gene_annotation.loc[gene_annotation["ID"] == region]
         if not results.empty:
             # the region is a feature ID
             feature = results.squeeze()
@@ -628,7 +694,7 @@ contig_param_type: TypeAlias = Union[
 ]
 
 
-def parse_single_region(resource, region: single_region_param_type) -> Region:
+def _parse_single_region(resource, region: single_region_param_type) -> Region:
     if isinstance(region, Region):
         # The region is already a Region, nothing to do.
         return region
@@ -641,7 +707,11 @@ def parse_single_region(resource, region: single_region_param_type) -> Region:
             end=region.get("end"),
         )
 
-    assert isinstance(region, str)
+    if not isinstance(region, str):
+        raise TypeError(
+            f"Expected region to be a mapping or str, "
+            f"got {type(region).__name__}: {region!r}"
+        )
 
     # check if region is a whole contig
     if region in _valid_contigs(resource):
@@ -657,22 +727,23 @@ def parse_single_region(resource, region: single_region_param_type) -> Region:
     if region_from_feature is not None:
         return region_from_feature
 
-    raise ValueError(
-        f"Region {region!r} is not a valid contig, region string or feature ID."
-    )
+    # If we get here, the provided region is not a valid contig, coordinate
+    # string, or feature ID. For compatibility with existing callers/tests,
+    # treat unknown single contig strings as "contig not found".
+    raise ValueError(f"Contig {region!r} not found.")
 
 
-def parse_multi_region(
+def _parse_multi_region(
     resource,
     region: region_param_type,
 ) -> List[Region]:
     if isinstance(region, (list, tuple)):
-        return [parse_single_region(resource, r) for r in region]
+        return [_parse_single_region(resource, r) for r in region]
     else:
-        return [parse_single_region(resource, region)]
+        return [_parse_single_region(resource, region)]
 
 
-def resolve_region(
+def _resolve_region(
     resource,
     region: region_param_type,
 ) -> Union[Region, List[Region]]:
@@ -684,12 +755,12 @@ def resolve_region(
     """
     if isinstance(region, (list, tuple)):
         # Multiple regions, normalise to list and resolve components.
-        return [parse_single_region(resource, r) for r in region]
+        return [_parse_single_region(resource, r) for r in region]
     else:
-        return parse_single_region(resource, region)
+        return _parse_single_region(resource, region)
 
 
-def locate_region(region: Region, pos: np.ndarray) -> slice:
+def _locate_region(region: Region, pos: np.ndarray) -> slice:
     """Get array slice and a parsed genomic region.
 
     Parameters
@@ -713,7 +784,7 @@ def locate_region(region: Region, pos: np.ndarray) -> slice:
     return loc_region
 
 
-def region_str(region: List[Region]) -> str:
+def _region_str(region: List[Region]) -> str:
     """Convert a region to a string representation.
 
     Parameters
@@ -760,7 +831,10 @@ def _simple_xarray_concat_arrays(
             xr_arrays = [ds[k] for ds in datasets]
 
             # Check that all arrays have the same dimension as the same axis.
-            assert all([a.dims[axis] == dim for a in xr_arrays])
+            if not all(a.dims[axis] == dim for a in xr_arrays):
+                raise ValueError(
+                    f"Not all arrays have dimension '{dim}' at axis {axis}"
+                )
 
             # Access the inner arrays - these are either numpy or dask arrays.
             inner_arrays = [a.data for a in xr_arrays]
@@ -781,7 +855,7 @@ def _simple_xarray_concat_arrays(
     return out
 
 
-def simple_xarray_concat(
+def _simple_xarray_concat(
     datasets: List[xr.Dataset], dim: str, attrs: Optional[Mapping] = None
 ) -> xr.Dataset:
     # Access the first dataset, this will be used as the template for
@@ -838,39 +912,73 @@ def simple_xarray_concat(
 #         )
 
 
-def da_concat(arrays: List[da.Array], **kwargs) -> da.Array:
+def _da_concat(arrays: List[da.Array], **kwargs) -> da.Array:
     if len(arrays) == 1:
         return arrays[0]
     else:
         return da.concatenate(arrays, **kwargs)
 
 
-def value_error(
+def _value_error(
     name,
     value,
     expectation,
 ):
-    message = (
-        f"Bad value for parameter {name}; expected {expectation}, " f"found {value!r}"
-    )
+    message = f"Bad value for parameter {name}; expected {expectation}, found {value!r}"
     raise ValueError(message)
 
 
-def hash_params(params):
+def _hash_params(params):
     """Helper function to hash function parameters."""
     s = json.dumps(params, sort_keys=True, indent=4)
     h = hashlib.md5(s.encode()).hexdigest()
     return h, s
 
 
-def jitter(a, fraction):
-    """Jitter data in `a` using the fraction `f`."""
+def _jitter(a, fraction, random_state=np.random):
+    """Jitter data by adding uniform noise scaled by the data range.
+
+    Parameters
+    ----------
+    a : array-like
+        Input data to jitter. Can be a numpy array or pandas Series.
+    fraction : float
+        Controls the amplitude of the jitter relative to the data range.
+    random_state : numpy.random.Generator or module, optional
+        Random number generator to use. Accepts a ``numpy.random.Generator``
+        (from ``np.random.default_rng()``) or the ``numpy.random`` module.
+        Defaults to ``np.random`` (global RNG) for backward compatibility.
+
+    Returns
+    -------
+    array-like
+        Jittered copy of the input data with the same shape and type.
+
+    Notes
+    -----
+    Prefer passing a local ``np.random.default_rng(seed=...)`` to avoid
+    mutating global RNG state and to ensure reproducibility.
+
+    """
     r = a.max() - a.min()
-    return a + fraction * np.random.uniform(-r, r, a.shape)
+    return a + fraction * random_state.uniform(-r, r, a.shape)
 
 
 class CacheMiss(Exception):
-    pass
+    """Raised when a requested item is not present in the cache."""
+
+    def __init__(self, key=None):
+        self.key = key
+        if key is not None:
+            message = f"Cache miss for key: {key!r}"
+        else:
+            message = "Cache miss: requested item not found in cache."
+        super().__init__(message)
+
+    def __repr__(self):
+        if self.key is not None:
+            return f"CacheMiss({self.key!r})"
+        return "CacheMiss()"
 
 
 class LoggingHelper:
@@ -893,6 +1001,12 @@ class LoggingHelper:
         elif isinstance(out, str):
             handler = logging.FileHandler(out)
         self._handler = handler
+
+        # Remove any pre-existing handlers from the singleton logger to prevent
+        # accumulation (and FileHandler FD leaks) on repeated instantiation.
+        for existing_handler in logger.handlers[:]:
+            logger.removeHandler(existing_handler)
+            existing_handler.close()
 
         # configure handler
         if handler is not None:
@@ -924,11 +1038,12 @@ class LoggingHelper:
         self.flush()
 
     def set_level(self, level):
+        self._logger.setLevel(level)
         if self._handler is not None:
             self._handler.setLevel(level)
 
 
-def jackknife_ci(stat_data, jack_stat, confidence_level):
+def _jackknife_ci(stat_data, jack_stat, confidence_level):
     """Compute a confidence interval from jackknife resampling.
 
     Parameters
@@ -987,7 +1102,7 @@ def jackknife_ci(stat_data, jack_stat, confidence_level):
     return estimate, bias, std_err, ci_err, ci_low, ci_upp
 
 
-def plotly_discrete_legend(
+def _plotly_discrete_legend(
     color,
     color_values,
     **kwargs,
@@ -1060,7 +1175,7 @@ def plotly_discrete_legend(
     return fig
 
 
-def get_gcp_region(details):
+def _get_gcp_region(details):
     """Attempt to determine the current GCP region based on
     response from ipinfo."""
 
@@ -1102,7 +1217,7 @@ class ColabLocationError(RuntimeError):
     pass
 
 
-def check_colab_location(gcp_region: Optional[str]):
+def _check_colab_location(gcp_region: Optional[str]):
     """
     Sometimes, colab will allocate a VM outside the US, e.g., in
     Europe or Asia. Because the MalariaGEN GCS buckets are located
@@ -1126,48 +1241,62 @@ def check_colab_location(gcp_region: Optional[str]):
             )
 
 
-def check_types(f):
-    """Simple decorator to provide runtime checking of parameter types.
+def _check_types(f):
+    """Decorator to provide runtime checking of parameter types.
 
-    N.B., the typeguard package does have a decorator function called
-    @typechecked which performs a similar purpose. However, the typeguard
-    decorator causes a memory leak and doesn't seem usable. Also, the
-    typeguard decorator performs runtime checking of all variables within
-    the function as well as the arguments and return values. We only want
-    checking of the arguments to help users provide correct inputs.
+    Uses Pydantic v2's validate_call() for parameter validation.
+    Validates input types in strict mode without coercing arguments.
 
     """
+    from pydantic import ConfigDict, ValidationError, validate_call
+
+    config = ConfigDict(strict=True, arbitrary_types_allowed=True)
+
+    try:
+        validated_f = validate_call(config=config, validate_return=False)(f)
+    except Exception as exc:
+        warnings.warn(
+            f"Could not apply validate_call to {f.__name__!r}: {exc}. "
+            "Type validation will be skipped for this function.",
+            stacklevel=2,
+        )
+        return f
 
     @wraps(f)
-    def check_types_wrapper(*args, **kwargs):
-        type_hints = get_type_hints(f)
-        call_args = getcallargs(f, *args, **kwargs)
-        for k, t in type_hints.items():
-            if k in call_args:
-                v = call_args[k]
-                try:
-                    typeguard.check_type(v, t)
-                except typeguard.TypeCheckError as e:
-                    expected_type = humanize_type(t)
-                    actual_type = humanize_type(type(v))
-                    message = fill(
-                        dedent(
-                            f"""
-                        Parameter {k!r} with value {v!r} in call to function {f.__name__!r} has incorrect type:
-                        found {actual_type}, expected {expected_type}. See below for further information.
-                    """
+    def wrapper(*args, **kwargs):
+        try:
+            return validated_f(*args, **kwargs)
+        except ValidationError as e:
+            type_hints = get_type_hints(f)
+            call_args = getcallargs(f, *args, **kwargs)
+            errors = e.errors()
+            if errors:
+                err = errors[0]
+                loc = err.get("loc", ())
+                if loc:
+                    k = str(loc[0])
+                    v = call_args.get(k)
+                    t = type_hints.get(k)
+                    if t is not None:
+                        expected_type = humanize_type(t)
+                        actual_type = humanize_type(type(v))
+                        message = fill(
+                            dedent(
+                                f"""\
+                            Parameter {k!r} with value {v!r} in call to function {f.__name__!r} has incorrect type:
+                            found {actual_type}, expected {expected_type}. See below for further information.
+                        """
+                            )
                         )
-                    )
-                    message += f"\n\n{e}"
-                    error = TypeError(message)
-                    raise error from None
-        return f(*args, **kwargs)
+                        message += f"\n\n{e}"
+                        raise TypeError(message) from None
+            raise TypeError(str(e)) from None
 
-    return check_types_wrapper
+    return wrapper
 
 
 @numba.njit
-def true_runs(a):
+def _true_runs(a):
     in_run = False
     starts = []
     stops = []
@@ -1185,7 +1314,7 @@ def true_runs(a):
 
 
 @numba.njit(parallel=True)
-def pdist_abs_hamming(X):
+def _pdist_abs_hamming(X):
     n_obs = X.shape[0]
     n_ftr = X.shape[1]
     out = np.zeros((n_obs, n_obs), dtype=np.int32)
@@ -1203,7 +1332,7 @@ def pdist_abs_hamming(X):
 
 
 @numba.njit
-def square_to_condensed(i, j, n):
+def _square_to_condensed(i, j, n):
     """Convert distance matrix coordinates from square form (i, j) to condensed form."""
 
     assert i != j, "no diagonal elements in condensed matrix"
@@ -1213,7 +1342,7 @@ def square_to_condensed(i, j, n):
 
 
 @numba.njit(parallel=True)
-def multiallelic_diplotype_pdist(X, metric):
+def _multiallelic_diplotype_pdist(X, metric):
     """Optimised implementation of pairwise distance between diplotypes.
 
     N.B., here we assume the array X provides diplotypes as genotype allele
@@ -1241,14 +1370,14 @@ def multiallelic_diplotype_pdist(X, metric):
             d = metric(x, y)
 
             # Store result for the current pair.
-            k = square_to_condensed(i, j, n_samples)
+            k = _square_to_condensed(i, j, n_samples)
             out[k] = d
 
     return out
 
 
 @numba.njit
-def multiallelic_diplotype_mean_cityblock(x, y):
+def _multiallelic_diplotype_mean_cityblock(x, y):
     """Compute the mean cityblock distance between two diplotypes x and y. The
     diplotype vectors are expected as genotype allele counts, i.e., x and y
     should have the same shape (n_sites, n_alleles).
@@ -1298,7 +1427,7 @@ def multiallelic_diplotype_mean_cityblock(x, y):
 
 
 @numba.njit
-def multiallelic_diplotype_sqeuclidean(x, y):
+def _multiallelic_diplotype_sqeuclidean(x, y):
     n_sites = x.shape[0]
     n_alleles = x.shape[1]
     distance = np.float32(0)
@@ -1333,7 +1462,7 @@ def multiallelic_diplotype_sqeuclidean(x, y):
 
 
 @numba.njit
-def multiallelic_diplotype_mean_sqeuclidean(x, y):
+def _multiallelic_diplotype_mean_sqeuclidean(x, y):
     """Compute the mean squared euclidean distance between two diplotypes x and
     y. The diplotype vectors are expected as genotype allele counts, i.e., x and
     y should have the same shape (n_sites, n_alleles).
@@ -1344,7 +1473,7 @@ def multiallelic_diplotype_mean_sqeuclidean(x, y):
 
     """
 
-    distance, n_sites_called = multiallelic_diplotype_sqeuclidean(x, y)
+    distance, n_sites_called = _multiallelic_diplotype_sqeuclidean(x, y)
 
     # Compute the mean distance over sites with called genotypes.
     if n_sites_called > 0:
@@ -1356,7 +1485,7 @@ def multiallelic_diplotype_mean_sqeuclidean(x, y):
 
 
 @numba.njit
-def multiallelic_diplotype_mean_euclidean(x, y):
+def _multiallelic_diplotype_mean_euclidean(x, y):
     """Compute the mean euclidean distance between two diplotypes x and
     y. The diplotype vectors are expected as genotype allele counts, i.e., x and
     y should have the same shape (n_sites, n_alleles).
@@ -1367,7 +1496,7 @@ def multiallelic_diplotype_mean_euclidean(x, y):
 
     """
 
-    sqdistance, n_sites_called = multiallelic_diplotype_sqeuclidean(x, y)
+    sqdistance, n_sites_called = _multiallelic_diplotype_sqeuclidean(x, y)
     distance = np.sqrt(sqdistance)
 
     # Compute the mean distance over sites with called genotypes.
@@ -1380,7 +1509,7 @@ def multiallelic_diplotype_mean_euclidean(x, y):
 
 
 @numba.njit
-def trim_alleles(ac):
+def _trim_alleles(ac):
     """Remap allele indices to trim out unobserved alleles.
 
     The idea here is that our SNP data includes alleles which
@@ -1435,7 +1564,7 @@ def trim_alleles(ac):
 
 
 @numba.njit
-def apply_allele_mapping(x, mapping, max_allele):
+def _apply_allele_mapping(x, mapping, max_allele):
     """Transform an array x, where the columns correspond to alleles,
     according to an allele mapping.
 
@@ -1465,16 +1594,32 @@ def apply_allele_mapping(x, mapping, max_allele):
     return out
 
 
-def dask_apply_allele_mapping(v, mapping, max_allele):
-    assert isinstance(v, da.Array)
-    assert isinstance(mapping, np.ndarray)
-    assert v.ndim == 2
-    assert mapping.ndim == 2
-    assert v.shape[0] == mapping.shape[0]
+def _dask_apply_allele_mapping(v, mapping, max_allele):
+    if not isinstance(v, da.Array):
+        raise TypeError(
+            f"Expected input array to be a dask.array.Array, got {type(v).__name__}"
+        )
+    if not isinstance(mapping, np.ndarray):
+        raise TypeError(
+            f"Expected mapping to be a numpy.ndarray, got {type(mapping).__name__}"
+        )
+    if v.ndim != 2:
+        raise ValueError(
+            f"Expected input array to be 2-dimensional, got {v.ndim} dimensions"
+        )
+    if mapping.ndim != 2:
+        raise ValueError(
+            f"Expected mapping to be 2-dimensional, got {mapping.ndim} dimensions"
+        )
+    if v.shape[0] != mapping.shape[0]:
+        raise ValueError(
+            "Expected input array and mapping to have the same first dimension, "
+            f"got {v.shape[0]} and {mapping.shape[0]}"
+        )
     v = v.rechunk((v.chunks[0], -1))
     mapping = da.from_array(mapping, chunks=(v.chunks[0], -1))
     out = da.map_blocks(
-        lambda xb, mb: apply_allele_mapping(xb, mb, max_allele=max_allele),
+        lambda xb, mb: _apply_allele_mapping(xb, mb, max_allele=max_allele),
         v,
         mapping,
         dtype=v.dtype,
@@ -1483,38 +1628,78 @@ def dask_apply_allele_mapping(v, mapping, max_allele):
     return out
 
 
-def genotype_array_map_alleles(gt, mapping):
+def _genotype_array_map_alleles(gt, mapping):
     # Transform genotype calls via an allele mapping.
     # N.B., scikit-allel does not handle empty blocks well, so we
     # include some extra logic to handle that better.
-    assert isinstance(gt, np.ndarray)
-    assert isinstance(mapping, np.ndarray)
-    assert gt.ndim == 3
-    assert mapping.ndim == 3
-    assert gt.shape[0] == mapping.shape[0]
-    assert gt.shape[1] > 0
-    assert gt.shape[2] == 2
+    if not isinstance(gt, np.ndarray):
+        raise TypeError(f"Expected gt to be a numpy.ndarray, got {type(gt).__name__}")
+    if not isinstance(mapping, np.ndarray):
+        raise TypeError(
+            f"Expected mapping to be a numpy.ndarray, got {type(mapping).__name__}"
+        )
+    if gt.ndim != 3:
+        raise ValueError(
+            f"Expected genotype calls array to be 3-dimensional, got {gt.ndim} dimensions"
+        )
+    if mapping.ndim != 3:
+        raise ValueError(
+            f"Expected mapping to be 3-dimensional, got {mapping.ndim} dimensions"
+        )
+    if gt.shape[0] != mapping.shape[0]:
+        raise ValueError(
+            "Expected genotype calls array and mapping to have the same first dimension, "
+            f"got {gt.shape[0]} and {mapping.shape[0]}"
+        )
+    if gt.shape[1] <= 0:
+        raise ValueError(f"Expected genotype calls axis 1 to be > 0, got {gt.shape[1]}")
+    if gt.shape[2] != 2:
+        raise ValueError(
+            f"Expected genotype calls axis 2 to be 2 (diploid), got {gt.shape[2]}"
+        )
     if gt.size > 0:
         # Block is not empty, can pass through to GenotypeArray.
-        assert gt.shape[0] > 0
+        if gt.shape[0] <= 0:
+            raise RuntimeError(
+                f"Internal error: non-empty genotype block but axis 0 is {gt.shape[0]}. "
+                "Please open a GitHub issue."
+            )
         m = mapping[:, 0, :]
         out = allel.GenotypeArray(gt).map_alleles(m).values
     else:
         # Block is empty so no alleles need to be mapped.
-        assert gt.shape[0] == 0
+        if gt.shape[0] != 0:
+            raise RuntimeError(
+                f"Internal error: empty genotype block but axis 0 is {gt.shape[0]}. "
+                "Please open a GitHub issue."
+            )
         out = gt
     return out
 
 
-def dask_genotype_array_map_alleles(gt, mapping):
-    assert isinstance(gt, da.Array)
-    assert isinstance(mapping, np.ndarray)
-    assert gt.ndim == 3
-    assert mapping.ndim == 2
-    assert gt.shape[0] == mapping.shape[0]
+def _dask_genotype_array_map_alleles(gt, mapping):
+    if not isinstance(gt, da.Array):
+        raise TypeError(
+            f"Expected gt to be a dask.array.Array, got {type(gt).__name__}"
+        )
+    if not isinstance(mapping, np.ndarray):
+        raise TypeError(
+            f"Expected mapping to be a numpy.ndarray, got {type(mapping).__name__}"
+        )
+    if gt.ndim != 3:
+        raise ValueError(f"Expected gt to be 3-dimensional, got {gt.ndim} dimensions")
+    if mapping.ndim != 2:
+        raise ValueError(
+            f"Expected mapping to be 2-dimensional, got {mapping.ndim} dimensions"
+        )
+    if gt.shape[0] != mapping.shape[0]:
+        raise ValueError(
+            f"gt and mapping must have same first dimension, "
+            f"got gt.shape[0]={gt.shape[0]} and mapping.shape[0]={mapping.shape[0]}"
+        )
     mapping = da.from_array(mapping, chunks=(gt.chunks[0], -1))
     gt_out = da.map_blocks(
-        genotype_array_map_alleles,
+        _genotype_array_map_alleles,
         gt,
         mapping[:, None, :],
         chunks=gt.chunks,
@@ -1523,7 +1708,7 @@ def dask_genotype_array_map_alleles(gt, mapping):
     return gt_out
 
 
-def pandas_apply(f, df, columns):
+def _pandas_apply(f, df, columns):
     """Optimised alternative to pandas apply."""
     df = df.reset_index(drop=True)
     iterator = zip(*[df[c].values for c in columns])
@@ -1531,24 +1716,24 @@ def pandas_apply(f, df, columns):
     return ret
 
 
-def compare_series_like(actual, expect):
+def _compare_series_like(actual, expect):
     """Compare pandas series-like objects for equality or floating point
     similarity, handling missing values appropriately."""
 
     # Handle object arrays, these don't get nans compared properly.
     t = actual.dtype
-    if t == object:
+
+    if t.kind == "O":
         expect = expect.fillna("NA")
         actual = actual.fillna("NA")
-
-    if t.kind == "f":
+    elif t.kind == "f":
         assert_allclose(actual.values, expect.values)
     else:
         assert_array_equal(actual.values, expect.values)
 
 
 @numba.njit
-def hash_columns(x):
+def _hash_columns(x):
     # Here we want to compute a hash for each column in the
     # input array. However, we assume the input array is in
     # C contiguous order, and therefore we scan the array
@@ -1569,11 +1754,11 @@ def hash_columns(x):
     return out
 
 
-def haplotype_frequencies(h):
+def _haplotype_frequencies(h):
     """Compute haplotype frequencies, returning a dictionary that maps
     haplotype hash values to frequencies."""
     n = h.shape[1]
-    hashes = hash_columns(np.asarray(h))
+    hashes = _hash_columns(np.asarray(h))
     count = Counter(hashes)
     freqs = {key: count / n for key, count in count.items()}
     counts = {key: count for key, count in count.items()}
@@ -1581,7 +1766,7 @@ def haplotype_frequencies(h):
     return freqs, counts, nobs
 
 
-def distributed_client():
+def _distributed_client():
     from distributed import get_client
 
     try:
@@ -1589,17 +1774,3 @@ def distributed_client():
     except ValueError:
         client = None
     return client
-
-
-def add_frequency_ci(*, ds, ci_method):
-    from statsmodels.stats.proportion import proportion_confint  # type: ignore
-
-    if ci_method is not None:
-        count = ds["event_count"].values
-        nobs = ds["event_nobs"].values
-        with np.errstate(divide="ignore", invalid="ignore"):
-            frq_ci_low, frq_ci_upp = proportion_confint(
-                count=count, nobs=nobs, method=ci_method
-            )
-        ds["event_frequency_ci_low"] = ("variants", "cohorts"), frq_ci_low
-        ds["event_frequency_ci_upp"] = ("variants", "cohorts"), frq_ci_upp

@@ -1,12 +1,12 @@
 import pandas as pd
 import xarray as xr
-from typing import Callable, Optional, List, Any
+from typing import Callable, Optional, List, Any, TYPE_CHECKING
 import warnings
 import fsspec
 import posixpath
 from numpydoc_decorator import doc  # type: ignore
 
-from ..util import check_types
+from ..util import _check_types
 from malariagen_data.anoph import base_params, phenotype_params
 
 
@@ -16,14 +16,20 @@ class AnophelesPhenotypeData:
     Inherited by AnophelesDataResource subclasses (e.g., Ag3).
     """
 
-    # Type annotations for MyPy
-    _url: str
-    _fs: fsspec.AbstractFileSystem
-    sample_metadata: Callable[..., pd.DataFrame]
-    sample_sets: list[str]
-    _prep_sample_sets_param: Callable[..., Any]
-    snp_calls: Callable[..., Any]
-    haplotypes: Callable[..., Any]
+    if TYPE_CHECKING:
+        # Type annotations for MyPy
+        _url: str
+        _fs: fsspec.AbstractFileSystem
+        sample_metadata: Callable[..., pd.DataFrame]
+        _base_path: str
+        _major_version_path: str
+        _release_to_path: Callable[[str], str]
+        lookup_release: Callable[..., str]
+        _prep_sample_sets_param: Callable[..., Any]
+
+        sample_sets: Callable[..., pd.DataFrame]
+        snp_calls: Callable[..., Any]
+        haplotypes: Callable[..., Any]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -43,6 +49,7 @@ class AnophelesPhenotypeData:
         for sample_set in sample_sets:
             phenotype_path = posixpath.join(base_phenotype_path,sample_set,"phenotypes.csv")
             try:
+
                 if not self._fs.exists(phenotype_path):
                     warnings.warn(
                         f"Phenotype data file not found for {sample_set} at {phenotype_path}"
@@ -64,15 +71,8 @@ class AnophelesPhenotypeData:
                 df_pheno["sample_set"] = sample_set
                 phenotype_dfs.append(df_pheno)
 
-            except FileNotFoundError:
-                warnings.warn(
-                    f"Phenotype data file not found for {sample_set} at {phenotype_path}"
-                )
-                continue
-            except Exception as e:
-                warnings.warn(
-                    f"Unexpected error loading phenotype data for {sample_set} from {phenotype_path}: {e}"
-                )
+            except (KeyError, FileNotFoundError, IOError) as e:
+                warnings.warn(f"Error loading phenotype data for {sample_set}: {e}")
                 continue
 
         if not phenotype_dfs:
@@ -306,15 +306,10 @@ class AnophelesPhenotypeData:
                 except ValueError as e:
                     warnings.warn(f"Value error in variant data merging: {e}")
                     return ds
-                except Exception as e:
-                    warnings.warn(
-                        f"Unexpected error selecting/merging variant data: {e}"
-                    )
-                    return ds
 
         return ds
 
-    @check_types
+    @_check_types
     @doc(
         summary="Load phenotypic data from insecticide resistance bioassays.",
         returns=dict(
@@ -345,11 +340,7 @@ class AnophelesPhenotypeData:
             return pd.DataFrame()
 
         # 3. Get sample metadata for all samples that have phenotype data
-        try:
-            df_metadata = self.sample_metadata(sample_sets=sample_sets_norm)
-        except Exception as e:
-            warnings.warn(f"Error fetching sample metadata: {e}")
-            return pd.DataFrame()
+        df_metadata = self.sample_metadata(sample_sets=sample_sets_norm)
 
         if df_metadata.empty:
             warnings.warn("No sample metadata found for samples with phenotype data")
@@ -372,8 +363,8 @@ class AnophelesPhenotypeData:
                 df_merged = df_merged.query(
                     sample_query, **(sample_query_options or {})
                 )
-            except Exception as e:
-                warnings.warn(f"Error applying sample_query '{sample_query}': {e}")
+            except (pd.errors.UndefinedVariableError, SyntaxError) as e:
+                warnings.warn(f"Invalid sample_query '{sample_query}': {e}")
                 return pd.DataFrame()
 
         # 6. Apply cohort filtering
@@ -383,7 +374,7 @@ class AnophelesPhenotypeData:
 
         return df_final
 
-    @check_types
+    @_check_types
     @doc(
         summary="Combine phenotypic traits with SNP genotype data for GWAS analysis.",
         returns=dict(
@@ -428,7 +419,7 @@ class AnophelesPhenotypeData:
 
         return ds
 
-    @check_types
+    @_check_types
     @doc(
         summary="Combine phenotypic traits with haplotype data for extended association analysis.",
         returns=dict(
@@ -473,7 +464,7 @@ class AnophelesPhenotypeData:
 
         return ds
 
-    @check_types
+    @_check_types
     @doc(
         summary="List sample sets that contain phenotypic data.",
         returns=dict(sample_sets="List of sample set identifiers with phenotype data."),
@@ -489,10 +480,10 @@ class AnophelesPhenotypeData:
 
         for sample_set in all_sample_sets:
             try:
-                phenotype_path = f"{base_phenotype_path}/{sample_set}/phenotypes.csv"
+
                 if self._fs.exists(phenotype_path):
                     phenotype_sample_sets.append(sample_set)
-            except Exception:
+            except (KeyError, FileNotFoundError):
                 continue
 
         return phenotype_sample_sets

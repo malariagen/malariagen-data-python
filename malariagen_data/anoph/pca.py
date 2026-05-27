@@ -6,7 +6,7 @@ import pandas as pd
 import plotly.express as px  # type: ignore
 from numpydoc_decorator import doc  # type: ignore
 
-from ..util import CacheMiss, check_types, jitter
+from ..util import CacheMiss, _check_types, _jitter
 from . import base_params, pca_params, plotly_params
 from .snp_data import AnophelesSnpData
 
@@ -23,7 +23,7 @@ class AnophelesPca(
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Run a principal components analysis (PCA) using biallelic SNPs from
@@ -42,8 +42,15 @@ class AnophelesPca(
             The following additional parameters were also added in version 8.0.0:
             `site_class`, `cohort_size`, `min_cohort_size`, `max_cohort_size`,
             `random_seed`.
-
         """,
+        parameters=dict(
+            imputation_method="""
+                Method to use for imputing missing genotype calls. Options are
+                'most_common' (replace missing calls with the most common genotype at each site,
+                the default), 'mean' (replace missing calls with the
+                mean value at each site), or 'zero' (replace missing calls with zero).
+            """,
+        ),
         returns=("df_pca", "evr"),
         notes="""
             This computation may take some time to run, depending on your computing
@@ -61,6 +68,10 @@ class AnophelesPca(
         sample_query: Optional[base_params.sample_query] = None,
         sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
+        cohorts: Optional[base_params.cohorts] = None,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        min_cohort_size: Optional[base_params.min_cohort_size] = None,
+        max_cohort_size: Optional[base_params.max_cohort_size] = None,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         site_class: Optional[base_params.site_class] = None,
         min_minor_ac: Optional[
@@ -69,9 +80,7 @@ class AnophelesPca(
         max_missing_an: Optional[
             base_params.max_missing_an
         ] = pca_params.max_missing_an_default,
-        cohort_size: Optional[base_params.cohort_size] = None,
-        min_cohort_size: Optional[base_params.min_cohort_size] = None,
-        max_cohort_size: Optional[base_params.max_cohort_size] = None,
+        imputation_method: pca_params.imputation_method = pca_params.imputation_method_default,
         exclude_samples: Optional[base_params.samples] = None,
         fit_exclude_samples: Optional[base_params.samples] = None,
         random_seed: base_params.random_seed = 42,
@@ -80,31 +89,86 @@ class AnophelesPca(
     ) -> Tuple[pca_params.df_pca, pca_params.evr]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "pca_v4"
+        name = "pca_v8"
+
+        # Check that either sample_query xor sample_indices are provided.
+        base_params._validate_sample_selection_params(
+            sample_query=sample_query, sample_indices=sample_indices
+        )
+
+        ## Normalize params for consistent hash value.
+
+        # Handle cohort downsampling.
+        if cohorts is not None:
+            if max_cohort_size is None:
+                raise ValueError(
+                    "`max_cohort_size` is required when `cohorts` is provided."
+                )
+            if sample_indices is not None:
+                raise ValueError(
+                    "Cannot use `sample_indices` with `cohorts` and `max_cohort_size`."
+                )
+            if cohort_size is not None or min_cohort_size is not None:
+                raise ValueError(
+                    "Cannot use `cohort_size` or `min_cohort_size` with `cohorts`."
+                )
+            df_samples = self.sample_metadata(
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                sample_query_options=sample_query_options,
+            )
+            # N.B., we are going to overwrite the sample_indices parameter here.
+            groups = df_samples.groupby(cohorts, sort=False)
+            ix = []
+            for _, group in groups:
+                if len(group) > max_cohort_size:
+                    ix.extend(
+                        group.sample(
+                            n=max_cohort_size, random_state=random_seed, replace=False
+                        ).index
+                    )
+                else:
+                    ix.extend(group.index)
+            sample_indices = ix
+            # From this point onwards, the sample_query is no longer needed, because
+            # the sample selection is defined by the sample_indices.
+            sample_query = None
+            sample_query_options = None
 
         # Normalize params for consistent hash value.
         (
-            sample_sets_prepped,
-            sample_indices_prepped,
+            prepared_sample_sets,
+            prepared_sample_indices,
         ) = self._prep_sample_selection_cache_params(
             sample_sets=sample_sets,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
             sample_indices=sample_indices,
         )
-        region_prepped = self._prep_region_cache_param(region=region)
-        site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
+        prepared_region = self._prep_region_cache_param(region=region)
+        prepared_site_mask = self._prep_optional_site_mask_param(site_mask=site_mask)
+
+        # Delete original parameters to prevent accidental use.
+        del sample_sets
+        del sample_indices
+        del sample_query
+        del sample_query_options
+        del region
+        del site_mask
+
         params = dict(
-            region=region_prepped,
+            region=prepared_region,
             n_snps=n_snps,
             thin_offset=thin_offset,
-            sample_sets=sample_sets_prepped,
-            sample_indices=sample_indices_prepped,
-            site_mask=site_mask_prepped,
+            sample_sets=prepared_sample_sets,
+            sample_indices=prepared_sample_indices,
+            site_mask=prepared_site_mask,
             site_class=site_class,
             min_minor_ac=min_minor_ac,
             max_missing_an=max_missing_an,
+            imputation_method=imputation_method,
             n_components=n_components,
+            cohorts=cohorts,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
@@ -122,26 +186,37 @@ class AnophelesPca(
             self.results_cache_set(name=name, params=params, results=results)
 
         # Unpack results.
-        coords = results["coords"]
-        evr = results["evr"]
-        samples = results["samples"]
-        loc_keep_fit = results["loc_keep_fit"]
+        coords = np.array(results["coords"])
+        evr = np.array(results["evr"])
+        samples = np.array(results["samples"])
+        loc_keep_fit = np.array(results["loc_keep_fit"])
 
-        # Load sample metadata.
+        # Create a new DataFrame containing the PCA coords data.
+        df_pca = pd.DataFrame(coords, index=samples)
+
+        # Name the index of the PCA data and set it to a string type.
+        df_pca.index.name = "sample_id"
+        # df_pca.index = df_pca.index.astype(str)
+
+        # Name the DataFrame's columns as PC1, PC2, etc.
+        df_pca.columns = pd.Index([f"PC{i + 1}" for i in range(coords.shape[1])])
+
+        # Load the sample metadata.
         df_samples = self.sample_metadata(
-            sample_sets=sample_sets,
+            sample_sets=prepared_sample_sets,
         )
 
-        # Ensure aligned with genotype data.
-        df_samples = df_samples.set_index("sample_id").loc[samples].reset_index()
+        # Set the index of the sample metadata.
+        df_samples.set_index("sample_id", inplace=True)
 
-        # Combine coords and sample metadata.
-        df_coords = pd.DataFrame(
-            {f"PC{i + 1}": coords[:, i] for i in range(coords.shape[1])}
-        )
-        df_pca = df_samples.join(df_coords, how="inner")
-        # Add a column for which samples were included in fitting.
+        # Join the relevant sample metadata.
+        df_pca = df_pca.join(df_samples, how="left", on="sample_id")
+
+        # Add a column to indicate which samples were included in fitting.
         df_pca["pca_fit"] = loc_keep_fit
+
+        # Keep "sample_id" as a column, so that it can be specified as a `hover_name` in `plot_pca_coords`, etc.
+        df_pca.reset_index(inplace=True)
 
         return df_pca, evr
 
@@ -157,6 +232,7 @@ class AnophelesPca(
         site_class,
         min_minor_ac,
         max_missing_an,
+        imputation_method="most_common",
         n_components,
         cohort_size,
         min_cohort_size,
@@ -166,9 +242,10 @@ class AnophelesPca(
         random_seed,
         chunks,
         inline_array,
+        **kwargs,
     ):
         # Load diplotypes.
-        gn, samples = self.biallelic_diplotypes(
+        ds_diplotypes = self.biallelic_diplotypes(
             region=region,
             n_snps=n_snps,
             thin_offset=thin_offset,
@@ -184,7 +261,10 @@ class AnophelesPca(
             random_seed=random_seed,
             chunks=chunks,
             inline_array=inline_array,
+            return_dataset=True,
         )
+        gn = ds_diplotypes["call_diplotype"].values
+        samples = ds_diplotypes["sample_id"].values.astype("U")
 
         with self._spinner(desc="Compute PCA"):
             # Exclude any samples prior to computing PCA.
@@ -202,6 +282,64 @@ class AnophelesPca(
             else:
                 loc_keep_fit = np.ones(len(samples), dtype=bool)
                 gn_fit = gn
+
+            # Impute missing calls (-127) using the chosen imputation method.
+            if max_missing_an is not None and max_missing_an > 0:
+                gn_fit = gn_fit.astype(float)
+                gn = gn.astype(float)
+
+                for arr in [gn_fit, gn]:
+                    missing_mask = arr == -127
+
+                    if imputation_method == "most_common":
+                        # Vectorized computation of mode per site (row)
+                        valid = ~missing_mask
+
+                        # Count occurrences of 0, 1, 2 per row
+                        # gn is produced by to_n_ref() so values are guaranteed to be
+                        # 0, 1, or 2 (ref allele count for biallelic sites), with -127
+                        # for missing calls.
+                        counts = np.stack(
+                            [
+                                np.sum((arr == 0) & valid, axis=1),
+                                np.sum((arr == 1) & valid, axis=1),
+                                np.sum((arr == 2) & valid, axis=1),
+                            ],
+                            axis=1,
+                        )
+
+                        # Determine mode per row
+                        site_modes = np.argmax(counts, axis=1)
+
+                        # Handle rows where all values are missing
+                        all_missing = ~valid.any(axis=1)
+                        site_modes[all_missing] = 0
+
+                        # Fill missing values
+                        fill_values = site_modes[np.where(missing_mask)[0]]
+
+                    elif imputation_method == "mean":
+                        site_means = np.where(
+                            np.all(missing_mask, axis=1, keepdims=True),
+                            0,
+                            np.nanmean(
+                                np.where(missing_mask, np.nan, arr),
+                                axis=1,
+                                keepdims=True,
+                            ),
+                        )
+                        fill_values = np.take(
+                            site_means.flatten(), np.where(missing_mask)[0]
+                        )
+                    elif imputation_method == "zero":
+                        fill_values = 0
+                    else:
+                        raise ValueError(
+                            f"Unknown imputation_method: {imputation_method!r}. "
+                            "Choose from 'most_common', 'mean' or 'zero'."
+                        )
+
+                    arr[missing_mask] = fill_values
 
             # Remove any sites where all genotypes are identical.
             loc_var = np.any(gn_fit != gn_fit[:, 0, np.newaxis], axis=1)
@@ -235,7 +373,7 @@ class AnophelesPca(
         )
         return results
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot explained variance ratios from a principal components analysis
@@ -276,11 +414,9 @@ class AnophelesPca(
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot sample coordinates from a principal components analysis (PCA)
@@ -318,12 +454,15 @@ class AnophelesPca(
 
         # Apply jitter if desired - helps spread out points when tightly clustered.
         if jitter_frac:
-            np.random.seed(random_seed)
-            data[x] = jitter(data[x], jitter_frac)
-            data[y] = jitter(data[y], jitter_frac)
+            rng = np.random.default_rng(seed=random_seed)
+            data[x] = _jitter(data[x], jitter_frac, random_state=rng)
+            data[y] = _jitter(data[y], jitter_frac, random_state=rng)
 
         # Convenience variables.
-        data["country_location"] = data["country"] + " - " + data["location"]
+        # Prevent lint error (mypy): Unsupported operand types for + ("Series[Any]" and "str")
+        data["country_location"] = (
+            data["country"].astype(str) + " - " + data["location"].astype(str)
+        )
 
         # Normalise color and symbol parameters.
         symbol_prepped = self._setup_sample_symbol(
@@ -381,11 +520,9 @@ class AnophelesPca(
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot sample coordinates from a principal components analysis (PCA)
@@ -421,13 +558,16 @@ class AnophelesPca(
 
         # Apply jitter if desired - helps spread out points when tightly clustered.
         if jitter_frac:
-            np.random.seed(random_seed)
-            data[x] = jitter(data[x], jitter_frac)
-            data[y] = jitter(data[y], jitter_frac)
-            data[z] = jitter(data[z], jitter_frac)
+            rng = np.random.default_rng(seed=random_seed)
+            data[x] = _jitter(data[x], jitter_frac, random_state=rng)
+            data[y] = _jitter(data[y], jitter_frac, random_state=rng)
+            data[z] = _jitter(data[z], jitter_frac, random_state=rng)
 
         # Convenience variables.
-        data["country_location"] = data["country"] + " - " + data["location"]
+        # Prevent lint error (mypy): Unsupported operand types for + ("Series[Any]" and "str")
+        data["country_location"] = (
+            data["country"].astype(str) + " - " + data["location"].astype(str)
+        )
 
         # Normalise color and symbol parameters.
         symbol_prepped = self._setup_sample_symbol(
@@ -483,6 +623,4 @@ class AnophelesPca(
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig

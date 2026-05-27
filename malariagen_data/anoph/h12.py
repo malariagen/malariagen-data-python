@@ -6,7 +6,7 @@ from numpydoc_decorator import doc  # type: ignore
 import bokeh.plotting
 
 from .hap_data import AnophelesHapData
-from ..util import check_types, CacheMiss, haplotype_frequencies
+from ..util import _check_types, CacheMiss, _haplotype_frequencies
 from . import base_params
 from . import h12_params, gplt_params, hap_params
 
@@ -58,12 +58,12 @@ class AnophelesH12Analysis(
 
         calibration_runs: Dict[str, np.ndarray] = dict()
         for window_size in self._progress(window_sizes, desc="Compute H12"):
-            h12 = allel.moving_statistic(ht, statistic=garud_h12, size=window_size)
+            h12 = allel.moving_statistic(ht, statistic=_garud_h12, size=window_size)
             calibration_runs[str(window_size)] = h12
 
         return calibration_runs
 
-    @check_types
+    @_check_types
     @doc(
         summary="Generate h12 GWSS calibration data for different window sizes.",
         returns="""
@@ -102,7 +102,7 @@ class AnophelesH12Analysis(
             # N.B., do not be tempted to convert this sample query into integer
             # indices using _prep_sample_selection_params, because the indices
             # are different in the haplotype data.
-            sample_query=sample_query,
+            sample_query=self._prep_sample_query_param(sample_query=sample_query),
             sample_query_options=sample_query_options,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
@@ -121,7 +121,7 @@ class AnophelesH12Analysis(
 
         return calibration_runs
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot h12 GWSS calibration data for different window sizes.",
         parameters=dict(
@@ -184,12 +184,14 @@ class AnophelesH12Analysis(
         # Make plot.
         if title is None:
             title = sample_query
+        x_start = min(window_sizes)
+        x_end = max(window_sizes)
         fig = bokeh.plotting.figure(
             title=title,
             width=700,
             height=400,
             x_axis_type="log",
-            x_range=bokeh.models.Range1d(window_sizes[0], window_sizes[-1]),
+            x_range=bokeh.models.Range1d(x_start, x_end, bounds=(x_start, x_end)),
         )
         patch_x = list(window_sizes) + list(window_sizes[::-1])
         fig.patch(
@@ -221,9 +223,7 @@ class AnophelesH12Analysis(
         fig.xaxis.ticker = window_sizes
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     def _h12_gwss(
         self,
@@ -260,7 +260,7 @@ class AnophelesH12Analysis(
 
         with self._spinner(desc="Compute H12"):
             # Compute H12.
-            h12 = allel.moving_statistic(ht, statistic=garud_h12, size=window_size)
+            h12 = allel.moving_statistic(ht, statistic=_garud_h12, size=window_size)
 
             # Compute window midpoints.
             pos = ds_haps["variant_position"].values
@@ -278,7 +278,7 @@ class AnophelesH12Analysis(
 
         return results
 
-    @check_types
+    @_check_types
     @doc(
         summary="Run h12 genome-wide selection scan.",
         returns=dict(
@@ -318,7 +318,7 @@ class AnophelesH12Analysis(
             # N.B., do not be tempted to convert this sample query into integer
             # indices using _prep_sample_selection_params, because the indices
             # are different in the haplotype data.
-            sample_query=sample_query,
+            sample_query=self._prep_sample_query_param(sample_query=sample_query),
             sample_query_options=sample_query_options,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
@@ -339,7 +339,7 @@ class AnophelesH12Analysis(
 
         return x, h12, contigs
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot h12 GWSS data.",
     )
@@ -438,11 +438,9 @@ class AnophelesH12Analysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot h12 GWSS data.",
     )
@@ -525,11 +523,9 @@ class AnophelesH12Analysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot h12 GWSS data track with multiple traces overlaid.",
     )
@@ -558,6 +554,8 @@ class AnophelesH12Analysis(
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.optional_figure:
         cohort_queries = self._setup_cohort_queries(
             cohorts=cohorts,
@@ -585,8 +583,11 @@ class AnophelesH12Analysis(
                 min_cohort_size=min_cohort_size,
                 max_cohort_size=max_cohort_size,
                 sample_query=cohort_query,
+                sample_query_options=sample_query_options,
                 sample_sets=sample_sets,
                 random_seed=random_seed,
+                chunks=chunks,
+                inline_array=inline_array,
             )
 
         # Determine X axis range.
@@ -625,7 +626,7 @@ class AnophelesH12Analysis(
         )
 
         # Plot H12.
-        for i, (cohort_label, (x, h12, contig)) in enumerate(res.items()):
+        for i, (cohort_label, (x, h12, contig_idx)) in enumerate(res.items()):
             fig.scatter(
                 x=x,
                 y=h12,
@@ -644,11 +645,9 @@ class AnophelesH12Analysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot h12 GWSS data with multiple traces overlaid.",
     )
@@ -679,6 +678,8 @@ class AnophelesH12Analysis(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         gene_labels: Optional[gplt_params.gene_labels] = None,
         gene_labelset: Optional[gplt_params.gene_labelset] = None,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.optional_figure:
         # Plot GWSS track.
         fig1 = self.plot_h12_gwss_multi_overlay_track(
@@ -700,6 +701,8 @@ class AnophelesH12Analysis(
             height=track_height,
             show=False,
             output_backend=output_backend,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         fig1.xaxis.visible = False
@@ -731,11 +734,9 @@ class AnophelesH12Analysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot h12 GWSS data with multiple tracks.",
     )
@@ -764,6 +765,8 @@ class AnophelesH12Analysis(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         gene_labels: Optional[gplt_params.gene_labels] = None,
         gene_labelset: Optional[gplt_params.gene_labelset] = None,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.optional_figure:
         cohort_queries = self._setup_cohort_queries(
             cohorts=cohorts,
@@ -789,6 +792,7 @@ class AnophelesH12Analysis(
                 window_size=window_size[cohort_label],
                 sample_sets=sample_sets,
                 sample_query=cohort_query,
+                sample_query_options=sample_query_options,
                 cohort_size=cohort_size,
                 min_cohort_size=min_cohort_size,
                 max_cohort_size=max_cohort_size,
@@ -799,6 +803,8 @@ class AnophelesH12Analysis(
                 height=track_height,
                 show=False,
                 output_backend=output_backend,
+                chunks=chunks,
+                inline_array=inline_array,
             )
             if i > 0:
                 track = self.plot_h12_gwss_track(x_range=figs[0].x_range, **params)
@@ -834,19 +840,20 @@ class AnophelesH12Analysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
 
-def garud_h12(ht):
+def _garud_h12(ht):
     """Compute Garud's H12."""
 
     # Compute haplotype frequencies.
-    frq_counter, _, _ = haplotype_frequencies(ht)
+    frq_counter, _, _ = _haplotype_frequencies(ht)
 
     # Convert to array of sorted frequencies.
     f = np.sort(np.fromiter(frq_counter.values(), dtype=float))[::-1]
+
+    if f.size == 0:
+        return np.nan
 
     # Compute H12.
     h12 = np.sum(f[:2]) ** 2 + np.sum(f[2:] ** 2)

@@ -8,7 +8,7 @@ import bokeh.plotting
 
 from .snp_data import AnophelesSnpData
 from .hap_data import AnophelesHapData
-from ..util import hash_columns, check_types, CacheMiss
+from ..util import _hash_columns, _check_types, CacheMiss
 from . import base_params
 from . import g123_params, gplt_params
 
@@ -133,15 +133,22 @@ class AnophelesG123Analysis(
             chunks=chunks,
         )
 
+        if gt.shape[0] < window_size:
+            raise ValueError(
+                f"Not enough sites ({gt.shape[0]}) for window size "
+                f"({window_size}). Please reduce the window size or "
+                f"use different site selection criteria."
+            )
+
         with self._spinner("Compute G123"):
-            g123 = allel.moving_statistic(gt, statistic=garud_g123, size=window_size)
+            g123 = allel.moving_statistic(gt, statistic=_garud_g123, size=window_size)
             x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
 
         results = dict(x=x, g123=g123)
 
         return results
 
-    @check_types
+    @_check_types
     @doc(
         summary="Run a G123 genome-wide selection scan.",
         returns=dict(
@@ -153,7 +160,7 @@ class AnophelesG123Analysis(
         self,
         contig: base_params.contig,
         window_size: g123_params.window_size,
-        sites: g123_params.sites = base_params.DEFAULT,
+        sites: g123_params.sites = g123_params.DEFAULT_SITE_PARAMETER,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
@@ -170,11 +177,8 @@ class AnophelesG123Analysis(
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "g123_gwss_v1"
+        name = "g123_gwss_v2"
 
-        if sites == base_params.DEFAULT:
-            assert self._default_phasing_analysis is not None
-            sites = self._default_phasing_analysis
         valid_sites = self.phasing_analysis_ids + ("all", "segregating")
         if sites not in valid_sites:
             raise ValueError(
@@ -184,13 +188,13 @@ class AnophelesG123Analysis(
         params = dict(
             contig=contig,
             sites=sites,
-            site_mask=site_mask,
+            site_mask=self._prep_optional_site_mask_param(site_mask=site_mask),
             window_size=window_size,
             sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             # N.B., do not be tempted to convert this sample query into integer
             # indices using _prep_sample_selection_params, because the indices
             # are different in the haplotype data.
-            sample_query=sample_query,
+            sample_query=self._prep_sample_query_param(sample_query=sample_query),
             sample_query_options=sample_query_options,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
@@ -243,12 +247,18 @@ class AnophelesG123Analysis(
 
         calibration_runs: Dict[str, np.ndarray] = dict()
         for window_size in self._progress(window_sizes, desc="Compute G123"):
-            g123 = allel.moving_statistic(gt, statistic=garud_g123, size=window_size)
+            if gt.shape[0] < window_size:
+                raise ValueError(
+                    f"Not enough sites ({gt.shape[0]}) for window size "
+                    f"({window_size}). Please reduce the window size or "
+                    f"use different site selection criteria."
+                )
+            g123 = allel.moving_statistic(gt, statistic=_garud_g123, size=window_size)
             calibration_runs[str(window_size)] = g123
 
         return calibration_runs
 
-    @check_types
+    @_check_types
     @doc(
         summary="Generate G123 GWSS calibration data for different window sizes.",
         returns="""
@@ -259,7 +269,7 @@ class AnophelesG123Analysis(
     def g123_calibration(
         self,
         contig: base_params.contig,
-        sites: g123_params.sites = base_params.DEFAULT,
+        sites: g123_params.sites = g123_params.DEFAULT_SITE_PARAMETER,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_query: Optional[base_params.sample_query] = None,
         sample_query_options: Optional[base_params.sample_query_options] = None,
@@ -279,6 +289,12 @@ class AnophelesG123Analysis(
         # invalidate any previously cached data.
         name = "g123_calibration_v1"
 
+        valid_sites = self.phasing_analysis_ids + ("all", "segregating")
+        if sites not in valid_sites:
+            raise ValueError(
+                f"Invalid value for `sites` parameter, must be one of {valid_sites}."
+            )
+
         params = dict(
             contig=contig,
             sites=sites,
@@ -288,7 +304,7 @@ class AnophelesG123Analysis(
             # N.B., do not be tempted to convert this sample query into integer
             # indices using _prep_sample_selection_params, because the indices
             # are different in the haplotype data.
-            sample_query=sample_query,
+            sample_query=self._prep_sample_query_param(sample_query=sample_query),
             sample_query_options=sample_query_options,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
@@ -306,7 +322,7 @@ class AnophelesG123Analysis(
 
         return calibration_runs
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot G123 GWSS data.",
     )
@@ -314,7 +330,7 @@ class AnophelesG123Analysis(
         self,
         contig: base_params.contig,
         window_size: g123_params.window_size,
-        sites: g123_params.sites = base_params.DEFAULT,
+        sites: g123_params.sites = g123_params.DEFAULT_SITE_PARAMETER,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
@@ -405,11 +421,9 @@ class AnophelesG123Analysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot G123 GWSS data.",
     )
@@ -417,7 +431,7 @@ class AnophelesG123Analysis(
         self,
         contig: base_params.contig,
         window_size: g123_params.window_size,
-        sites: g123_params.sites = base_params.DEFAULT,
+        sites: g123_params.sites = g123_params.DEFAULT_SITE_PARAMETER,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
@@ -490,11 +504,9 @@ class AnophelesG123Analysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot G123 GWSS calibration data for different window sizes.",
     )
@@ -591,12 +603,10 @@ class AnophelesG123Analysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
 
-def diplotype_frequencies(gt):
+def _diplotype_frequencies(gt):
     """Compute diplotype frequencies, returning a dictionary that maps
     diplotype hash values to frequencies."""
 
@@ -608,7 +618,7 @@ def diplotype_frequencies(gt):
     x = np.asarray(gt).view(np.int16).reshape((m, n))
 
     # Now call optimised hashing function.
-    hashes = hash_columns(x)
+    hashes = _hash_columns(x)
 
     # Now compute counts and frequencies of distinct haplotypes.
     counts = Counter(hashes)
@@ -617,14 +627,17 @@ def diplotype_frequencies(gt):
     return freqs
 
 
-def garud_g123(gt):
+def _garud_g123(gt):
     """Compute Garud's G123."""
 
     # compute diplotype frequencies
-    frq_counter = diplotype_frequencies(gt)
+    frq_counter = _diplotype_frequencies(gt)
 
     # convert to array of sorted frequencies
     f = np.sort(np.fromiter(frq_counter.values(), dtype=float))[::-1]
+
+    if f.size == 0:
+        return np.nan
 
     # compute G123
     g123 = np.sum(f[:3]) ** 2 + np.sum(f[3:] ** 2)
