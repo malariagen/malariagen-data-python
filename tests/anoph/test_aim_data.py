@@ -1,7 +1,7 @@
 import itertools
-import random
 
 import plotly.graph_objects as go
+import numpy as np
 import pytest
 import xarray as xr
 from numpy.testing import assert_array_equal
@@ -88,9 +88,9 @@ def test_aim_calls(aims, ag3_sim_api):
     all_releases = api.releases
     parametrize_sample_sets = [
         None,
-        random.choice(all_sample_sets),
-        random.sample(all_sample_sets, 2),
-        random.choice(all_releases),
+        str(np.random.choice(all_sample_sets)),
+        np.random.choice(all_sample_sets, size=2, replace=False).tolist(),
+        np.random.choice(all_releases),
     ]
 
     # Parametrize sample_query.
@@ -179,9 +179,9 @@ def test_plot_aim_heatmap(aims, ag3_sim_api):
     all_releases = api.releases
     parametrize_sample_sets = [
         None,
-        random.choice(all_sample_sets),
-        random.sample(all_sample_sets, 2),
-        random.choice(all_releases),
+        str(np.random.choice(all_sample_sets)),
+        np.random.choice(all_sample_sets, size=2, replace=False).tolist(),
+        np.random.choice(all_releases),
     ]
 
     # Parametrize sample_query.

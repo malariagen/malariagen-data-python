@@ -100,7 +100,11 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
             hap_dict = {k: 0 for k in f_all.keys()}
 
             n_samples = np.count_nonzero(loc_coh)
-            assert n_samples >= min_cohort_size
+            if n_samples < min_cohort_size:
+                raise ValueError(
+                    f"Not enough samples ({n_samples}) for minimum "
+                    f"cohort size ({min_cohort_size})"
+                )
             gt_coh = gt.compress(loc_coh, axis=1)
             gt_hap = gt_coh.to_haplotypes()
             f, _, _ = _haplotype_frequencies(gt_hap)
@@ -154,6 +158,7 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         taxon_by: frq_params.taxon_by = frq_params.taxon_by_default,
+        filter_unassigned: Optional[frq_params.filter_unassigned] = None,
     ) -> xr.Dataset:
         # Load sample metadata.
         df_samples = self.sample_metadata(
@@ -168,6 +173,7 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
             area_by=area_by,
             period_by=period_by,
             taxon_by=taxon_by,
+            filter_unassigned=filter_unassigned,
         )
 
         # Group samples to make cohorts.
@@ -222,7 +228,11 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
             hap_freq = {k: 0 for k in f_all.keys()}
             hap_count = {k: 0 for k in f_all.keys()}
             hap_nob = {k: 2 * n_samples for k in f_all.keys()}
-            assert n_samples >= min_cohort_size
+            if n_samples < min_cohort_size:
+                raise ValueError(
+                    f"Not enough samples ({n_samples}) for minimum "
+                    f"cohort size ({min_cohort_size})"
+                )
             sample_indices = group_samples_by_cohort.indices[cohort_key]
             gt_coh = gt.take(sample_indices, axis=1)
             gt_hap = gt_coh.to_haplotypes()
