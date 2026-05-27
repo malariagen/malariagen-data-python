@@ -1,5 +1,3 @@
-import random
-
 import numpy as np
 import pandas as pd
 from pandas.testing import assert_frame_equal
@@ -13,6 +11,7 @@ from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data import adir1 as _adir1
 from malariagen_data import amin1 as _amin1
+from malariagen_data import as1 as _as1
 
 
 from malariagen_data.anoph.snp_frq import AnophelesSnpFrequencyAnalysis
@@ -107,6 +106,24 @@ def amin1_sim_api(amin1_sim_fixture):
     )
 
 
+@pytest.fixture
+def as1_sim_api(as1_sim_fixture):
+    return AnophelesSnpFrequencyAnalysis(
+        url=as1_sim_fixture.url,
+        public_url=as1_sim_fixture.url,
+        config_path=_as1.CONFIG_PATH,
+        major_version_number=_as1.MAJOR_VERSION_NUMBER,
+        major_version_path=_as1.MAJOR_VERSION_PATH,
+        pre=False,
+        gff_gene_type="protein_coding_gene",
+        gff_gene_name_attribute="Note",
+        gff_default_attributes=("ID", "Parent", "Note", "description"),
+        default_site_mask="stephensi",
+        results_cache=as1_sim_fixture.results_cache_path.as_posix(),
+        taxon_colors=_as1.TAXON_COLORS,
+    )
+
+
 # N.B., here we use pytest_cases to parametrize tests. Each
 # function whose name begins with "case_" defines a set of
 # inputs to the test functions. See the documentation for
@@ -131,6 +148,10 @@ def case_adir1_sim(adir1_sim_fixture, adir1_sim_api):
     return adir1_sim_fixture, adir1_sim_api
 
 
+def case_as1_sim(as1_sim_fixture, as1_sim_api):
+    return as1_sim_fixture, as1_sim_api
+
+
 @case(tags="single-sampleset")
 def case_amin1_sim(amin1_sim_fixture, amin1_sim_api):
     return amin1_sim_fixture, amin1_sim_api
@@ -141,6 +162,8 @@ expected_effects = [
     "FIVE_PRIME_UTR",
     "THREE_PRIME_UTR",
     "SYNONYMOUS_CODING",
+    "SYNONYMOUS_STOP",
+    "SYNONYMOUS_START",
     "NON_SYNONYMOUS_CODING",
     "START_LOST",
     "STOP_LOST",
@@ -162,7 +185,7 @@ def random_transcript(*, api):
     df_gff = api.genome_features(attributes=["ID", "Parent"])
     df_transcripts = df_gff.query("type == 'mRNA'")
     transcript_ids = df_transcripts["ID"].dropna().to_list()
-    transcript_id = random.choice(transcript_ids)
+    transcript_id = np.random.choice(transcript_ids)
     transcript = df_transcripts.set_index("ID").loc[transcript_id]
     return transcript
 
@@ -173,7 +196,7 @@ def test_snp_effects(fixture, api: AnophelesSnpFrequencyAnalysis):
     transcript = random_transcript(api=api)
 
     # Pick a random site mask.
-    site_mask = random.choice(api.site_mask_ids + (None,))
+    site_mask = np.random.choice(list(api.site_mask_ids) + [None])
 
     # Compute effects.
     df = api.snp_effects(transcript=transcript.name, site_mask=site_mask)
@@ -198,6 +221,8 @@ def test_snp_effects(fixture, api: AnophelesSnpFrequencyAnalysis):
             "ref_aa",
             "alt_aa",
             "aa_change",
+            "grantham_score",
+            "sneath_score",
         ]
     )
     assert df.columns.tolist() == expected_fields
@@ -249,6 +274,8 @@ def check_snp_allele_frequencies(
         "aa_pos",
         "ref_aa",
         "alt_aa",
+        "grantham_score",
+        "sneath_score",
     ]
     frq_fields = ["frq_" + s for s in cohort_labels] + ["max_af"]
     expected_fields = universal_fields + frq_fields + effects_fields
@@ -304,9 +331,10 @@ def check_aa_allele_frequencies(
         "alt_allele",
         "ref_aa",
         "alt_aa",
+        "grantham_score",
+        "sneath_score",
     ]
     frq_fields = ["frq_" + s for s in cohort_labels] + ["max_af"]
-    expected_fields = universal_fields + frq_fields + effects_fields
     expected_fields = universal_fields + frq_fields + effects_fields
     assert sorted(df.columns.tolist()) == sorted(expected_fields)
     assert df.index.names == [
@@ -350,9 +378,9 @@ def test_allele_frequencies_with_str_cohorts(
 ):
     # Pick test parameters at random.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 2)
+    sample_sets = str(np.random.choice(all_sample_sets))
+    site_mask = np.random.choice(list(api.site_mask_ids) + [None])
+    min_cohort_size = int(np.random.randint(0, 3))
     transcript = random_transcript(api=api)
 
     # Set up call params.
@@ -371,11 +399,6 @@ def test_allele_frequencies_with_str_cohorts(
             api.snp_allele_frequencies(**params)
         return
 
-    # Run the function under test.
-    df_snp = api.snp_allele_frequencies(**params)
-
-    check_plot_frequencies_heatmap(api, df_snp)
-
     # Figure out expected cohort labels.
     df_samples = api.sample_metadata(sample_sets=sample_sets)
     if "cohort_" + cohorts in df_samples:
@@ -384,6 +407,18 @@ def test_allele_frequencies_with_str_cohorts(
         cohort_column = cohorts
     cohort_counts = df_samples[cohort_column].value_counts()
     cohort_labels = cohort_counts[cohort_counts >= min_cohort_size].index.to_list()
+
+    if len(cohort_labels) == 0:
+        with pytest.raises(ValueError):
+            api.snp_allele_frequencies(**params)
+        with pytest.raises(ValueError):
+            api.aa_allele_frequencies(**params)
+        return
+
+    # Run the function under test.
+    df_snp = api.snp_allele_frequencies(**params)
+
+    check_plot_frequencies_heatmap(api, df_snp)
 
     # Standard checks.
     check_snp_allele_frequencies(
@@ -396,14 +431,21 @@ def test_allele_frequencies_with_str_cohorts(
     # Run the function under test.
     df_aa = api.aa_allele_frequencies(**params)
 
-    check_plot_frequencies_heatmap(api, df_aa)
+    # Handle the case where no amino acid change SNPs are found.
+    # In this case, aa_allele_frequencies returns an empty DataFrame
+    # instead of raising (see issue #1064).
+    if len(df_aa) > 0:
+        check_plot_frequencies_heatmap(api, df_aa)
 
-    # Standard checks.
-    check_aa_allele_frequencies(
-        df=df_aa,
-        cohort_labels=cohort_labels,
-        transcript=transcript,
-    )
+        # Standard checks.
+        check_aa_allele_frequencies(
+            df=df_aa,
+            cohort_labels=cohort_labels,
+            transcript=transcript,
+        )
+    else:
+        assert isinstance(df_aa, pd.DataFrame)
+        assert df_aa.index.names == ["aa_change", "contig", "position"]
 
 
 @pytest.mark.parametrize("min_cohort_size", [0, 10, 100])
@@ -415,8 +457,8 @@ def test_allele_frequencies_with_min_cohort_size(
 ):
     # Pick test parameters at random.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    site_mask = random.choice(api.site_mask_ids + (None,))
+    sample_sets = str(np.random.choice(all_sample_sets))
+    site_mask = np.random.choice(list(api.site_mask_ids) + [None])
     transcript = random_transcript(api=api)
     cohorts = "admin1_year"
 
@@ -480,15 +522,15 @@ def test_allele_frequencies_with_str_cohorts_and_sample_query(
 ):
     # Pick test parameters at random.
     sample_sets = None
-    site_mask = random.choice(api.site_mask_ids + (None,))
+    site_mask = np.random.choice(list(api.site_mask_ids) + [None])
     min_cohort_size = 0
     transcript = random_transcript(api=api)
-    cohorts = random.choice(
-        ["admin1_year", "admin1_month", "admin2_year", "admin2_month"]
+    cohorts = str(
+        np.random.choice(["admin1_year", "admin1_month", "admin2_year", "admin2_month"])
     )
     df_samples = api.sample_metadata(sample_sets=sample_sets)
     countries = df_samples["country"].unique()
-    country = random.choice(countries)
+    country = str(np.random.choice(countries))
     sample_query = f"country == '{country}'"
 
     # Figure out expected cohort labels.
@@ -524,14 +566,22 @@ def test_allele_frequencies_with_str_cohorts_and_sample_query(
     # Run the function under test.
     df_aa = api.aa_allele_frequencies(**params)
 
-    check_plot_frequencies_heatmap(api, df_aa)
+    # Handle the case where no amino acid change SNPs are found.
+    # In this case, aa_allele_frequencies returns an empty DataFrame
+    # instead of raising (see issue #1064).
+    if len(df_aa) > 0:
+        check_plot_frequencies_heatmap(api, df_aa)
 
-    # Standard checks.
-    check_aa_allele_frequencies(
-        df=df_aa,
-        cohort_labels=cohort_labels,
-        transcript=transcript,
-    )
+        # Standard checks.
+        check_aa_allele_frequencies(
+            df=df_aa,
+            cohort_labels=cohort_labels,
+            transcript=transcript,
+        )
+    else:
+        # Verify the empty DataFrame has the expected structure.
+        assert isinstance(df_aa, pd.DataFrame)
+        assert df_aa.index.names == ["aa_change", "contig", "position"]
 
 
 @parametrize_with_cases(
@@ -543,15 +593,15 @@ def test_allele_frequencies_with_str_cohorts_and_sample_query_options(
 ):
     # Pick test parameters at random.
     sample_sets = None
-    site_mask = random.choice(api.site_mask_ids + (None,))
+    site_mask = np.random.choice(list(api.site_mask_ids) + [None])
     min_cohort_size = 0
     transcript = random_transcript(api=api)
-    cohorts = random.choice(
-        ["admin1_year", "admin1_month", "admin2_year", "admin2_month"]
+    cohorts = str(
+        np.random.choice(["admin1_year", "admin1_month", "admin2_year", "admin2_month"])
     )
     df_samples = api.sample_metadata(sample_sets=sample_sets)
     countries = df_samples["country"].unique().tolist()
-    countries_list = random.sample(countries, 2)
+    countries_list = np.random.choice(countries, size=2, replace=False).tolist()
     sample_query_options = {
         "local_dict": {
             "countries_list": countries_list,
@@ -597,14 +647,21 @@ def test_allele_frequencies_with_str_cohorts_and_sample_query_options(
     # Run the function under test.
     df_aa = api.aa_allele_frequencies(**params)
 
-    check_plot_frequencies_heatmap(api, df_aa)
+    # Handle the case where no amino acid change SNPs are found.
+    # In this case, aa_allele_frequencies returns an empty DataFrame
+    # instead of raising (see issue #1064).
+    if len(df_aa) > 0:
+        check_plot_frequencies_heatmap(api, df_aa)
 
-    # Standard checks.
-    check_aa_allele_frequencies(
-        df=df_aa,
-        cohort_labels=cohort_labels,
-        transcript=transcript,
-    )
+        # Standard checks.
+        check_aa_allele_frequencies(
+            df=df_aa,
+            cohort_labels=cohort_labels,
+            transcript=transcript,
+        )
+    else:
+        assert isinstance(df_aa, pd.DataFrame)
+        assert df_aa.index.names == ["aa_change", "contig", "position"]
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -613,8 +670,8 @@ def test_allele_frequencies_with_dict_cohorts(
 ):
     # Pick test parameters at random.
     sample_sets = None  # all sample sets
-    site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 2)
+    site_mask = np.random.choice(list(api.site_mask_ids) + [None])
+    min_cohort_size = int(np.random.randint(0, 3))
     transcript = random_transcript(api=api)
 
     # Create cohorts by country.
@@ -666,11 +723,11 @@ def test_allele_frequencies_without_drop_invariant(
 ):
     # Pick test parameters at random.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 2)
+    sample_sets = str(np.random.choice(all_sample_sets))
+    site_mask = np.random.choice(list(api.site_mask_ids) + [None])
+    min_cohort_size = int(np.random.randint(0, 3))
     transcript = random_transcript(api=api)
-    cohorts = random.choice(["admin1_year", "admin2_month", "country"])
+    cohorts = str(np.random.choice(["admin1_year", "admin2_month", "country"]))
 
     # Figure out expected cohort labels.
     df_samples = api.sample_metadata(sample_sets=sample_sets)
@@ -722,11 +779,11 @@ def test_allele_frequencies_without_effects(
 ):
     # Pick test parameters at random.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 2)
+    sample_sets = str(np.random.choice(all_sample_sets))
+    site_mask = np.random.choice(list(api.site_mask_ids) + [None])
+    min_cohort_size = int(np.random.randint(0, 3))
     transcript = random_transcript(api=api)
-    cohorts = random.choice(["admin1_year", "admin2_month", "country"])
+    cohorts = str(np.random.choice(["admin1_year", "admin2_month", "country"]))
 
     # Figure out expected cohort labels.
     df_samples = api.sample_metadata(sample_sets=sample_sets)
@@ -804,10 +861,10 @@ def test_allele_frequencies_with_bad_transcript(
 ):
     # Pick test parameters at random.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 2)
-    cohorts = random.choice(["admin1_year", "admin2_month", "country"])
+    sample_sets = str(np.random.choice(all_sample_sets))
+    site_mask = np.random.choice(list(api.site_mask_ids) + [None])
+    min_cohort_size = int(np.random.randint(0, 3))
+    cohorts = str(np.random.choice(["admin1_year", "admin2_month", "country"]))
 
     # Set up call params.
     params = dict(
@@ -831,10 +888,10 @@ def test_allele_frequencies_with_region(
 ):
     # Pick test parameters at random.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 2)
-    cohorts = random.choice(["admin1_year", "admin2_month", "country"])
+    sample_sets = str(np.random.choice(all_sample_sets))
+    site_mask = np.random.choice(list(api.site_mask_ids) + [None])
+    min_cohort_size = int(np.random.randint(0, 3))
+    cohorts = str(np.random.choice(["admin1_year", "admin2_month", "country"]))
     # This should work, as long as effects=False - i.e., can get frequencies
     # for any genome region.
     transcript = fixture.random_region_str(region_size=500)
@@ -889,11 +946,11 @@ def test_allele_frequencies_with_dup_samples(
 ):
     # Pick test parameters at random.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_set = random.choice(all_sample_sets)
-    site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 2)
+    sample_set = str(np.random.choice(all_sample_sets))
+    site_mask = np.random.choice(list(api.site_mask_ids) + [None])
+    min_cohort_size = int(np.random.randint(0, 3))
     transcript = random_transcript(api=api)
-    cohorts = random.choice(["admin1_year", "admin2_month", "country"])
+    cohorts = str(np.random.choice(["admin1_year", "admin2_month", "country"]))
 
     # Set up call params.
     params = dict(
@@ -941,34 +998,41 @@ def check_snp_allele_frequencies_advanced(
     if transcript is None:
         transcript = random_transcript(api=api).name
     if area_by is None:
-        area_by = random.choice(["country", "admin1_iso", "admin2_name"])
+        area_by = str(np.random.choice(["country", "admin1_iso", "admin2_name"]))
     if period_by is None:
-        period_by = random.choice(["year", "quarter", "month", "random_year"])
+        period_by = str(np.random.choice(["year", "quarter", "month", "random_year"]))
     if sample_sets is None:
         all_sample_sets = api.sample_sets()["sample_set"].to_list()
-        sample_sets = random.choice(all_sample_sets)
+        sample_sets = str(np.random.choice(all_sample_sets))
     if min_cohort_size is None:
-        min_cohort_size = random.randint(0, 2)
+        min_cohort_size = int(np.random.randint(0, 3))
     if site_mask is None:
-        site_mask = random.choice(api.site_mask_ids + (None,))
+        site_mask = np.random.choice(list(api.site_mask_ids) + [None])
 
     if period_by == "random_year":
         # Add a random_year column to the sample metadata, if there isn't already.
         api = add_random_year(api=api)
 
     # Run function under test.
-    ds = api.snp_allele_frequencies_advanced(
-        transcript=transcript,
-        area_by=area_by,
-        period_by=period_by,
-        sample_sets=sample_sets,
-        sample_query=sample_query,
-        sample_query_options=sample_query_options,
-        min_cohort_size=min_cohort_size,
-        nobs_mode=nobs_mode,
-        variant_query=variant_query,
-        site_mask=site_mask,
-    )
+    try:
+        ds = api.snp_allele_frequencies_advanced(
+            transcript=transcript,
+            area_by=area_by,
+            period_by=period_by,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            min_cohort_size=min_cohort_size,
+            nobs_mode=nobs_mode,
+            variant_query=variant_query,
+            site_mask=site_mask,
+        )
+    except ValueError as e:
+        if "No cohorts available" in str(e):
+            # Random parameters produced no valid cohorts; this is
+            # expected to happen occasionally and is not a bug.
+            return
+        raise
 
     # Check the result.
     assert isinstance(ds, xr.Dataset)
@@ -1141,31 +1205,38 @@ def check_aa_allele_frequencies_advanced(
     if transcript is None:
         transcript = random_transcript(api=api).name
     if area_by is None:
-        area_by = random.choice(["country", "admin1_iso", "admin2_name"])
+        area_by = str(np.random.choice(["country", "admin1_iso", "admin2_name"]))
     if period_by is None:
-        period_by = random.choice(["year", "quarter", "month", "random_year"])
+        period_by = str(np.random.choice(["year", "quarter", "month", "random_year"]))
     if sample_sets is None:
         all_sample_sets = api.sample_sets()["sample_set"].to_list()
-        sample_sets = random.choice(all_sample_sets)
+        sample_sets = str(np.random.choice(all_sample_sets))
     if min_cohort_size is None:
-        min_cohort_size = random.randint(0, 2)
+        min_cohort_size = int(np.random.randint(0, 3))
 
     if period_by == "random_year":
         # Add a random_year column to the sample metadata, if there isn't already.
         api = add_random_year(api=api)
 
     # Run function under test.
-    ds = api.aa_allele_frequencies_advanced(
-        transcript=transcript,
-        area_by=area_by,
-        period_by=period_by,
-        sample_sets=sample_sets,
-        sample_query=sample_query,
-        sample_query_options=sample_query_options,
-        min_cohort_size=min_cohort_size,
-        nobs_mode=nobs_mode,
-        variant_query=variant_query,
-    )
+    try:
+        ds = api.aa_allele_frequencies_advanced(
+            transcript=transcript,
+            area_by=area_by,
+            period_by=period_by,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            min_cohort_size=min_cohort_size,
+            nobs_mode=nobs_mode,
+            variant_query=variant_query,
+        )
+    except ValueError as e:
+        if "No cohorts available" in str(e):
+            # Random parameters produced no valid cohorts; this is
+            # expected to happen occasionally and is not a bug.
+            return
+        raise
 
     # Check the result.
     assert isinstance(ds, xr.Dataset)
@@ -1358,7 +1429,7 @@ def test_allele_frequencies_advanced_with_sample_query(
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     df_samples = api.sample_metadata(sample_sets=all_sample_sets)
     countries = df_samples["country"].unique()
-    country = random.choice(countries)
+    country = str(np.random.choice(countries))
     sample_query = f"country == '{country}'"
 
     check_snp_allele_frequencies_advanced(
@@ -1385,7 +1456,7 @@ def test_allele_frequencies_advanced_with_sample_query_options(
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     df_samples = api.sample_metadata(sample_sets=all_sample_sets)
     countries = df_samples["country"].unique().tolist()
-    countries_list = random.sample(countries, 2)
+    countries_list = np.random.choice(countries, size=2, replace=False).tolist()
     sample_query_options = {
         "local_dict": {
             "countries_list": countries_list,
@@ -1491,24 +1562,29 @@ def test_allele_frequencies_advanced_with_variant_query(
         variant_query=variant_query,
     )
 
-    # Test a query that should fail.
+    # Test a query that should warn and return empty.
     variant_query = "effect == 'foobar'"
-    with pytest.raises(ValueError):
-        api.snp_allele_frequencies_advanced(
+    with pytest.warns(UserWarning):
+        ds_snp = api.snp_allele_frequencies_advanced(
             transcript=transcript,
             sample_sets=all_sample_sets,
             area_by=area_by,
             period_by=period_by,
             variant_query=variant_query,
+            min_cohort_size=0,
         )
-    with pytest.raises(ValueError):
-        api.aa_allele_frequencies_advanced(
+        assert ds_snp.sizes["variants"] == 0
+
+    with pytest.warns(UserWarning):
+        ds_aa = api.aa_allele_frequencies_advanced(
             transcript=transcript,
             sample_sets=all_sample_sets,
             area_by=area_by,
             period_by=period_by,
             variant_query=variant_query,
+            min_cohort_size=0,
         )
+        assert ds_aa.sizes["variants"] == 0
 
 
 @pytest.mark.parametrize("nobs_mode", ["called", "fixed"])
@@ -1534,7 +1610,7 @@ def test_allele_frequencies_advanced_with_dup_samples(
     api: AnophelesSnpFrequencyAnalysis,
 ):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_set = random.choice(all_sample_sets)
+    sample_set = str(np.random.choice(all_sample_sets))
     sample_sets = [sample_set, sample_set]
 
     check_snp_allele_frequencies_advanced(

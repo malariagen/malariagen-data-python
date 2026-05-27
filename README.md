@@ -51,6 +51,11 @@ To get set up for development, see the video guides below:
 
 For detailed setup instructions and contributor workflow, please see [CONTRIBUTING.md](CONTRIBUTING.md).
 
+For detailed setup instructions, see:
+- [Linux setup guide](LINUX_SETUP.md)
+- [macOS setup guide](MACOS_SETUP.md)
+- [Windows setup guide](WINDOWS_SETUP.md)
+- [Google Colab (TPU) setup guide](docs/source/colab_tpu_runtime.rst)
 Detailed instructions can be found in the [Contributors guide](https://github.com/malariagen/malariagen-data-python/blob/master/CONTRIBUTING.md).
 
 ## AI use policy and guidelines
