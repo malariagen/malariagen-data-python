@@ -40,10 +40,24 @@ class AnophelesAimData(
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-        # Store possible values for the `aims` parameter.
-        # TODO Consider moving this to data resource configuration.
-        self._aim_ids = aim_ids
-        self._aim_palettes = aim_palettes
+        # Read AIM parameters from the JSON config, falling back to
+        # constructor args for backward compatibility.
+        config = self.config
+        _aim_ids = config.get("AIM_IDS", None)
+        if _aim_ids is not None:
+            self._aim_ids: Optional[aim_params.aim_ids] = tuple(_aim_ids)
+        else:
+            self._aim_ids = aim_ids
+
+        _aim_palettes = config.get("AIM_PALETTES", None)
+        if _aim_palettes is not None:
+            # Convert lists to tuples for each palette entry.
+            self._aim_palettes: Optional[aim_params.aim_palettes] = {
+                k: tuple(v)
+                for k, v in _aim_palettes.items()  # type: ignore
+            }
+        else:
+            self._aim_palettes = aim_palettes
 
         # Set up caches.
         self._cache_aim_variants: Dict[str, xr.Dataset] = dict()
@@ -240,14 +254,24 @@ class AnophelesAimData(
             gn = np.take(gn, ix_sorted, axis=1)
             samples = np.take(samples, ix_sorted, axis=0)
 
+        species = aims.split("_vs_")
+
         # Set up colors for genotypes
         if palette is None:
-            assert self._aim_palettes is not None
+            if self._aim_palettes is None:
+                raise RuntimeError(
+                    "AIM palettes are not available for this data resource. "
+                    "Please provide the 'palette' parameter explicitly (4 colors)."
+                )
             palette = self._aim_palettes[aims]
-            assert len(palette) == 4
+            if len(palette) != 4:
+                raise RuntimeError(
+                    "Expected AIM palette to have 4 colors "
+                    f"(missing, {species[0]}/{species[0]}, {species[0]}/{species[1]}, {species[1]}/{species[1]}), "
+                    f"got {len(palette)}"
+                )
             # Expect 4 colors, in the order:
             # missing, hom taxon 1, het, hom taxon 2
-        species = aims.split("_vs_")
 
         # Create subplots.
         fig = go_make_subplots(
@@ -341,6 +365,4 @@ class AnophelesAimData(
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
+        return fig

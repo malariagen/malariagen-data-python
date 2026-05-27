@@ -266,9 +266,7 @@ class AnophelesH1XAnalysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
     @_check_types
     @doc(
@@ -358,9 +356,7 @@ class AnophelesH1XAnalysis(
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+        return fig
 
 
 def _haplotype_joint_frequencies(ha, hb):
@@ -407,8 +403,17 @@ def _moving_h1x(ha, hb, size, start=0, stop=None, step=None):
         H1X values (sum of squares of joint haplotype frequencies).
     """
 
-    assert ha.ndim == hb.ndim == 2
-    assert ha.shape[0] == hb.shape[0]
+    if ha.ndim != 2 or hb.ndim != 2:
+        raise ValueError(
+            "Expected both haplotype arrays to be 2-dimensional "
+            "(n_variants, n_haplotypes), "
+            f"got ndim=({ha.ndim}, {hb.ndim})"
+        )
+    if ha.shape[0] != hb.shape[0]:
+        raise ValueError(
+            "Expected both haplotype arrays to have the same number of variants "
+            f"(axis 0), got ({ha.shape[0]}, {hb.shape[0]})"
+        )
 
     # Construct moving windows.
     windows = allel.index_windows(ha, size, start, stop, step)

@@ -26,7 +26,6 @@ import numba  # type: ignore
 import numpy as np
 import pandas as pd
 import plotly.express as px  # type: ignore
-import typeguard
 import xarray as xr
 import zarr  # type: ignore
 
@@ -302,16 +301,28 @@ def _dask_compress_dataset(ds, indexer, dim):
         indexer = ds[indexer].data
 
     # sanity checks
-    assert indexer.ndim == 1
-    assert indexer.dtype == bool
-    assert indexer.shape[0] == ds.sizes[dim]
+    if indexer.ndim != 1:
+        raise ValueError(
+            f"Expected indexer to be 1-dimensional, got {indexer.ndim} dimensions"
+        )
+    if indexer.dtype != bool:
+        raise ValueError(f"Expected indexer dtype to be bool, got {indexer.dtype}")
+    if indexer.shape[0] != ds.sizes[dim]:
+        raise ValueError(
+            f"Indexer length {indexer.shape[0]} does not match "
+            f"dataset dimension '{dim}' size {ds.sizes[dim]}"
+        )
 
     if isinstance(indexer, da.Array):
         # temporarily compute the indexer once, to avoid multiple reads from
         # the underlying data
         indexer_computed = indexer.compute()
     else:
-        assert isinstance(indexer, np.ndarray)
+        if not isinstance(indexer, np.ndarray):
+            raise TypeError(
+                f"Expected indexer to be a dask.array.Array or numpy.ndarray, "
+                f"got {type(indexer).__name__}"
+            )
         indexer_computed = indexer
 
     coords = dict()
@@ -357,7 +368,7 @@ def _dask_compress_dataarray(a, indexer, indexer_computed, dim):
 
 
 def _da_compress(
-    indexer: da.Array | np.ndarray,
+    indexer: Union[da.Array, np.ndarray],
     data: da.Array,
     axis: int,
     indexer_computed: Optional[np.ndarray] = None,
@@ -365,9 +376,17 @@ def _da_compress(
     """Wrapper for dask.array.compress() which computes chunk sizes faster."""
 
     # Sanity checks.
-    assert indexer.ndim == 1
-    assert indexer.dtype == bool
-    assert indexer.shape[0] == data.shape[axis]
+    if indexer.ndim != 1:
+        raise ValueError(
+            f"Expected indexer to be 1-dimensional, got {indexer.ndim} dimensions"
+        )
+    if indexer.dtype != bool:
+        raise ValueError(f"Expected indexer dtype to be bool, got {indexer.dtype}")
+    if indexer.shape[0] != data.shape[axis]:
+        raise ValueError(
+            f"Indexer length {indexer.shape[0]} does not match "
+            f"data axis {axis} size {data.shape[axis]}"
+        )
 
     # Useful variables.
     old_chunks = data.chunks
@@ -375,7 +394,11 @@ def _da_compress(
 
     # Load the indexer temporarily for chunk size computations.
     if indexer_computed is None:
-        assert isinstance(indexer, da.Array)
+        if not isinstance(indexer, da.Array):
+            raise TypeError(
+                f"Expected indexer to be a dask.array.Array, "
+                f"got {type(indexer).__name__}"
+            )
         indexer_computed = indexer.compute()
 
     # Ensure indexer and data are chunked in the same way.
@@ -430,6 +453,7 @@ def _init_filesystem(url, **kwargs):
     """Initialise a fsspec filesystem from a given base URL and parameters."""
 
     storage_options = None  # To prevent using before assignment (Pylint).
+    simplecache_options = kwargs.pop("simplecache", None)
 
     # Special case Google Cloud Storage, authenticate the user.
     if "gs://" in url or "gcs://" in url:
@@ -455,6 +479,12 @@ def _init_filesystem(url, **kwargs):
 
         kwargs.setdefault("token", credentials)
 
+        # Set retry and timeout defaults for GCS to handle transient errors
+        # on unreliable networks (e.g., field stations in endemic regions).
+        # gcsfs supports retry (number of retries) and timeout (seconds).
+        kwargs.setdefault("retry", 3)
+        kwargs.setdefault("timeout", 60)
+
         # Ensure options are passed through to gcsfs, even if URL is chained.
         if url.startswith("gs://") or url.startswith("gcs://"):
             storage_options = kwargs
@@ -477,6 +507,13 @@ def _init_filesystem(url, **kwargs):
         kwargs.setdefault("endpoint_url", "https://cog.sanger.ac.uk")
         kwargs.setdefault("config_kwargs", config)
 
+        # Set retry and timeout defaults for S3 to handle transient errors.
+        # s3fs supports retries (max retry attempts) and
+        # config_kwargs for connect/read timeouts.
+        kwargs.setdefault("retries", 3)
+        config.setdefault("connect_timeout", 60)
+        config.setdefault("read_timeout", 60)
+
         if url.startswith("s3://"):
             storage_options = kwargs
         else:
@@ -485,10 +522,35 @@ def _init_filesystem(url, **kwargs):
 
     else:
         # Some other kind of URL, pass through kwargs as-is.
+        # Set a default timeout for remote HTTP/HTTPS filesystems.
+        if url.startswith("http://") or url.startswith("https://"):
+            kwargs.setdefault("timeout", 60)
         storage_options = kwargs
+
+    if simplecache_options is not None:
+        storage_options["simplecache"] = simplecache_options
 
     # Process the URL using fsspec.
     fs, path = url_to_fs(url, **storage_options)
+
+    # Decode URL-encoded paths for local filesystems.
+    protocol = getattr(fs, "protocol", None)
+    if isinstance(protocol, str):
+        protocols = {protocol}
+    elif isinstance(protocol, (tuple, list)):
+        protocols = set(protocol)
+    else:
+        protocols = set()
+
+    is_local = (
+        bool(protocols.intersection({"file", "local"}))
+        or fs.__class__.__name__ == "LocalFileSystem"
+    )
+
+    if is_local:
+        from urllib.parse import unquote
+
+        path = unquote(path)
 
     # Path compatibility, fsspec/gcsfs behaviour varies between versions.
     while path.endswith("/"):
@@ -538,6 +600,9 @@ class Region:
             and (self.start == other.start)
             and (self.end == other.end)
         )
+
+    def __repr__(self):
+        return f"Region({self._contig!r}, {self._start!r}, {self._end!r})"
 
     def __str__(self):
         out = self._contig
@@ -595,7 +660,7 @@ def _prep_geneset_attributes_arg(attributes):
 def _handle_region_feature(resource, region):
     if hasattr(resource, "genome_features"):
         gene_annotation = resource.genome_features(attributes=["ID"])
-        results = gene_annotation.query(f"ID == '{region}'")
+        results = gene_annotation.loc[gene_annotation["ID"] == region]
         if not results.empty:
             # the region is a feature ID
             feature = results.squeeze()
@@ -642,7 +707,11 @@ def _parse_single_region(resource, region: single_region_param_type) -> Region:
             end=region.get("end"),
         )
 
-    assert isinstance(region, str)
+    if not isinstance(region, str):
+        raise TypeError(
+            f"Expected region to be a mapping or str, "
+            f"got {type(region).__name__}: {region!r}"
+        )
 
     # check if region is a whole contig
     if region in _valid_contigs(resource):
@@ -658,9 +727,10 @@ def _parse_single_region(resource, region: single_region_param_type) -> Region:
     if region_from_feature is not None:
         return region_from_feature
 
-    raise ValueError(
-        f"Region {region!r} is not a valid contig, region string or feature ID."
-    )
+    # If we get here, the provided region is not a valid contig, coordinate
+    # string, or feature ID. For compatibility with existing callers/tests,
+    # treat unknown single contig strings as "contig not found".
+    raise ValueError(f"Contig {region!r} not found.")
 
 
 def _parse_multi_region(
@@ -761,7 +831,10 @@ def _simple_xarray_concat_arrays(
             xr_arrays = [ds[k] for ds in datasets]
 
             # Check that all arrays have the same dimension as the same axis.
-            assert all([a.dims[axis] == dim for a in xr_arrays])
+            if not all(a.dims[axis] == dim for a in xr_arrays):
+                raise ValueError(
+                    f"Not all arrays have dimension '{dim}' at axis {axis}"
+                )
 
             # Access the inner arrays - these are either numpy or dask arrays.
             inner_arrays = [a.data for a in xr_arrays]
@@ -851,9 +924,7 @@ def _value_error(
     value,
     expectation,
 ):
-    message = (
-        f"Bad value for parameter {name}; expected {expectation}, " f"found {value!r}"
-    )
+    message = f"Bad value for parameter {name}; expected {expectation}, found {value!r}"
     raise ValueError(message)
 
 
@@ -864,14 +935,50 @@ def _hash_params(params):
     return h, s
 
 
-def _jitter(a, fraction):
-    """Jitter data in `a` using the fraction `f`."""
+def _jitter(a, fraction, random_state=np.random):
+    """Jitter data by adding uniform noise scaled by the data range.
+
+    Parameters
+    ----------
+    a : array-like
+        Input data to jitter. Can be a numpy array or pandas Series.
+    fraction : float
+        Controls the amplitude of the jitter relative to the data range.
+    random_state : numpy.random.Generator or module, optional
+        Random number generator to use. Accepts a ``numpy.random.Generator``
+        (from ``np.random.default_rng()``) or the ``numpy.random`` module.
+        Defaults to ``np.random`` (global RNG) for backward compatibility.
+
+    Returns
+    -------
+    array-like
+        Jittered copy of the input data with the same shape and type.
+
+    Notes
+    -----
+    Prefer passing a local ``np.random.default_rng(seed=...)`` to avoid
+    mutating global RNG state and to ensure reproducibility.
+
+    """
     r = a.max() - a.min()
-    return a + fraction * np.random.uniform(-r, r, a.shape)
+    return a + fraction * random_state.uniform(-r, r, a.shape)
 
 
 class CacheMiss(Exception):
-    pass
+    """Raised when a requested item is not present in the cache."""
+
+    def __init__(self, key=None):
+        self.key = key
+        if key is not None:
+            message = f"Cache miss for key: {key!r}"
+        else:
+            message = "Cache miss: requested item not found in cache."
+        super().__init__(message)
+
+    def __repr__(self):
+        if self.key is not None:
+            return f"CacheMiss({self.key!r})"
+        return "CacheMiss()"
 
 
 class LoggingHelper:
@@ -894,6 +1001,12 @@ class LoggingHelper:
         elif isinstance(out, str):
             handler = logging.FileHandler(out)
         self._handler = handler
+
+        # Remove any pre-existing handlers from the singleton logger to prevent
+        # accumulation (and FileHandler FD leaks) on repeated instantiation.
+        for existing_handler in logger.handlers[:]:
+            logger.removeHandler(existing_handler)
+            existing_handler.close()
 
         # configure handler
         if handler is not None:
@@ -925,6 +1038,7 @@ class LoggingHelper:
         self.flush()
 
     def set_level(self, level):
+        self._logger.setLevel(level)
         if self._handler is not None:
             self._handler.setLevel(level)
 
@@ -1128,43 +1242,57 @@ def _check_colab_location(gcp_region: Optional[str]):
 
 
 def _check_types(f):
-    """Simple decorator to provide runtime checking of parameter types.
+    """Decorator to provide runtime checking of parameter types.
 
-    N.B., the typeguard package does have a decorator function called
-    @typechecked which performs a similar purpose. However, the typeguard
-    decorator causes a memory leak and doesn't seem usable. Also, the
-    typeguard decorator performs runtime checking of all variables within
-    the function as well as the arguments and return values. We only want
-    checking of the arguments to help users provide correct inputs.
+    Uses Pydantic v2's validate_call() for parameter validation.
+    Validates input types in strict mode without coercing arguments.
 
     """
+    from pydantic import ConfigDict, ValidationError, validate_call
+
+    config = ConfigDict(strict=True, arbitrary_types_allowed=True)
+
+    try:
+        validated_f = validate_call(config=config, validate_return=False)(f)
+    except Exception as exc:
+        warnings.warn(
+            f"Could not apply validate_call to {f.__name__!r}: {exc}. "
+            "Type validation will be skipped for this function.",
+            stacklevel=2,
+        )
+        return f
 
     @wraps(f)
-    def check_types_wrapper(*args, **kwargs):
-        type_hints = get_type_hints(f)
-        call_args = getcallargs(f, *args, **kwargs)
-        for k, t in type_hints.items():
-            if k in call_args:
-                v = call_args[k]
-                try:
-                    typeguard.check_type(v, t)
-                except typeguard.TypeCheckError as e:
-                    expected_type = humanize_type(t)
-                    actual_type = humanize_type(type(v))
-                    message = fill(
-                        dedent(
-                            f"""
-                        Parameter {k!r} with value {v!r} in call to function {f.__name__!r} has incorrect type:
-                        found {actual_type}, expected {expected_type}. See below for further information.
-                    """
+    def wrapper(*args, **kwargs):
+        try:
+            return validated_f(*args, **kwargs)
+        except ValidationError as e:
+            type_hints = get_type_hints(f)
+            call_args = getcallargs(f, *args, **kwargs)
+            errors = e.errors()
+            if errors:
+                err = errors[0]
+                loc = err.get("loc", ())
+                if loc:
+                    k = str(loc[0])
+                    v = call_args.get(k)
+                    t = type_hints.get(k)
+                    if t is not None:
+                        expected_type = humanize_type(t)
+                        actual_type = humanize_type(type(v))
+                        message = fill(
+                            dedent(
+                                f"""\
+                            Parameter {k!r} with value {v!r} in call to function {f.__name__!r} has incorrect type:
+                            found {actual_type}, expected {expected_type}. See below for further information.
+                        """
+                            )
                         )
-                    )
-                    message += f"\n\n{e}"
-                    error = TypeError(message)
-                    raise error from None
-        return f(*args, **kwargs)
+                        message += f"\n\n{e}"
+                        raise TypeError(message) from None
+            raise TypeError(str(e)) from None
 
-    return check_types_wrapper
+    return wrapper
 
 
 @numba.njit
@@ -1467,11 +1595,27 @@ def _apply_allele_mapping(x, mapping, max_allele):
 
 
 def _dask_apply_allele_mapping(v, mapping, max_allele):
-    assert isinstance(v, da.Array)
-    assert isinstance(mapping, np.ndarray)
-    assert v.ndim == 2
-    assert mapping.ndim == 2
-    assert v.shape[0] == mapping.shape[0]
+    if not isinstance(v, da.Array):
+        raise TypeError(
+            f"Expected input array to be a dask.array.Array, got {type(v).__name__}"
+        )
+    if not isinstance(mapping, np.ndarray):
+        raise TypeError(
+            f"Expected mapping to be a numpy.ndarray, got {type(mapping).__name__}"
+        )
+    if v.ndim != 2:
+        raise ValueError(
+            f"Expected input array to be 2-dimensional, got {v.ndim} dimensions"
+        )
+    if mapping.ndim != 2:
+        raise ValueError(
+            f"Expected mapping to be 2-dimensional, got {mapping.ndim} dimensions"
+        )
+    if v.shape[0] != mapping.shape[0]:
+        raise ValueError(
+            "Expected input array and mapping to have the same first dimension, "
+            f"got {v.shape[0]} and {mapping.shape[0]}"
+        )
     v = v.rechunk((v.chunks[0], -1))
     mapping = da.from_array(mapping, chunks=(v.chunks[0], -1))
     out = da.map_blocks(
@@ -1488,31 +1632,71 @@ def _genotype_array_map_alleles(gt, mapping):
     # Transform genotype calls via an allele mapping.
     # N.B., scikit-allel does not handle empty blocks well, so we
     # include some extra logic to handle that better.
-    assert isinstance(gt, np.ndarray)
-    assert isinstance(mapping, np.ndarray)
-    assert gt.ndim == 3
-    assert mapping.ndim == 3
-    assert gt.shape[0] == mapping.shape[0]
-    assert gt.shape[1] > 0
-    assert gt.shape[2] == 2
+    if not isinstance(gt, np.ndarray):
+        raise TypeError(f"Expected gt to be a numpy.ndarray, got {type(gt).__name__}")
+    if not isinstance(mapping, np.ndarray):
+        raise TypeError(
+            f"Expected mapping to be a numpy.ndarray, got {type(mapping).__name__}"
+        )
+    if gt.ndim != 3:
+        raise ValueError(
+            f"Expected genotype calls array to be 3-dimensional, got {gt.ndim} dimensions"
+        )
+    if mapping.ndim != 3:
+        raise ValueError(
+            f"Expected mapping to be 3-dimensional, got {mapping.ndim} dimensions"
+        )
+    if gt.shape[0] != mapping.shape[0]:
+        raise ValueError(
+            "Expected genotype calls array and mapping to have the same first dimension, "
+            f"got {gt.shape[0]} and {mapping.shape[0]}"
+        )
+    if gt.shape[1] <= 0:
+        raise ValueError(f"Expected genotype calls axis 1 to be > 0, got {gt.shape[1]}")
+    if gt.shape[2] != 2:
+        raise ValueError(
+            f"Expected genotype calls axis 2 to be 2 (diploid), got {gt.shape[2]}"
+        )
     if gt.size > 0:
         # Block is not empty, can pass through to GenotypeArray.
-        assert gt.shape[0] > 0
+        if gt.shape[0] <= 0:
+            raise RuntimeError(
+                f"Internal error: non-empty genotype block but axis 0 is {gt.shape[0]}. "
+                "Please open a GitHub issue."
+            )
         m = mapping[:, 0, :]
         out = allel.GenotypeArray(gt).map_alleles(m).values
     else:
         # Block is empty so no alleles need to be mapped.
-        assert gt.shape[0] == 0
+        if gt.shape[0] != 0:
+            raise RuntimeError(
+                f"Internal error: empty genotype block but axis 0 is {gt.shape[0]}. "
+                "Please open a GitHub issue."
+            )
         out = gt
     return out
 
 
 def _dask_genotype_array_map_alleles(gt, mapping):
-    assert isinstance(gt, da.Array)
-    assert isinstance(mapping, np.ndarray)
-    assert gt.ndim == 3
-    assert mapping.ndim == 2
-    assert gt.shape[0] == mapping.shape[0]
+    if not isinstance(gt, da.Array):
+        raise TypeError(
+            f"Expected gt to be a dask.array.Array, got {type(gt).__name__}"
+        )
+    if not isinstance(mapping, np.ndarray):
+        raise TypeError(
+            f"Expected mapping to be a numpy.ndarray, got {type(mapping).__name__}"
+        )
+    if gt.ndim != 3:
+        raise ValueError(f"Expected gt to be 3-dimensional, got {gt.ndim} dimensions")
+    if mapping.ndim != 2:
+        raise ValueError(
+            f"Expected mapping to be 2-dimensional, got {mapping.ndim} dimensions"
+        )
+    if gt.shape[0] != mapping.shape[0]:
+        raise ValueError(
+            f"gt and mapping must have same first dimension, "
+            f"got gt.shape[0]={gt.shape[0]} and mapping.shape[0]={mapping.shape[0]}"
+        )
     mapping = da.from_array(mapping, chunks=(gt.chunks[0], -1))
     gt_out = da.map_blocks(
         _genotype_array_map_alleles,

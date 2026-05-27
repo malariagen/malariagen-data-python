@@ -86,3 +86,12 @@ evr: TypeAlias = Annotated[
 min_minor_ac_default: base_params.min_minor_ac = 2
 
 max_missing_an_default: base_params.max_missing_an = 0
+
+imputation_method: TypeAlias = Annotated[
+    str,
+    "Method to use for imputing missing genotype calls when max_missing_an > 0. "
+    "Options are 'most_common' (replace missing calls with the most common genotype "
+    "at each site), 'mean' (replace with the site mean), or 'zero' (replace with zero).",
+]
+
+imputation_method_default: imputation_method = "most_common"

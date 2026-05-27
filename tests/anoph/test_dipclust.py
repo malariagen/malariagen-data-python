@@ -1,9 +1,11 @@
-import random
+import numpy as np
 import pytest
 from pytest_cases import parametrize_with_cases
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
+from malariagen_data import as1 as _as1
+
 from malariagen_data.anoph.dipclust import AnophelesDipClustAnalysis
 
 
@@ -14,7 +16,7 @@ def random_transcripts_contig(*, api, contig, n):
     n = min(n, len(transcript_ids))
     if n == 0:
         pytest.skip(f"No mRNA transcripts found for contig '{contig}'")
-    transcripts = random.sample(transcript_ids, n)
+    transcripts = np.random.choice(transcript_ids, size=n, replace=False).tolist()
     return transcripts
 
 
@@ -63,6 +65,24 @@ def af1_sim_api(af1_sim_fixture):
     )
 
 
+@pytest.fixture
+def as1_sim_api(as1_sim_fixture):
+    return AnophelesDipClustAnalysis(
+        url=as1_sim_fixture.url,
+        public_url=as1_sim_fixture.url,
+        config_path=_as1.CONFIG_PATH,
+        major_version_number=_as1.MAJOR_VERSION_NUMBER,
+        major_version_path=_as1.MAJOR_VERSION_PATH,
+        pre=False,
+        gff_gene_type="protein_coding_gene",
+        gff_gene_name_attribute="Note",
+        gff_default_attributes=("ID", "Parent", "Note", "description"),
+        default_site_mask="stephensi",
+        results_cache=as1_sim_fixture.results_cache_path.as_posix(),
+        taxon_colors=_as1.TAXON_COLORS,
+    )
+
+
 # N.B., here we use pytest_cases to parametrize tests. Each
 # function whose name begins with "case_" defines a set of
 # inputs to the test functions. See the documentation for
@@ -80,6 +100,19 @@ def case_ag3_sim(ag3_sim_fixture, ag3_sim_api):
 
 
 def case_af1_sim(af1_sim_fixture, af1_sim_api):
+    return af1_sim_fixture, af1_sim_api
+
+
+def case_as1_sim(as1_sim_fixture, as1_sim_api):
+    return as1_sim_fixture, as1_sim_api
+
+
+# Cases for tests that require CNV data (as1 fixture has no CNV data).
+def case_cnv_ag3_sim(ag3_sim_fixture, ag3_sim_api):
+    return ag3_sim_fixture, ag3_sim_api
+
+
+def case_cnv_af1_sim(af1_sim_fixture, af1_sim_api):
     return af1_sim_fixture, af1_sim_api
 
 
@@ -102,8 +135,8 @@ def test_plot_diplotype_clustering(
     )
     dipclust_params = dict(
         region=fixture.random_region_str(region_size=5000),
-        sample_sets=[random.choice(all_sample_sets)],
-        linkage_method=random.choice(linkage_methods),
+        sample_sets=[str(np.random.choice(all_sample_sets))],
+        linkage_method=str(np.random.choice(linkage_methods)),
         distance_metric=distance_metric,
         sample_query=sample_query,
         show=False,
@@ -140,8 +173,8 @@ def test_plot_diplotype_clustering_advanced(
     )
     dipclust_params = dict(
         region=fixture.random_region_str(region_size=5000),
-        sample_sets=[random.choice(all_sample_sets)],
-        linkage_method=random.choice(linkage_methods),
+        sample_sets=[str(np.random.choice(all_sample_sets))],
+        linkage_method=str(np.random.choice(linkage_methods)),
         distance_metric=distance_metric,
         sample_query=sample_query,
         show=False,
@@ -181,8 +214,8 @@ def test_plot_diplotype_clustering_advanced_with_transcript(
     dipclust_params = dict(
         region=contig,
         snp_transcript=transcripts,
-        sample_sets=[random.choice(all_sample_sets)],
-        linkage_method=random.choice(linkage_methods),
+        sample_sets=[str(np.random.choice(all_sample_sets))],
+        linkage_method=str(np.random.choice(linkage_methods)),
         distance_metric="cityblock",
         sample_query=sample_query,
         show=False,
@@ -201,7 +234,7 @@ def test_plot_diplotype_clustering_advanced_with_transcript(
 
 
 @pytest.mark.parametrize("sample_query", [None, "sex_call == 'F'"])
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases("fixture,api", cases=".", prefix="case_cnv_")
 def test_plot_diplotype_clustering_advanced_with_cnv_region(
     fixture, api: AnophelesDipClustAnalysis, sample_query
 ):
@@ -220,8 +253,8 @@ def test_plot_diplotype_clustering_advanced_with_cnv_region(
     dipclust_params = dict(
         region=region,
         cnv_region=region,
-        sample_sets=[random.choice(all_sample_sets)],
-        linkage_method=random.choice(linkage_methods),
+        sample_sets=[str(np.random.choice(all_sample_sets))],
+        linkage_method=str(np.random.choice(linkage_methods)),
         distance_metric="cityblock",
         sample_query=sample_query,
         show=False,
