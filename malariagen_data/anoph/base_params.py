@@ -326,3 +326,12 @@ snp_query: TypeAlias = Annotated[
     to select SNPs to be included
     """,
 ]
+
+return_dataset: TypeAlias = Annotated[
+    bool,
+    """
+    If True, return an xarray Dataset containing computed results as
+    additional data variables. If False (default), return the legacy
+    format (numpy array or tuple) for backward compatibility.
+    """,
+]

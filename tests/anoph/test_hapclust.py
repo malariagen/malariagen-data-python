@@ -124,3 +124,37 @@ def test_plot_haplotype_sharing_chord(fixture, api: AnophelesHapClustAnalysis):
             show=False,
         )
         assert fig is not None
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_haplotype_pairwise_distances(fixture, api: AnophelesHapClustAnalysis):
+    import xarray as xr
+
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    region = fixture.random_region_str(region_size=5000)
+    sample_sets = [str(np.random.choice(all_sample_sets))]
+
+    # Test legacy tuple return.
+    dist, phased_samples, n_snps = api.haplotype_pairwise_distances(
+        region=region,
+        sample_sets=sample_sets,
+    )
+    assert isinstance(dist, np.ndarray)
+    assert isinstance(phased_samples, np.ndarray)
+    assert isinstance(n_snps, int)
+    assert dist.ndim == 1  # condensed form
+    # Each phased sample contributes 2 haplotypes.
+    n_haps = 2 * len(phased_samples)
+    assert dist.shape[0] == int((n_haps * (n_haps - 1)) / 2)
+
+    # Test dataset return mode.
+    ds = api.haplotype_pairwise_distances(
+        region=region,
+        sample_sets=sample_sets,
+        return_dataset=True,
+    )
+    assert isinstance(ds, xr.Dataset)
+    assert "dist" in ds
+    assert "sample_id" in ds.coords
+    assert ds["dist"].shape == (n_haps, n_haps)
+    assert ds.attrs["n_snps"] == n_snps

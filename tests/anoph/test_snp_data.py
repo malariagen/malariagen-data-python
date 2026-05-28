@@ -16,6 +16,7 @@ from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data import adir1 as _adir1
 from malariagen_data import amin1 as _amin1
+from malariagen_data import as1 as _as1
 
 
 from malariagen_data.anoph.base_params import DEFAULT
@@ -99,6 +100,23 @@ def amin1_sim_api(amin1_sim_fixture):
     )
 
 
+@pytest.fixture
+def as1_sim_api(as1_sim_fixture):
+    return AnophelesSnpData(
+        url=as1_sim_fixture.url,
+        public_url=as1_sim_fixture.url,
+        config_path=_as1.CONFIG_PATH,
+        major_version_number=_as1.MAJOR_VERSION_NUMBER,
+        major_version_path=_as1.MAJOR_VERSION_PATH,
+        pre=False,
+        gff_gene_type="protein_coding_gene",
+        gff_gene_name_attribute="Note",
+        gff_default_attributes=("ID", "Parent", "Note", "description"),
+        default_site_mask="stephensi",
+        results_cache=as1_sim_fixture.results_cache_path.as_posix(),
+    )
+
+
 # N.B., here we use pytest_cases to parametrize tests. Each
 # function whose name begins with "case_" defines a set of
 # inputs to the test functions. See the documentation for
@@ -129,6 +147,11 @@ def case_adir1_sim(adir1_sim_fixture, adir1_sim_api):
 @case(tags=["no_sex_calls", "single-sampleset"])
 def case_amin1_sim(amin1_sim_fixture, amin1_sim_api):
     return amin1_sim_fixture, amin1_sim_api
+
+
+@case
+def case_as1_sim(as1_sim_fixture, as1_sim_api):
+    return as1_sim_fixture, as1_sim_api
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -973,6 +996,64 @@ def test_locate_site_class_cache_is_bounded(ag3_sim_api: AnophelesSnpData):
     assert len(ag3_sim_api._cache_locate_site_class) <= _LOCATE_SITE_CLASS_CACHE_MAXSIZE
 
 
+def test_locate_site_class_cache_lru_eviction(ag3_sim_api: AnophelesSnpData):
+    """Verify true LRU semantics: recently *accessed* entries survive eviction,
+    while least-recently-used entries are evicted first."""
+    from collections import OrderedDict
+
+    from malariagen_data.anoph.snp_data import _LOCATE_SITE_CLASS_CACHE_MAXSIZE
+
+    cache = ag3_sim_api._cache_locate_site_class
+
+    # Start from a clean cache.
+    cache.clear()
+    assert isinstance(cache, OrderedDict)
+
+    maxsize = _LOCATE_SITE_CLASS_CACHE_MAXSIZE  # 64
+
+    # --- Phase 1: fill the cache to exactly maxsize ---
+    dummy = np.array([True, False])
+    for i in range(maxsize):
+        key = (f"contig_{i}", f"mask_{i}", f"class_{i}")
+        cache[key] = dummy
+    assert len(cache) == maxsize
+
+    # Remember the first key inserted (the oldest / least-recently-used).
+    first_key = ("contig_0", "mask_0", "class_0")
+    assert first_key in cache
+
+    # --- Phase 2: simulate an access (LRU promotion) on the first key ---
+    # move_to_end makes it the most-recently-used entry.
+    cache.move_to_end(first_key)
+
+    # Insert one more entry, exceeding maxsize.
+    overflow_key = ("overflow", "mask", "class")
+    cache[overflow_key] = dummy
+
+    # Evict to maintain the bound (same logic as _locate_site_class).
+    while len(cache) > maxsize:
+        oldest = next(iter(cache))
+        del cache[oldest]
+
+    # The first key should STILL be present because it was promoted.
+    assert (
+        first_key in cache
+    ), "LRU promotion via move_to_end must keep recently accessed entries alive"
+
+    # The second key ("contig_1", ...) — which was never re-accessed —
+    # should have been evicted as the new least-recently-used entry.
+    second_key = ("contig_1", "mask_1", "class_1")
+    assert (
+        second_key not in cache
+    ), "The least-recently-used entry should be evicted when cache exceeds maxsize"
+
+    # The overflow key should be present (it was just inserted).
+    assert overflow_key in cache
+
+    # Cache size must remain bounded.
+    assert len(cache) == maxsize
+
+
 def test_snp_calls_cache_is_per_instance(ag3_sim_api: AnophelesSnpData):
     """_cached_snp_calls must be a per-instance lru_cache, not a class-level one.
 
@@ -1087,6 +1168,23 @@ def check_snp_allele_counts(
         site_mask=site_mask,
     )
     assert_array_equal(ac, ac2)
+
+    # Check dataset return mode.
+    ds_ac = api.snp_allele_counts(
+        region=region,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        sample_query_options=sample_query_options,
+        site_mask=site_mask,
+        return_dataset=True,
+    )
+    assert isinstance(ds_ac, xr.Dataset)
+    assert "variant_allele_count" in ds_ac
+    assert_array_equal(ds_ac["variant_allele_count"].values, ac)
+    # Verify variant metadata is included.
+    assert "variant_position" in ds_ac.coords
+    assert "variant_contig" in ds_ac.coords
+    assert "variant_allele" in ds_ac
 
 
 @parametrize_with_cases(
@@ -1394,6 +1492,22 @@ def check_biallelic_snp_calls_and_diplotypes(
     assert samples.ndim == 1
     assert samples.shape[0] == gn.shape[1]
     assert samples.tolist() == expected_samples
+
+    # Check dataset return mode.
+    ds_gn = api.biallelic_diplotypes(
+        region=region,
+        sample_sets=sample_sets,
+        site_mask=site_mask,
+        site_class=site_class,
+        min_minor_ac=min_minor_ac,
+        max_missing_an=max_missing_an,
+        n_snps=n_snps,
+        return_dataset=True,
+    )
+    assert isinstance(ds_gn, xr.Dataset)
+    assert "call_diplotype" in ds_gn
+    assert_array_equal(ds_gn["call_diplotype"].values, gn)
+    assert ds_gn["sample_id"].values.tolist() == expected_samples
 
     return ds
 

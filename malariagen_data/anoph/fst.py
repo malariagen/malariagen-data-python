@@ -1,3 +1,4 @@
+import warnings
 from typing import Tuple, Optional
 
 import numpy as np
@@ -43,6 +44,8 @@ class AnophelesFstAnalysis(
         inline_array,
         chunks,
         clip_min,
+        min_snps_threshold,
+        window_adjustment_factor,
     ):
         # Compute allele counts.
         ac1 = self.snp_allele_counts(
@@ -81,6 +84,24 @@ class AnophelesFstAnalysis(
                 chunks=chunks,
             ).compute()
 
+        n_snps = len(pos)
+        if n_snps < min_snps_threshold:
+            raise ValueError(
+                f"Too few SNP sites ({n_snps}) available for Fst GWSS. "
+                f"At least {min_snps_threshold} sites are required. "
+                "Try a larger genomic region or different site selection criteria."
+            )
+        if window_size >= n_snps:
+            adjusted_window_size = max(1, n_snps // window_adjustment_factor)
+            warnings.warn(
+                f"window_size ({window_size}) is >= the number of SNP sites "
+                f"available ({n_snps}); automatically adjusting window_size to "
+                f"{adjusted_window_size} (= {n_snps} // {window_adjustment_factor}).",
+                UserWarning,
+                stacklevel=2,
+            )
+            window_size = adjusted_window_size
+
         with self._spinner(desc="Compute Fst"):
             with np.errstate(divide="ignore", invalid="ignore"):
                 fst = allel.moving_hudson_fst(ac1, ac2, size=window_size)
@@ -96,8 +117,23 @@ class AnophelesFstAnalysis(
     @doc(
         summary="""
             Run a Fst genome-wide scan to investigate genetic differentiation
-            between two cohorts.
+            between two cohorts. If window_size is >= the number of available
+            SNP sites, a UserWarning is issued and window_size is automatically
+            adjusted to number_of_snps // window_adjustment_factor. A ValueError
+            is raised if the number of available SNP sites is below
+            min_snps_threshold.
         """,
+        parameters=dict(
+            min_snps_threshold="""
+                Minimum number of SNP sites required. If fewer sites are
+                available a ValueError is raised.
+            """,
+            window_adjustment_factor="""
+                If window_size is >= the number of available SNP sites,
+                window_size is automatically set to
+                number_of_snps // window_adjustment_factor.
+            """,
+        ),
         returns=dict(
             x="An array containing the window centre point genomic positions",
             fst="An array with Fst statistic values for each window.",
@@ -123,6 +159,8 @@ class AnophelesFstAnalysis(
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
         clip_min: fst_params.clip_min = 0.0,
+        min_snps_threshold: fst_params.min_snps_threshold = 1000,
+        window_adjustment_factor: fst_params.window_adjustment_factor = 10,
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
@@ -147,7 +185,13 @@ class AnophelesFstAnalysis(
             results = self.results_cache_get(name=name, params=params)
 
         except CacheMiss:
-            results = self._fst_gwss(**params, inline_array=inline_array, chunks=chunks)
+            results = self._fst_gwss(
+                **params,
+                inline_array=inline_array,
+                chunks=chunks,
+                min_snps_threshold=min_snps_threshold,
+                window_adjustment_factor=window_adjustment_factor,
+            )
             self.results_cache_set(name=name, params=params, results=results)
 
         x = results["x"]

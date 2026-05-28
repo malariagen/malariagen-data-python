@@ -15,6 +15,7 @@ from ..util import (
     _check_types,
     _pandas_apply,
 )
+from .safe_query import validate_query
 from .snp_data import AnophelesSnpData
 from .frq_base import (
     _prep_samples_for_cohort_grouping,
@@ -686,6 +687,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
         # Apply variant query.
         if variant_query is not None:
+            validate_query(variant_query)
             loc_variants = np.asarray(df_variants.eval(variant_query))
 
             # Check for no SNPs remaining after applying variant query.
@@ -830,6 +832,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
         # Apply variant query if given.
         if variant_query is not None:
+            validate_query(variant_query)
             loc_variants = df_variants.eval(variant_query).values
 
             # Check for no SNPs remaining after applying variant query.
@@ -919,6 +922,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             df_snps = df_snps.loc[loc_sites]
 
         if snp_query is not None:
+            validate_query(snp_query)
             df_snps = df_snps.query(snp_query)
 
         return df_snps
