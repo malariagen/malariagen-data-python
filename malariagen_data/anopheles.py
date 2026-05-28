@@ -1064,28 +1064,67 @@ class AnophelesDataResource(
         else:
             raise TypeError(r"invalid cohort parameter: {cohort!r}")
 
-        debug("access allele counts")
-        ac = self.snp_allele_counts(
-            region=region,
-            site_mask=site_mask,
-            site_class=site_class,
-            sample_query=cohort_query,
-            sample_sets=sample_sets,
+        # Change this name if you ever change the behaviour of this function,
+        # to invalidate any previously cached data.
+        name = "cohort_diversity_stats_v1"
+
+        params = dict(
+            cohort=cohort,
             cohort_size=cohort_size,
+            region=region,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
+            site_mask=site_mask,
+            site_class=site_class,
+            sample_sets=sample_sets,
             random_seed=random_seed,
+            n_jack=n_jack,
+            confidence_level=confidence_level,
             chunks=chunks,
             inline_array=inline_array,
         )
 
-        debug("compute diversity stats")
-        stats = self._block_jackknife_cohort_diversity_stats(
-            cohort_label=cohort_label,
-            ac=ac,
-            n_jack=n_jack,
-            confidence_level=confidence_level,
-        )
+        try:
+            stats = self.results_cache_get(name=name, params=params)
+
+            # Reconstruct series from cached numeric results.
+            stats = pd.Series({key: values[0] for key, values in stats.items()})
+
+        except CacheMiss:
+            debug("access allele counts")
+            ac = self.snp_allele_counts(
+                region=region,
+                site_mask=site_mask,
+                site_class=site_class,
+                sample_query=cohort_query,
+                sample_sets=sample_sets,
+                cohort_size=cohort_size,
+                min_cohort_size=min_cohort_size,
+                max_cohort_size=max_cohort_size,
+                random_seed=random_seed,
+                chunks=chunks,
+                inline_array=inline_array,
+            )
+
+            debug("compute diversity stats")
+            stats = self._block_jackknife_cohort_diversity_stats(
+                cohort_label=cohort_label,
+                ac=ac,
+                n_jack=n_jack,
+                confidence_level=confidence_level,
+            )
+
+            self.results_cache_set(
+                name=name,
+                params=params,
+                results={
+                    key: np.asarray([value])
+                    for key, value in stats.items()
+                    if key != "cohort"
+                },
+            )
+
+        stats["cohort"] = cohort_label
 
         debug("compute some extra cohort variables")
         df_samples = self.sample_metadata(
