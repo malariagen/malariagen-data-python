@@ -58,20 +58,20 @@ class AnophelesInversionFrequencyAnalysis(
         if isinstance(inversions, str):
             inversions = [inversions]
 
+        # Access sample metadata.
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+        )
+
+        # Build cohort dictionary, maps cohort labels to boolean indexers.
+        coh_dict = _locate_cohorts(
+            cohorts=cohorts, data=df_samples, min_cohort_size=min_cohort_size
+        )
+
         df_kar_frqs_list = []
         for inversion in inversions:
-            # Access sample metadata.
-            df_samples = self.sample_metadata(
-                sample_sets=sample_sets,
-                sample_query=sample_query,
-                sample_query_options=sample_query_options,
-            )
-
-            # Build cohort dictionary, maps cohort labels to boolean indexers.
-            coh_dict = _locate_cohorts(
-                cohorts=cohorts, data=df_samples, min_cohort_size=min_cohort_size
-            )
-
             # Access karyotypes
             kar_df = self.karyotype(
                 inversion=inversion,
