@@ -1,0 +1,25 @@
+sample_id,partner_sample_id,contributor,country,location,year,month,latitude,longitude,sex_call
+VMF00320-0001,AfNA1,Martin Donnelly,Afghanistan,Nangarhar,2017,-1,34.172,70.622,F
+VMF00320-0003,AfNC4,Martin Donnelly,Afghanistan,Nangarhar,2017,-1,34.172,70.622,F
+VMF00320-0004,AfNC7,Martin Donnelly,Afghanistan,Nangarhar,2017,-1,34.172,70.622,F
+VMF00320-0005,AfND7,Martin Donnelly,Afghanistan,Nangarhar,2017,-1,34.172,70.622,F
+VMF00320-0006,AfND8,Martin Donnelly,Afghanistan,Nangarhar,2017,-1,34.172,70.622,F
+VMF00320-0007,AfNE1,Martin Donnelly,Afghanistan,Nangarhar,2017,-1,34.172,70.622,F
+VMF00320-0008,AfNE6,Martin Donnelly,Afghanistan,Nangarhar,2017,-1,34.172,70.622,F
+VMF00320-0009,AfNE7,Martin Donnelly,Afghanistan,Nangarhar,2017,-1,34.172,70.622,F
+VMF00320-0010,AfNF1,Martin Donnelly,Afghanistan,Nangarhar,2017,-1,34.172,70.622,F
+VMF00320-0012,AfNG1,Martin Donnelly,Afghanistan,Nangarhar,2017,-1,34.172,70.622,F
+VMF00320-0013,AfNG8,Martin Donnelly,Afghanistan,Nangarhar,2017,-1,34.172,70.622,F
+VMF00320-0014,AfNH7,Martin Donnelly,Afghanistan,Nangarhar,2017,-1,34.172,70.622,F
+VMF00320-0015,AfNH8,Martin Donnelly,Afghanistan,Nangarhar,2017,-1,34.172,70.622,F
+VMF00320-0016,AfkB9,Martin Donnelly,Afghanistan,Kunar,2017,-1,34.847,71.097,F
+VMF00320-0017,AfkC4,Martin Donnelly,Afghanistan,Kunar,2017,-1,34.847,71.097,F
+VMF00320-0018,AfkC5,Martin Donnelly,Afghanistan,Kunar,2017,-1,34.847,71.097,F
+VMF00320-0019,AfkE3,Martin Donnelly,Afghanistan,Kunar,2017,-1,34.847,71.097,F
+VMF00320-0020,AfkE4,Martin Donnelly,Afghanistan,Kunar,2017,-1,34.847,71.097,F
+VMF00320-0021,AfkE5,Martin Donnelly,Afghanistan,Kunar,2017,-1,34.847,71.097,F
+VMF00320-0022,AfkF3,Martin Donnelly,Afghanistan,Kunar,2017,-1,34.847,71.097,F
+VMF00320-0023,AfkF4,Martin Donnelly,Afghanistan,Kunar,2017,-1,34.847,71.097,F
+VMF00320-0024,AfkF7,Martin Donnelly,Afghanistan,Kunar,2017,-1,34.847,71.097,F
+VMF00320-0025,AfkH3,Martin Donnelly,Afghanistan,Kunar,2017,-1,34.847,71.097,F
+VMF00320-0026,AfkH4,Martin Donnelly,Afghanistan,Kunar,2017,-1,34.847,71.097,F
