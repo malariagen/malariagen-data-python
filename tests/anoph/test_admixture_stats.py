@@ -2,8 +2,8 @@ import pytest
 from pytest_cases import parametrize_with_cases
 import numpy as np
 
-#Currently tests will not run for funestus since there is only one taxa in the repository. Code regardinging funestus is commented out.
-#from malariagen_data import af1 as _af1
+# Currently tests will not run for funestus since there is only one taxa in the repository. Code regardinging funestus is commented out.
+# from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.admixture_stats import AnophelesAdmixtureAnalysis
 
@@ -35,8 +35,8 @@ def ag3_sim_api(ag3_sim_fixture):
     )
 
 
-#@pytest.fixture
-#def af1_sim_api(af1_sim_fixture):
+# @pytest.fixture
+# def af1_sim_api(af1_sim_fixture):
 #    return AnophelesAdmixtureAnalysis(
 #        url=af1_sim_fixture.url,
 #        public_url=af1_sim_fixture.url,
@@ -69,17 +69,18 @@ def case_ag3_sim(ag3_sim_fixture, ag3_sim_api):
     return ag3_sim_fixture, ag3_sim_api
 
 
-#def case_af1_sim(af1_sim_fixture, af1_sim_api):
+# def case_af1_sim(af1_sim_fixture, af1_sim_api):
 #    return af1_sim_fixture, af1_sim_api
+
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_patterson_f3(fixture, api: AnophelesAdmixtureAnalysis):
     # Set up test parameters.
     all_taxon = api.sample_metadata()["taxon"].dropna().unique().tolist()
     taxa = np.random.choice(all_taxon, size=2, replace=False).tolist()
-    
+
     params = dict(
-        recipient_query= f"taxon == {taxa[0]!r}",
+        recipient_query=f"taxon == {taxa[0]!r}",
         source1_query=f"taxon == {taxa[1]!r}",
         source2_query=f"taxon == {taxa[1]!r}",
         region=str(np.random.choice(api.contigs)),
@@ -106,9 +107,9 @@ def test_patterson_f4(fixture, api: AnophelesAdmixtureAnalysis):
     # Set up test parameters.
     all_taxon = api.sample_metadata()["taxon"].dropna().unique().tolist()
     taxa = np.random.choice(all_taxon, size=2, replace=False).tolist()
-    
+
     params = dict(
-        a_query= f"taxon == {taxa[0]!r}",
+        a_query=f"taxon == {taxa[0]!r}",
         b_query=f"taxon == {taxa[0]!r}",
         c_query=f"taxon == {taxa[1]!r}",
         d_query=f"taxon == {taxa[1]!r}",
