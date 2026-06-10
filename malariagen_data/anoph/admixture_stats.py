@@ -34,6 +34,7 @@ def _remap_observed(ac_full):
                 j_out += 1
     return mapping
 
+
 class AnophelesAdmixtureAnalysis(
     AnophelesSnpData,
     AnophelesSampleMetadata,
@@ -56,7 +57,6 @@ class AnophelesAdmixtureAnalysis(
             A NumPy float of the f3 value, standard error (SE) and Z-score.
         """,
     )
-
     def patterson_f3(
         self,
         recipient_query: base_params.sample_query,
@@ -171,7 +171,6 @@ class AnophelesAdmixtureAnalysis(
             A NumPy float of the f4 value, standard error (SE) and Z-score.
         """,
     )
-
     def patterson_f4(
         self,
         a_query: base_params.sample_query,
@@ -193,7 +192,6 @@ class AnophelesAdmixtureAnalysis(
             base_params.max_cohort_size
         ] = admixture_stats_params.max_cohort_size_default,
     ) -> Tuple[float, float, float]:
-
         # Compute allele counts for the four cohorts.
         aca = self.snp_allele_counts(
             sample_query=a_query,
