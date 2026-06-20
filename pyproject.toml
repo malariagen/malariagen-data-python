@@ -70,7 +70,7 @@ yaspin = "*"
 # provides efficient neighbour-joining tree implementation
 anjl = ">=1.2.0"
 # needed for plink output
-bed_reader = "*"
+bed_reader = ">=1.1.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "*"
