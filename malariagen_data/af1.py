@@ -25,6 +25,14 @@ XPEHH_GWSS_CACHE_NAME = "af1_xpehh_gwss_v1"
 IHS_GWSS_CACHE_NAME = "af1_ihs_gwss_v1"
 ROH_HMM_CACHE_NAME = "af1_roh_hmm_v1"
 
+# Mapping from contig names to PLINK chromosome codes.
+# In PLINK: 0 = unknown, 1-22 = autosomes, 23 = X.
+PLINK_CHROM_MAP = {
+    "2RL": 1,
+    "3RL": 2,
+    "X": 23,
+}
+
 
 class Af1(AnophelesDataResource):
     """Provides access to data from Af1.x releases.
@@ -135,6 +143,7 @@ class Af1(AnophelesDataResource):
             inversion_tag_path=None,
             unrestricted_use_only=unrestricted_use_only,
             surveillance_use_only=surveillance_use_only,
+            plink_chrom_map=PLINK_CHROM_MAP,
         )
 
     def __repr__(self):
