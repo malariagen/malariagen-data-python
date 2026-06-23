@@ -15,7 +15,35 @@ You'll need:
 - [pipx](https://pipx.pypa.io/) for installing Python tools
 - [git](https://git-scm.com/) for version control
 
-Both of these can be installed using your distribution's package manager or [Homebrew](https://brew.sh/) on Mac.
+Both of these can be installed using your distribution's package manager or [Homebrew](https://brew.sh/) on Mac. On Windows we recommend development on Linux using [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install). For example,
+
+**Ubuntu, Debian, and Mint:**
+
+```bash
+sudo apt install -y git pipx
+pipx ensurepath
+```
+
+**Fedora:**
+
+```bash
+sudo dnf install -y git pipx
+pipx ensurepath
+```
+
+**Arch Linux:**
+
+```bash
+sudo pacman -S git pipx
+pipx ensurepath
+```
+
+**Mac**
+
+```bash
+brew install git pipx
+pipx ensurepath
+```
 
 ### Initial setup
 
@@ -55,27 +83,20 @@ Both of these can be installed using your distribution's package manager or [Hom
    poetry install --with dev,test,docs
    ```
 
-   This installs the runtime dependencies along with the `dev`, `test`, and `docs`
-   [dependency groups](https://python-poetry.org/docs/managing-dependencies/#dependency-groups).
+   This installs the runtime dependencies along with the `dev`, `test`, and `docs` [dependency groups](https://python-poetry.org/docs/managing-dependencies/#dependency-groups).
    If you only need to run tests, `poetry install --with test` is sufficient.
 
-   **Recommended**: Use `poetry run` to run commands inside the virtual environment:
+   You can use `poetry run` to run commands inside the virtual environment:
 
    ```bash
    poetry run pytest
    poetry run python script.py
    ```
 
-   **Optional**: If you prefer an interactive shell session, install the shell plugin first:
+   Alternatively, if you prefer an interactive shell session, activate the environment using:
 
    ```bash
-   poetry self add poetry-plugin-shell
-   ```
-
-   Then activate the environment with:
-
-   ```bash
-   poetry shell
+   eval $(poetry env activate)
    ```
 
    After activation, commands run directly inside the virtual environment:
@@ -147,7 +168,7 @@ Both of these can be installed using your distribution's package manager or [Hom
    poetry run pytest -v tests/integration
    ```
 
-   Tests will run slowly the first time, as data required for testing will be read from GCS. Subsequent runs will be faster as data will be cached locally in the "gcs_cache" folder.
+   Tests will run slowly the first time, as data required for testing will be read from GCS. Subsequent runs will be faster as data will be cached locally in the `gcs_cache` folder.
 
 6. **Run typechecking**
 
