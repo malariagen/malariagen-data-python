@@ -107,6 +107,25 @@ def test_genome_sequence_region(fixture, api):
         assert seq.shape[0] == stop - start + 1
 
 
+@parametrize_with_cases("fixture,api", cases=".")
+def test_sex_contig_default(fixture, api):
+    assert api.sex_contig == "X"
+
+
+def test_sex_contig_configurable(ag3_sim_fixture):
+    api = AnophelesGenomeSequenceData(
+        url=ag3_sim_fixture.url,
+        public_url=ag3_sim_fixture.url,
+        config_path=_ag3.CONFIG_PATH,
+        major_version_number=_ag3.MAJOR_VERSION_NUMBER,
+        major_version_path=_ag3.MAJOR_VERSION_PATH,
+        pre=True,
+        virtual_contigs=_ag3.VIRTUAL_CONTIGS,
+        sex_contig="Z",
+    )
+    assert api.sex_contig == "Z"
+
+
 def test_virtual_contigs(ag3_sim_api):
     api = ag3_sim_api
     contigs = api.contigs
