@@ -745,6 +745,9 @@ class AnophelesCnvData(
         debug("remove data where HMM is not called")
         data = data.query("call_CN >= 0")
 
+        if len(data) == 0:
+            return None
+
         debug("set up y range")
         if y_max == "auto":
             y_max_float = data["call_CN"].max() + 2
