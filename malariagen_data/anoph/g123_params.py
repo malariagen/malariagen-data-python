@@ -2,6 +2,7 @@
 
 from typing import Sequence
 
+from pydantic import Field
 from typing_extensions import Annotated, TypeAlias
 
 from . import base_params
@@ -29,6 +30,7 @@ window_sizes_default: window_sizes = (100, 200, 500, 1000, 2000, 5000)
 
 window_size: TypeAlias = Annotated[
     int,
+    Field(ge=1),
     """
     The size of windows (number of sites) used to calculate statistics within.
     """,
