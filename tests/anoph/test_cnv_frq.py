@@ -90,13 +90,14 @@ expected_types = ["amp", "del"]
 @parametrize_with_cases("fixture,api", cases=".")
 def test_gene_cnv_frequencies_with_str_cohorts(
     fixture,
+    rng: np.random.Generator,
     api: AnophelesCnvFrequencyAnalysis,
     cohorts,
 ):
-    region = str(np.random.choice(api.contigs))
+    region = rng.choice(api.contigs)
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = str(np.random.choice(all_sample_sets))
-    min_cohort_size = int(np.random.randint(0, 3))
+    sample_sets = rng.choice(all_sample_sets)
+    min_cohort_size = rng.integers(0, 3, dtype=int)
 
     # Set up call params.
     params = dict(
@@ -141,13 +142,14 @@ def test_gene_cnv_frequencies_with_str_cohorts(
 @parametrize_with_cases("fixture,api", cases=".")
 def test_gene_cnv_frequencies_with_min_cohort_size(
     fixture,
+    rng: np.random.Generator,
     api: AnophelesCnvFrequencyAnalysis,
     min_cohort_size,
 ):
     # Pick test parameters at random.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = str(np.random.choice(all_sample_sets))
-    region = str(np.random.choice(api.contigs))
+    sample_sets = rng.choice(all_sample_sets)
+    region = rng.choice(api.contigs)
     cohorts = "admin1_year"
 
     # Set up call params.
@@ -192,18 +194,17 @@ def test_gene_cnv_frequencies_with_min_cohort_size(
 @parametrize_with_cases("fixture,api", cases=".")
 def test_gene_cnv_frequencies_with_str_cohorts_and_sample_query(
     fixture,
+    rng: np.random.Generator,
     api: AnophelesCnvFrequencyAnalysis,
 ):
     # Pick test parameters at random.
     sample_sets = None
     min_cohort_size = 0
-    region = str(np.random.choice(api.contigs))
-    cohorts = str(
-        np.random.choice(["admin1_year", "admin1_month", "admin2_year", "admin2_month"])
-    )
+    region = rng.choice(api.contigs)
+    cohorts = rng.choice(["admin1_year", "admin1_month", "admin2_year", "admin2_month"])
     df_samples = api.sample_metadata(sample_sets=sample_sets)
     countries = df_samples["country"].unique()
-    country = str(np.random.choice(countries))
+    country = rng.choice(countries)
     sample_query = f"country == '{country}'"
 
     # Figure out expected cohort labels.
@@ -240,18 +241,17 @@ def test_gene_cnv_frequencies_with_str_cohorts_and_sample_query(
 @parametrize_with_cases("fixture,api", cases=".")
 def test_gene_cnv_frequencies_with_str_cohorts_and_sample_query_options(
     fixture,
+    rng: np.random.Generator,
     api: AnophelesCnvFrequencyAnalysis,
 ):
     # Pick test parameters at random.
     sample_sets = None
     min_cohort_size = 0
-    region = str(np.random.choice(api.contigs))
-    cohorts = str(
-        np.random.choice(["admin1_year", "admin1_month", "admin2_year", "admin2_month"])
-    )
+    region = rng.choice(api.contigs)
+    cohorts = rng.choice(["admin1_year", "admin1_month", "admin2_year", "admin2_month"])
     df_samples = api.sample_metadata(sample_sets=sample_sets)
     countries = df_samples["country"].unique().tolist()
-    countries_list = np.random.choice(countries, size=2, replace=False).tolist()
+    countries_list = rng.choice(countries, 2, replace=False)
     sample_query_options = {
         "local_dict": {
             "countries_list": countries_list,
@@ -297,12 +297,12 @@ def test_gene_cnv_frequencies_with_str_cohorts_and_sample_query_options(
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_gene_cnv_frequencies_with_dict_cohorts(
-    fixture, api: AnophelesCnvFrequencyAnalysis
+    fixture, rng: np.random.Generator, api: AnophelesCnvFrequencyAnalysis
 ):
     # Pick test parameters at random.
     sample_sets = None  # all sample sets
-    min_cohort_size = int(np.random.randint(0, 3))
-    region = str(np.random.choice(api.contigs))
+    min_cohort_size = rng.integers(0, 3, dtype=int)
+    region = rng.choice(api.contigs)
 
     # Create cohorts by country.
     df_samples = api.sample_metadata(sample_sets=sample_sets)
@@ -337,14 +337,15 @@ def test_gene_cnv_frequencies_with_dict_cohorts(
 @parametrize_with_cases("fixture,api", cases=".")
 def test_gene_cnv_frequencies_without_drop_invariant(
     fixture,
+    rng: np.random.Generator,
     api: AnophelesCnvFrequencyAnalysis,
 ):
     # Pick test parameters at random.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = str(np.random.choice(all_sample_sets))
-    min_cohort_size = int(np.random.randint(0, 3))
-    region = str(np.random.choice(api.contigs))
-    cohorts = str(np.random.choice(["admin1_year", "admin2_month", "country"]))
+    sample_sets = rng.choice(all_sample_sets)
+    min_cohort_size = rng.integers(0, 3, dtype=int)
+    region = rng.choice(api.contigs)
+    cohorts = rng.choice(["admin1_year", "admin2_month", "country"])
 
     # Figure out expected cohort labels.
     df_samples = api.sample_metadata(sample_sets=sample_sets)
@@ -392,13 +393,14 @@ def test_gene_cnv_frequencies_without_drop_invariant(
 @parametrize_with_cases("fixture,api", cases=".")
 def test_gene_cnv_frequencies_with_bad_region(
     fixture,
+    rng: np.random.Generator,
     api: AnophelesCnvFrequencyAnalysis,
 ):
     # Pick test parameters at random.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = str(np.random.choice(all_sample_sets))
-    min_cohort_size = int(np.random.randint(0, 3))
-    cohorts = str(np.random.choice(["admin1_year", "admin2_month", "country"]))
+    sample_sets = rng.choice(all_sample_sets)
+    min_cohort_size = rng.integers(0, 3, dtype=int)
+    cohorts = rng.choice(["admin1_year", "admin2_month", "country"])
 
     # Set up call params.
     params = dict(
@@ -418,13 +420,14 @@ def test_gene_cnv_frequencies_with_bad_region(
 @parametrize_with_cases("fixture,api", cases=".")
 def test_gene_cnv_frequencies_with_max_coverage_variance(
     fixture,
+    rng: np.random.Generator,
     api: AnophelesCnvFrequencyAnalysis,
     max_coverage_variance,
 ):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = str(np.random.choice(all_sample_sets))
-    cohorts = str(np.random.choice(["admin1_year", "admin2_month", "country"]))
-    region = str(np.random.choice(api.contigs))
+    sample_sets = rng.choice(all_sample_sets)
+    cohorts = rng.choice(["admin1_year", "admin2_month", "country"])
+    region = rng.choice(api.contigs)
 
     params = dict(
         region=region,
@@ -471,11 +474,13 @@ def test_gene_cnv_frequencies_with_max_coverage_variance(
 @parametrize_with_cases("fixture,api", cases=".")
 def test_gene_cnv_frequencies_advanced_with_area_by(
     fixture,
+    rng: np.random.Generator,
     api: AnophelesCnvFrequencyAnalysis,
     area_by,
 ):
     check_gene_cnv_frequencies_advanced(
         api=api,
+        rng=rng,
         area_by=area_by,
     )
 
@@ -484,11 +489,13 @@ def test_gene_cnv_frequencies_advanced_with_area_by(
 @parametrize_with_cases("fixture,api", cases=".")
 def test_gene_cnv_frequencies_advanced_with_period_by(
     fixture,
+    rng: np.random.Generator,
     api: AnophelesCnvFrequencyAnalysis,
     period_by,
 ):
     check_gene_cnv_frequencies_advanced(
         api=api,
+        rng=rng,
         period_by=period_by,
     )
 
@@ -496,16 +503,18 @@ def test_gene_cnv_frequencies_advanced_with_period_by(
 @parametrize_with_cases("fixture,api", cases=".")
 def test_gene_cnv_frequencies_advanced_with_sample_query(
     fixture,
+    rng: np.random.Generator,
     api: AnophelesCnvFrequencyAnalysis,
 ):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     df_samples = api.sample_metadata(sample_sets=all_sample_sets)
     countries = df_samples["country"].unique()
-    country = str(np.random.choice(countries))
+    country = rng.choice(countries)
     sample_query = f"country == '{country}'"
 
     check_gene_cnv_frequencies_advanced(
         api=api,
+        rng=rng,
         sample_sets=all_sample_sets,
         sample_query=sample_query,
         min_cohort_size=0,
@@ -515,12 +524,13 @@ def test_gene_cnv_frequencies_advanced_with_sample_query(
 @parametrize_with_cases("fixture,api", cases=".")
 def test_gene_cnv_frequencies_advanced_with_sample_query_options(
     fixture,
+    rng: np.random.Generator,
     api: AnophelesCnvFrequencyAnalysis,
 ):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     df_samples = api.sample_metadata(sample_sets=all_sample_sets)
     countries = df_samples["country"].unique().tolist()
-    countries_list = np.random.choice(countries, size=2, replace=False).tolist()
+    countries_list = rng.choice(countries, 2, replace=False)
     sample_query_options = {
         "local_dict": {
             "countries_list": countries_list,
@@ -530,6 +540,7 @@ def test_gene_cnv_frequencies_advanced_with_sample_query_options(
 
     check_gene_cnv_frequencies_advanced(
         api=api,
+        rng=rng,
         sample_sets=all_sample_sets,
         sample_query=sample_query,
         sample_query_options=sample_query_options,
@@ -541,19 +552,21 @@ def test_gene_cnv_frequencies_advanced_with_sample_query_options(
 @parametrize_with_cases("fixture,api", cases=".")
 def test_gene_cnv_frequencies_advanced_with_min_cohort_size(
     fixture,
+    rng: np.random.Generator,
     api: AnophelesCnvFrequencyAnalysis,
     min_cohort_size,
 ):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     area_by = "admin1_iso"
     period_by = "year"
-    region = str(np.random.choice(api.contigs))
+    region = rng.choice(api.contigs)
 
     if min_cohort_size <= 10:
         # Expect this to find at least one cohort, so go ahead with full
         # checks.
         check_gene_cnv_frequencies_advanced(
             api=api,
+            rng=rng,
             region=region,
             sample_sets=all_sample_sets,
             min_cohort_size=min_cohort_size,
@@ -577,19 +590,21 @@ def test_gene_cnv_frequencies_advanced_with_min_cohort_size(
 @parametrize_with_cases("fixture,api", cases=".")
 def test_gene_cnv_frequencies_advanced_with_max_coverage_variance(
     fixture,
+    rng: np.random.Generator,
     api: AnophelesCnvFrequencyAnalysis,
     max_coverage_variance,
 ):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     area_by = "admin1_iso"
     period_by = "year"
-    region = str(np.random.choice(api.contigs))
+    region = rng.choice(api.contigs)
 
     if max_coverage_variance >= 0.4:
         # Expect this to find at least one cohort, so go ahead with full
         # checks.
         check_gene_cnv_frequencies_advanced(
             api=api,
+            rng=rng,
             region=region,
             sample_sets=all_sample_sets,
             max_coverage_variance=max_coverage_variance,
@@ -612,16 +627,18 @@ def test_gene_cnv_frequencies_advanced_with_max_coverage_variance(
 @parametrize_with_cases("fixture,api", cases=".")
 def test_gene_cnv_frequencies_advanced_with_nobs_mode(
     fixture,
+    rng: np.random.Generator,
     api: AnophelesCnvFrequencyAnalysis,
     nobs_mode,
 ):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     area_by = "admin1_iso"
     period_by = "year"
-    region = str(np.random.choice(api.contigs))
+    region = rng.choice(api.contigs)
 
     check_gene_cnv_frequencies_advanced(
         api=api,
+        rng=rng,
         region=region,
         sample_sets=all_sample_sets,
         nobs_mode=nobs_mode,
@@ -634,17 +651,19 @@ def test_gene_cnv_frequencies_advanced_with_nobs_mode(
 @parametrize_with_cases("fixture,api", cases=".")
 def test_gene_cnv_frequencies_advanced_with_variant_query(
     fixture,
+    rng: np.random.Generator,
     api: AnophelesCnvFrequencyAnalysis,
     variant_query_option,
 ):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     area_by = "admin1_iso"
     period_by = "year"
-    region = str(np.random.choice(api.contigs))
+    region = rng.choice(api.contigs)
     variant_query = f"cnv_type == '{variant_query_option}'"
 
     check_gene_cnv_frequencies_advanced(
         api=api,
+        rng=rng,
         region=region,
         sample_sets=all_sample_sets,
         variant_query=variant_query,
@@ -695,6 +714,7 @@ def check_gene_cnv_frequencies(
 def check_gene_cnv_frequencies_advanced(
     *,
     api: AnophelesCnvFrequencyAnalysis,
+    rng: np.random.Generator,
     region=None,
     area_by="admin1_iso",
     period_by="year",
@@ -708,20 +728,20 @@ def check_gene_cnv_frequencies_advanced(
 ):
     # Pick test parameters at random.
     if region is None:
-        region = str(np.random.choice(api.contigs))
+        region = rng.choice(api.contigs)
     if area_by is None:
-        area_by = str(np.random.choice(["country", "admin1_iso", "admin2_name"]))
+        area_by = rng.choice(["country", "admin1_iso", "admin2_name"])
     if period_by is None:
-        period_by = str(np.random.choice(["year", "quarter", "month", "random_year"]))
+        period_by = rng.choice(["year", "quarter", "month", "random_year"])
     if sample_sets is None:
         all_sample_sets = api.sample_sets()["sample_set"].to_list()
-        sample_sets = str(np.random.choice(all_sample_sets))
+        sample_sets = rng.choice(all_sample_sets)
     if min_cohort_size is None:
-        min_cohort_size = int(np.random.randint(0, 3))
+        min_cohort_size = rng.integers(0, 3, dtype=int)
 
     if period_by == "random_year":
         # Add a random_year column to the sample metadata, if there isn't already.
-        api = add_random_year(api=api)
+        api = add_random_year(api=api, rng=rng)
 
     # Run function under test.
     ds = api.gene_cnv_frequencies_advanced(
@@ -739,8 +759,8 @@ def check_gene_cnv_frequencies_advanced(
     # Check the result.
     assert isinstance(ds, xr.Dataset)
     check_plot_frequencies_time_series(api, ds)
-    check_plot_frequencies_time_series_with_taxa(api, ds)
-    check_plot_frequencies_time_series_with_areas(api, ds)
+    check_plot_frequencies_time_series_with_taxa(api, ds, rng)
+    check_plot_frequencies_time_series_with_areas(api, ds, rng)
     if variant_query is None:
         check_plot_frequencies_interactive_map(api, ds)
     assert set(ds.dims) == {"cohorts", "variants"}
