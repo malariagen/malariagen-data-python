@@ -337,7 +337,7 @@ def test_snp_sites_with_virtual_contigs(ag3_sim_api, chrom):
     check_snp_sites(api, region=region)
 
     # Extra checks.
-    region_size = stop - start
+    region_size = stop - start + 1
     pos = api.snp_sites(region=region, field="POS").compute()
     assert pos.shape[0] <= region_size
     assert np.all(pos >= start)
@@ -1157,7 +1157,8 @@ def check_snp_allele_counts(
     assert ac.shape == (pos.shape[0], 4)
     assert np.all(ac >= 0)
     an = ac.sum(axis=1)
-    assert an.max() <= 2 * n_samples
+    if an.size > 0:
+        assert an.max() <= 2 * n_samples
 
     # Run again to ensure loading from results cache produces the same result.
     ac2 = api.snp_allele_counts(
