@@ -142,7 +142,7 @@ class AnophelesDataResource(
         aim_species_colors: Optional[Mapping[str, str]] = None,
         virtual_contigs: Optional[Mapping[str, Sequence[str]]] = None,
         gene_names: Optional[Mapping[str, str]] = None,
-        inversion_tag_path: Optional[str] = None,
+        karyotype_analysis: Optional[str] = None,
         unrestricted_use_only: Optional[bool] = None,
         surveillance_use_only: Optional[bool] = None,
     ):
@@ -180,7 +180,7 @@ class AnophelesDataResource(
             aim_species_colors=aim_species_colors,
             virtual_contigs=virtual_contigs,
             gene_names=gene_names,
-            inversion_tag_path=inversion_tag_path,
+            karyotype_analysis=karyotype_analysis,
             unrestricted_use_only=unrestricted_use_only,
             surveillance_use_only=surveillance_use_only,
         )
