@@ -120,22 +120,19 @@ def _build_cohorts_from_sample_grouping(
         df_cohorts["period_end"] = period.dt.end_time
     else:
         # Fallback for object dtype Period values.
-        df_cohorts["period_start"] = period.map(
-            lambda v: v.start_time if pd.notna(v) else pd.NaT
-        )
-        df_cohorts["period_end"] = period.map(
-            lambda v: v.end_time if pd.notna(v) else pd.NaT
-        )
+        cohort_period_start = df_cohorts["period"].map(lambda v: v.start_time)
+        cohort_period_end = df_cohorts["period"].map(lambda v: v.end_time)
+        df_cohorts["period_start"] = cohort_period_start
+        df_cohorts["period_end"] = cohort_period_end  
 
     # Create a label that is similar to the cohort metadata,
     # although this won't be perfect.
     # Vectorized string operations
     if taxon_by == frq_params.taxon_by_default:
-        # Default case: area_taxon_short_period
-        area_str = df_cohorts["area"].astype(str)
-        taxon_short = df_cohorts[taxon_by].astype(str).str.slice(0, 4)
-        period_str = df_cohorts["period"].astype(str)
-        df_cohorts["label"] = area_str + "_" + taxon_short + "_" + period_str
+        df_cohorts["label"] = df_cohorts.apply(
+            lambda v: f"{v.area}_{v[taxon_by][:4]}_{v.period}", axis="columns"
+        )
+
     else:
         # Non-default case: replace non-alphanumeric characters with underscores
         area_str = df_cohorts["area"].astype(str)
