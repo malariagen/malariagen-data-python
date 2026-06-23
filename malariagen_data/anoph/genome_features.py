@@ -1,3 +1,4 @@
+import warnings
 from typing import Dict, Optional, Tuple, Mapping
 
 import bokeh.models
@@ -67,7 +68,12 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         return self.config["GENESET_GFF3_PATH"]
 
     def geneset(self, *args, **kwargs):  # pragma: no cover
-        """Deprecated, this method has been renamed to genome_features()."""
+        """Deprecated, use genome_features() instead."""
+        warnings.warn(
+            "geneset() has been renamed to genome_features() - please update your code.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return self.genome_features(*args, **kwargs)
 
     def _genome_features(self, *, attributes: Tuple[str, ...]):
