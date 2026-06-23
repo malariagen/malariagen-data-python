@@ -46,6 +46,7 @@ from .mjn import _median_joining_network, _mjn_graph
 from .anoph.hapclust import AnophelesHapClustAnalysis
 from .anoph.describe import AnophelesDescribe
 from .anoph.dipclust import AnophelesDipClustAnalysis
+from .anoph.inversion_frq import AnophelesInversionFrequencyAnalysis
 from .anoph.heterozygosity import AnophelesHetAnalysis
 from .anoph.xpehh import AnophelesXpehhAnalysis
 from .util import (
@@ -86,6 +87,7 @@ class AnophelesDataResource(
     AnophelesH12Analysis,
     AnophelesG123Analysis,
     AnophelesFstAnalysis,
+    AnophelesInversionFrequencyAnalysis,
     AnophelesHetAnalysis,
     AnophelesHapFrequencyAnalysis,
     AnophelesDistanceAnalysis,
