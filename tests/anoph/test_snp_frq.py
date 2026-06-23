@@ -1621,3 +1621,157 @@ def test_allele_frequencies_advanced_with_dup_samples(
         api=api,
         sample_sets=sample_sets,
     )
+
+
+def check_snp_feature_matrix(api, transcript=None, region=None, cohorts=None, **kwargs):
+    """Test the snp_feature_matrix function."""
+    # Test basic functionality
+    df_features = api.snp_feature_matrix(
+        transcript=transcript, region=region, cohorts=cohorts, **kwargs
+    )
+
+    # Check that we have a DataFrame
+    assert isinstance(df_features, pd.DataFrame)
+
+    # Check that we have the expected columns
+    expected_columns = [
+        "total_snp_count",
+        "nonsynonymous_snp_count",
+        "mean_allele_frequency",
+    ]
+    assert list(df_features.columns) == expected_columns
+
+    # Check that we have data (not empty)
+    assert len(df_features) > 0
+
+    # Check data types
+    assert df_features["total_snp_count"].dtype in [np.int64, np.int32]
+    assert df_features["nonsynonymous_snp_count"].dtype in [np.int64, np.int32]
+    assert df_features["mean_allele_frequency"].dtype in [np.float64, np.float32]
+
+    # Check that counts are non-negative
+    assert (df_features["total_snp_count"] >= 0).all()
+    assert (df_features["nonsynonymous_snp_count"] >= 0).all()
+
+    # Check that nonsynonymous count is <= total count
+    assert (
+        df_features["nonsynonymous_snp_count"] <= df_features["total_snp_count"]
+    ).all()
+
+    # Check that mean allele frequency is between 0 and 1 (or NaN)
+    mean_af = df_features["mean_allele_frequency"]
+    assert ((mean_af >= 0) & (mean_af <= 1) | mean_af.isna()).all()
+
+    # Check that we have a title attribute
+    assert "title" in df_features.attrs
+    assert "SNP feature matrix" in df_features.attrs["title"]
+
+    return df_features
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_snp_feature_matrix_cohort_mode(fixture, api: AnophelesSnpFrequencyAnalysis):
+    """Test snp_feature_matrix in cohort mode."""
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_set = random.choice(all_sample_sets)
+    transcript = random_transcript(api=api).name
+
+    # Test with cohorts
+    cohorts = {
+        "france": "country == 'France'",
+        "uk": "country == 'United Kingdom'",
+    }
+
+    df_features = check_snp_feature_matrix(
+        api=api,
+        transcript=transcript,
+        cohorts=cohorts,
+        sample_sets=sample_set,
+    )
+
+    # Should have one row per cohort
+    assert len(df_features) == len(cohorts)
+
+    # Check that cohort names are in the index
+    for cohort_name in cohorts.keys():
+        assert cohort_name in df_features.index
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_snp_feature_matrix_sample_mode(fixture, api: AnophelesSnpFrequencyAnalysis):
+    """Test snp_feature_matrix in sample mode."""
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_set = random.choice(all_sample_sets)
+    transcript = random_transcript(api=api).name
+
+    # Test without cohorts (sample mode)
+    df_features = check_snp_feature_matrix(
+        api=api,
+        transcript=transcript,
+        cohorts=None,
+        sample_sets=sample_set,
+    )
+
+    # Should have one row per sample
+    df_samples = api.sample_metadata(sample_sets=sample_set)
+    assert len(df_features) == len(df_samples)
+
+    # Check that sample IDs are in the index
+    for sample_id in df_samples["sample_id"]:
+        assert sample_id in df_features.index
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_snp_feature_matrix_region_mode(fixture, api: AnophelesSnpFrequencyAnalysis):
+    """Test snp_feature_matrix with region instead of transcript."""
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_set = random.choice(all_sample_sets)
+
+    # Test with a genomic region
+    region = "2L:10,000,000-10,100,000"
+
+    df_features = check_snp_feature_matrix(
+        api=api,
+        transcript=None,
+        region=region,
+        cohorts=None,
+        sample_sets=sample_set,
+    )
+
+    # Should have some data
+    assert len(df_features) > 0
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_snp_feature_matrix_validation_errors(
+    fixture, api: AnophelesSnpFrequencyAnalysis
+):
+    """Test that snp_feature_matrix raises appropriate validation errors."""
+
+    # Test error when neither transcript nor region provided
+    with pytest.raises(ValueError, match="Provide either transcript or region"):
+        api.snp_feature_matrix(transcript=None, region=None)
+
+    # Test error when both transcript and region provided
+    transcript = random_transcript(api=api).name
+    region = "2L:10,000,000-10,100,000"
+    with pytest.raises(ValueError, match="Provide only one of transcript or region"):
+        api.snp_feature_matrix(transcript=transcript, region=region)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_snp_feature_matrix_minimal_parameters(
+    fixture, api: AnophelesSnpFrequencyAnalysis
+):
+    """Test snp_feature_matrix with minimal required parameters."""
+    transcript = random_transcript(api=api).name
+
+    # Test with just transcript (all other parameters optional)
+    df_features = check_snp_feature_matrix(
+        api=api,
+        transcript=transcript,
+        cohorts=None,
+    )
+
+    # Should still work and return valid data
+    assert len(df_features) > 0

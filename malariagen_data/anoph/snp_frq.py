@@ -47,7 +47,6 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         melting each alternate allele into a separate row."""
 
         with self._spinner(desc="Prepare SNP dataframe"):
-            # Grab contig, pos, ref and alt.
             contig_index = ds_snp["variant_contig"].values[0]
             contig = ds_snp.attrs["contigs"][contig_index]
             pos = ds_snp["variant_position"].values
@@ -55,14 +54,11 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             ref = alleles[:, 0]
             alt = alleles[:, 1:]
 
-            # Access site filters.
             filter_pass = dict()
             for m in self.site_mask_ids:
                 x = ds_snp[f"variant_filter_pass_{m}"].values
                 filter_pass[m] = x
 
-            # Set up columns with contig, pos, ref, alt columns, melting
-            # the data out to one row per alternate allele.
             cols = {
                 "contig": contig,
                 "position": np.repeat(pos, 3),
@@ -70,12 +66,10 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
                 "alt_allele": alt.astype("U1").flatten(),
             }
 
-            # Add mask columns.
             for m in self.site_mask_ids:
                 x = filter_pass[m]
                 cols[f"pass_{m}"] = np.repeat(x, 3)
 
-            # Construct dataframe.
             df_snps = pd.DataFrame(cols)
 
         return df_snps
@@ -106,13 +100,10 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             site_mask=site_mask,
         )
 
-        # Setup initial dataframe of SNPs.
         df_snps = self._snp_df_melt(ds_snp=ds_snp)
 
-        # Setup variant effect annotator.
         ann = self._snp_effect_annotator
 
-        # Add effects to the dataframe.
         ann.get_effects(transcript=transcript, variants=df_snps)
 
         return df_snps
@@ -158,24 +149,20 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> pd.DataFrame:
-        # Validate transcript/region usage.
         if transcript is None and region is None:
             raise ValueError("Provide either transcript or region.")
         if transcript is not None and region is not None:
             raise ValueError("Provide only one of transcript or region, not both.")
 
-        # For backwards compatibility, default region to transcript when only transcript is given.
         if region is None:
             region = transcript
 
-        # Access sample metadata.
         df_samples = self.sample_metadata(
             sample_sets=sample_sets,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
         )
 
-        # Build cohort dictionary, maps cohort labels to boolean indexers.
         coh_dict = _locate_cohorts(
             cohorts=cohorts, data=df_samples, min_cohort_size=min_cohort_size
         )
@@ -191,19 +178,15 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             inline_array=inline_array,
         )
 
-        # Early check for no SNPs.
-        if ds_snp.sizes["variants"] == 0:  # pragma: no cover
+        if ds_snp.sizes["variants"] == 0:
             raise ValueError("No SNPs available for the given region and site mask.")
 
-        # Access genotypes.
         gt = ds_snp["call_genotype"].data
         with self._dask_progress(desc="Load SNP genotypes"):
             gt = gt.compute()
 
-        # Set up initial dataframe of SNPs.
         df_snps = self._snp_df_melt(ds_snp=ds_snp)
 
-        # Count alleles.
         count_cols = dict()
         nobs_cols = dict()
         freq_cols = dict()
@@ -222,7 +205,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             an_coh = np.sum(ac_coh, axis=1)[:, None]
             with np.errstate(divide="ignore", invalid="ignore"):
                 af_coh = np.where(an_coh > 0, ac_coh / an_coh, np.nan)
-            # Melt the frequencies so we get one row per alternate allele.
+
             frq = af_coh[:, 1:].flatten()
             freq_cols["frq_" + coh] = frq
             count = ac_coh[:, 1:].flatten()
@@ -235,10 +218,8 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         df_counts = pd.DataFrame(count_cols)
         df_nobs = pd.DataFrame(nobs_cols)
 
-        # Compute max_af.
         df_max_af = pd.DataFrame({"max_af": df_freqs.max(axis=1)})
 
-        # Build the final dataframe.
         df_snps.reset_index(drop=True, inplace=True)
         if include_counts:
             df_snps = pd.concat(
@@ -247,12 +228,11 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         else:
             df_snps = pd.concat([df_snps, df_freqs, df_max_af], axis=1)
 
-        # Drop invariants.
         if drop_invariant:
             loc_variant = df_snps["max_af"] > 0
 
             # Check for no SNPs remaining after dropping invariants.
-            if np.count_nonzero(loc_variant) == 0:  # pragma: no cover
+            if np.count_nonzero(loc_variant) == 0:
                 raise ValueError("No SNPs remaining after dropping invariant SNPs.")
 
             df_snps = df_snps.loc[loc_variant]
@@ -261,20 +241,17 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         df_snps.reset_index(inplace=True, drop=True)
 
         if effects and (transcript is not None):
-            # Add effect annotations (requires transcript).
             ann = self._snp_effect_annotator
             ann.get_effects(
                 transcript=transcript, variants=df_snps, progress=self._progress
             )
 
-            # Add label with amino acid change.
             df_snps["label"] = _pandas_apply(
                 _make_snp_label_effect,
                 df_snps,
                 columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],
             )
 
-            # Set index including aa_change.
             df_snps.set_index(
                 ["contig", "position", "ref_allele", "alt_allele", "aa_change"],
                 inplace=True,
@@ -300,7 +277,6 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             if gene_name:
                 title += f" ({gene_name})"
         else:
-            # No transcript, just use the region string.
             title = str(region)
 
         title += " SNP frequencies"
@@ -366,11 +342,10 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         df_ns_snps = df_snps.query(AA_CHANGE_QUERY).copy()
 
         # Handle case where no amino acid change SNPs are found.
-        # N.B., this can legitimately happen for some transcript/site_mask/query
+        # This can legitimately happen for some transcript/site_mask/query
         # combinations. Return a well-formed empty DataFrame rather than raising,
         # to avoid transient test failures and to allow downstream code to handle
-        # the empty result gracefully. See also:
-        # https://github.com/malariagen/malariagen-data-python/issues/1064
+        # the empty result.
         if len(df_ns_snps) == 0:
             warnings.warn(
                 "No amino acid change SNPs found for the given transcript "
@@ -415,7 +390,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
             return df_empty
 
-        # N.B., we need to worry about the possibility of the
+        # We need to worry about the possibility of the
         # same aa change due to SNPs at different positions. We cannot
         # sum frequencies of SNPs at different genomic positions. This
         # is why we group by position and aa_change, not just aa_change.
@@ -424,7 +399,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         freq_cols = [col for col in df_ns_snps if col.startswith("frq_")]
 
         # Special handling here to ensure nans don't get summed to zero.
-        # See also https://github.com/pandas-dev/pandas/issues/20824#issuecomment-705376621
+
         def np_sum(g):
             return np.sum(g.values)
 
@@ -456,23 +431,18 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         agg["alt_allele"] = lambda v: "{" + ",".join(v) + "}" if len(v) > 1 else v
         df_aaf = df_ns_snps.groupby(["position", "aa_change"]).agg(agg).reset_index()
 
-        # Compute new max_af.
         df_aaf["max_af"] = df_aaf[freq_cols].max(axis=1)
 
-        # Add label.
         df_aaf["label"] = _pandas_apply(
             _make_snp_label_aa,
             df_aaf,
             columns=["aa_change", "contig", "position", "ref_allele", "alt_allele"],
         )
 
-        # Sort by genomic position.
         df_aaf = df_aaf.sort_values(["position", "aa_change"])
 
-        # Set index.
         df_aaf.set_index(["aa_change", "contig", "position"], inplace=True)
 
-        # Add metadata.
         gene_name = self._transcript_to_parent_name(transcript)
         title = transcript
         if gene_name:
@@ -518,14 +488,12 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         taxon_by: frq_params.taxon_by = frq_params.taxon_by_default,
         filter_unassigned: Optional[frq_params.filter_unassigned] = None,
     ) -> xr.Dataset:
-        # Load sample metadata.
         df_samples = self.sample_metadata(
             sample_sets=sample_sets,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
         )
 
-        # Prepare sample metadata for cohort grouping.
         df_samples = _prep_samples_for_cohort_grouping(
             df_samples=df_samples,
             area_by=area_by,
@@ -534,23 +502,19 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             filter_unassigned=filter_unassigned,
         )
 
-        # Group samples to make cohorts.
         group_samples_by_cohort = df_samples.groupby([taxon_by, "area", "period"])
 
-        # Build cohorts dataframe.
         df_cohorts = _build_cohorts_from_sample_grouping(
             group_samples_by_cohort=group_samples_by_cohort,
             min_cohort_size=min_cohort_size,
             taxon_by=taxon_by,
         )
 
-        # Early check for no cohorts.
         if len(df_cohorts) == 0:
             raise ValueError(
                 "No cohorts available for the given sample selection parameters and minimum cohort size."
             )
 
-        # Access SNP calls.
         ds_snps = self.snp_calls(
             region=transcript,
             sample_sets=sample_sets,
@@ -561,16 +525,13 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             inline_array=inline_array,
         )
 
-        # Early check for no SNPs.
-        if ds_snps.sizes["variants"] == 0:  # pragma: no cover
+        if ds_snps.sizes["variants"] == 0:
             raise ValueError("No SNPs available for the given region and site mask.")
 
-        # Access genotypes.
         gt = ds_snps["call_genotype"].data
         with self._dask_progress(desc="Load SNP genotypes"):
             gt = gt.compute()
 
-        # Set up variant variables.
         contigs = ds_snps.attrs["contigs"]
         variant_contig = np.repeat(
             [contigs[i] for i in ds_snps["variant_contig"].values], 3
@@ -585,12 +546,10 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
                 ds_snps[f"variant_filter_pass_{site_mask}"].values, 3
             )
 
-        # Set up main event variables.
         n_variants, n_cohorts = len(variant_position), len(df_cohorts)
         count: npt.NDArray[np.float64] = np.zeros((n_variants, n_cohorts), dtype=int)
         nobs: npt.NDArray[np.float64] = np.zeros((n_variants, n_cohorts), dtype=int)
 
-        # Build event count and nobs for each cohort.
         cohorts_iterator = self._progress(
             enumerate(df_cohorts.itertuples()),
             total=len(df_cohorts),
@@ -618,18 +577,13 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
                     )
                 nobs[:, cohort_index] = cohort.size * 2
 
-        # Compute frequency.
         with np.errstate(divide="ignore", invalid="ignore"):
-            # Ignore division warnings.
             frequency = count / nobs
 
-        # Compute maximum frequency over cohorts.
         with warnings.catch_warnings():
-            # Ignore "All-NaN slice encountered" warnings.
             warnings.simplefilter("ignore", category=RuntimeWarning)
             max_af = np.nanmax(frequency, axis=1)
 
-        # Make dataframe of SNPs.
         df_variants_cols = {
             "contig": variant_contig,
             "position": variant_position,
@@ -641,12 +595,10 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             df_variants_cols[f"pass_{site_mask}"] = variant_pass[site_mask]
         df_variants = pd.DataFrame(df_variants_cols)
 
-        # Deal with SNP alleles not observed.
         if drop_invariant:
             loc_variant = max_af > 0
 
-            # Check for no SNPs remaining after dropping invariants.
-            if np.count_nonzero(loc_variant) == 0:  # pragma: no cover
+            if np.count_nonzero(loc_variant) == 0:
                 raise ValueError("No SNPs remaining after dropping invariant SNPs.")
 
             df_variants = df_variants.loc[loc_variant].reset_index(drop=True)
@@ -654,47 +606,37 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             nobs = np.compress(loc_variant, nobs, axis=0)
             frequency = np.compress(loc_variant, frequency, axis=0)
 
-        # Set up variant effect annotator.
         ann = self._snp_effect_annotator
 
-        # Add effects to the dataframe.
         ann.get_effects(
             transcript=transcript, variants=df_variants, progress=self._progress
         )
 
-        # Add variant labels.
         df_variants["label"] = _pandas_apply(
             _make_snp_label_effect,
             df_variants,
             columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],
         )
 
-        # Build the output dataset.
         ds_out = xr.Dataset()
 
-        # Cohort variables.
         for coh_col in df_cohorts.columns:
             if coh_col == taxon_by:
-                # Other functions expect cohort_taxon, e.g. plot_frequencies_interactive_map()
                 ds_out["cohort_taxon"] = "cohorts", df_cohorts[coh_col]
             else:
                 ds_out[f"cohort_{coh_col}"] = "cohorts", df_cohorts[coh_col]
 
-        # Variant variables.
         for snp_col in df_variants.columns:
             ds_out[f"variant_{snp_col}"] = "variants", df_variants[snp_col]
 
-        # Event variables.
         ds_out["event_count"] = ("variants", "cohorts"), count
         ds_out["event_nobs"] = ("variants", "cohorts"), nobs
         ds_out["event_frequency"] = ("variants", "cohorts"), frequency
 
-        # Apply variant query.
         if variant_query is not None:
             validate_query(variant_query)
             loc_variants = np.asarray(df_variants.eval(variant_query))
 
-            # Check for no SNPs remaining after applying variant query.
             if np.count_nonzero(loc_variants) == 0:
                 warnings.warn(
                     f"No SNPs remaining after applying variant query {variant_query!r}. "
@@ -702,18 +644,14 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
                     stacklevel=2,
                 )
 
-            # Convert boolean mask to integer indices for NumPy 2.x compatibility
             variant_indices = np.where(loc_variants)[0]
             ds_out = ds_out.isel(variants=variant_indices)
 
-        # Add confidence intervals.
         _add_frequency_ci(ds=ds_out, ci_method=ci_method)
 
-        # Tidy up display by sorting variables.
         sorted_vars: List[str] = sorted([str(k) for k in ds_out.keys()])
         ds_out = ds_out[sorted_vars]
 
-        # Add metadata.
         gene_name = self._transcript_to_parent_name(transcript)
         title = transcript
         if gene_name:
@@ -758,7 +696,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         taxon_by: frq_params.taxon_by = frq_params.taxon_by_default,
         filter_unassigned: Optional[frq_params.filter_unassigned] = None,
     ) -> xr.Dataset:
-        # Begin by computing SNP allele frequencies.
+
         ds_snp_frq = self.snp_allele_frequencies_advanced(
             transcript=transcript,
             area_by=area_by,
@@ -767,18 +705,18 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             sample_query=sample_query,
             sample_query_options=sample_query_options,
             min_cohort_size=min_cohort_size,
-            drop_invariant=True,  # always drop invariant for aa frequencies
-            variant_query=AA_CHANGE_QUERY,  # we'll also apply a variant query later
+            drop_invariant=True,
+            variant_query=AA_CHANGE_QUERY,
             site_mask=site_mask,
             nobs_mode=nobs_mode,
-            ci_method=None,  # we will recompute confidence intervals later
+            ci_method=None,
             chunks=chunks,
             inline_array=inline_array,
             taxon_by=taxon_by,
             filter_unassigned=filter_unassigned,
         )
 
-        # N.B., we need to worry about the possibility of the
+        # We need to worry about the possibility of the
         # same aa change due to SNPs at different positions. We cannot
         # sum frequencies of SNPs at different genomic positions. This
         # is why we group by position and aa_change, not just aa_change.
@@ -793,40 +731,31 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         )
         ds_snp_frq["variant_position_aa_change"] = "variants", grouper_var
 
-        # Group by position and amino acid change.
         group_by_aa_change = ds_snp_frq.groupby("variant_position_aa_change")
 
-        # Apply aggregation.
         ds_aa_frq = group_by_aa_change.map(_map_snp_to_aa_change_frq_ds)
 
-        # Add back in cohort variables, unaffected by aggregation.
         cohort_vars = [v for v in ds_snp_frq if v.startswith("cohort_")]
         for v in cohort_vars:
             ds_aa_frq[v] = ds_snp_frq[v]
 
-        # Sort by genomic position.
         ds_aa_frq = ds_aa_frq.sortby(["variant_position", "variant_aa_change"])
 
-        # Recompute frequency.
         count = ds_aa_frq["event_count"].values
         nobs = ds_aa_frq["event_nobs"].values
         with np.errstate(divide="ignore", invalid="ignore"):
-            frequency = count / nobs  # ignore division warnings
+            frequency = count / nobs
         ds_aa_frq["event_frequency"] = ("variants", "cohorts"), frequency
 
-        # Recompute max frequency over cohorts.
         with warnings.catch_warnings():
-            # Ignore "All-NaN slice encountered" warnings.
             warnings.simplefilter("ignore", category=RuntimeWarning)
             max_af = np.nanmax(ds_aa_frq["event_frequency"].values, axis=1)
         ds_aa_frq["variant_max_af"] = "variants", max_af
 
-        # Set up variant dataframe, useful intermediate.
         variant_cols = [v for v in ds_aa_frq if v.startswith("variant_")]
         df_variants = ds_aa_frq[variant_cols].to_dataframe()
         df_variants.columns = [c.split("variant_")[1] for c in df_variants.columns]
 
-        # Assign new variant label.
         label = _pandas_apply(
             _make_snp_label_aa,
             df_variants,
@@ -834,12 +763,10 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         )
         ds_aa_frq["variant_label"] = "variants", label
 
-        # Apply variant query if given.
         if variant_query is not None:
             validate_query(variant_query)
             loc_variants = df_variants.eval(variant_query).values
 
-            # Check for no SNPs remaining after applying variant query.
             if np.count_nonzero(loc_variants) == 0:
                 warnings.warn(
                     f"No SNPs remaining after applying variant query {variant_query!r}. "
@@ -847,14 +774,11 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
                     stacklevel=2,
                 )
 
-            # Convert boolean mask to integer indices for NumPy 2.x compatibility
             variant_indices = np.where(loc_variants)[0]
             ds_aa_frq = ds_aa_frq.isel(variants=variant_indices)
 
-        # Compute new confidence intervals.
         _add_frequency_ci(ds=ds_aa_frq, ci_method=ci_method)
 
-        # Tidy up display by sorting variables.
         ds_aa_frq = ds_aa_frq[sorted(ds_aa_frq)]
 
         gene_name = self._transcript_to_parent_name(transcript)
@@ -887,19 +811,15 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             inline_array=inline_array,
         )
 
-        # Early check for no SNPs.
         if ds_snp.sizes["variants"] == 0:  # pragma: no cover
             raise ValueError("No SNPs available for the given region and site mask.")
 
-        # Access genotypes.
         gt = ds_snp["call_genotype"].data
         with self._dask_progress(desc="Load SNP genotypes"):
             gt = allel.GenotypeArray(gt.compute())
 
-        # Set up initial dataframe of SNPs.
         df_snps = self._snp_df_melt(ds_snp=ds_snp)
 
-        # Get allele counts.
         gt_counts = gt.to_allele_counts()
         gt_counts_melt = _melt_gt_counts(gt_counts.values)
 
@@ -908,13 +828,11 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         )
         df_snps = pd.concat([df_snps, df_counts], axis=1)
 
-        # Add effect annotations.
         ann = self._snp_effect_annotator
         ann.get_effects(
             transcript=transcript, variants=df_snps, progress=self._progress
         )
 
-        # Add label.
         df_snps["label"] = _pandas_apply(
             _make_snp_label_effect,
             df_snps,
@@ -930,6 +848,236 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             df_snps = df_snps.query(snp_query)
 
         return df_snps
+
+    @_check_types
+    @doc(
+        summary=""" 
+            Compute a simple SNP feature matrix for machine learning workflows.
+        """,
+        returns="""
+            A pandas DataFrame where rows are samples or cohorts and columns are:
+            total_snp_count: Total number of SNPs
+            nonsynonymous_snp_count: Number of nonsynonymous SNPs  
+            mean_allele_frequency: Mean allele frequency across all SNPs
+            
+            In cohort mode (cohorts provided): one row per cohort; counts based on
+            unique (contig, position) sites; mean_allele_frequency from each frq_ column.
+            
+            In sample mode (cohorts is None): one row per sample; per-sample counts 
+            from snp_genotype_allele_counts; mean AF from snp_allele_frequencies with 
+            cohorts={"all": "True"}.
+        """,
+        notes="""
+            This function provides a lightweight interface for creating ML-ready feature
+            matrices from SNP data. It internally uses existing public methods and does
+            not perform any machine learning operations itself.
+        """,
+    )
+    def snp_feature_matrix(
+        self,
+        transcript: Optional[base_params.transcript] = None,
+        region: Optional[base_params.region] = None,
+        cohorts: Optional[base_params.cohorts] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
+        min_cohort_size: base_params.min_cohort_size = 10,
+        site_mask: Optional[base_params.site_mask] = None,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+    ) -> pd.DataFrame:
+        if transcript is None and region is None:
+            raise ValueError("Provide either transcript or region.")
+        if transcript is not None and region is not None:
+            raise ValueError("Provide only one of transcript or region, not both.")
+
+        if region is None:
+            region = transcript
+
+        if cohorts is not None:
+            return self._snp_feature_matrix_cohort_mode(
+                transcript=transcript,
+                region=region,
+                cohorts=cohorts,
+                sample_query=sample_query,
+                sample_query_options=sample_query_options,
+                min_cohort_size=min_cohort_size,
+                site_mask=site_mask,
+                sample_sets=sample_sets,
+                chunks=chunks,
+                inline_array=inline_array,
+            )
+        else:
+            return self._snp_feature_matrix_sample_mode(
+                transcript=transcript,
+                region=region,
+                sample_query=sample_query,
+                sample_query_options=sample_query_options,
+                site_mask=site_mask,
+                sample_sets=sample_sets,
+                chunks=chunks,
+                inline_array=inline_array,
+            )
+
+    def _snp_feature_matrix_cohort_mode(
+        self,
+        transcript: Optional[base_params.transcript],
+        region: Optional[base_params.region],
+        cohorts: base_params.cohorts,
+        sample_query: Optional[base_params.sample_query],
+        sample_query_options: Optional[base_params.sample_query_options],
+        min_cohort_size: base_params.min_cohort_size,
+        site_mask: Optional[base_params.site_mask],
+        sample_sets: Optional[base_params.sample_sets],
+        chunks: base_params.chunks,
+        inline_array: base_params.inline_array,
+    ) -> pd.DataFrame:
+        df_frq = self.snp_allele_frequencies(
+            transcript=transcript,
+            region=region,
+            cohorts=cohorts,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            min_cohort_size=min_cohort_size,
+            site_mask=site_mask,
+            sample_sets=sample_sets,
+            chunks=chunks,
+            inline_array=inline_array,
+            drop_invariant=False,
+        )
+
+        df_frq_ns = self.snp_allele_frequencies(
+            transcript=transcript,
+            region=region,
+            cohorts=cohorts,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            min_cohort_size=min_cohort_size,
+            site_mask=site_mask,
+            sample_sets=sample_sets,
+            chunks=chunks,
+            inline_array=inline_array,
+            drop_invariant=False,
+            effects=True,
+        )
+
+        freq_cols = [col for col in df_frq.columns if col.startswith("frq_")]
+
+        total_snp_count = len(df_frq.groupby(["contig", "position"]))
+
+        nonsyn_snps = df_frq_ns.query(AA_CHANGE_QUERY)
+        nonsyn_snp_count = len(nonsyn_snps.groupby(["contig", "position"]))
+
+        features = {}
+        for cohort_col in freq_cols:
+            cohort_name = cohort_col.replace("frq_", "")
+            mean_af = df_frq[cohort_col].mean()
+
+            features[cohort_name] = {
+                "total_snp_count": total_snp_count,
+                "nonsynonymous_snp_count": nonsyn_snp_count,
+                "mean_allele_frequency": mean_af,
+            }
+
+        df_features = pd.DataFrame.from_dict(features, orient="index")
+
+        if transcript is not None:
+            gene_name = self._transcript_to_parent_name(transcript)
+            title = transcript
+            if gene_name:
+                title += f" ({gene_name})"
+        else:
+            title = str(region)
+        title += " SNP feature matrix"
+        df_features.attrs["title"] = title
+
+        return df_features
+
+    def _snp_feature_matrix_sample_mode(
+        self,
+        transcript: Optional[base_params.transcript],
+        region: Optional[base_params.region],
+        sample_query: Optional[base_params.sample_query],
+        sample_query_options: Optional[base_params.sample_query_options],
+        site_mask: Optional[base_params.site_mask],
+        sample_sets: Optional[base_params.sample_sets],
+        chunks: base_params.chunks,
+        inline_array: base_params.inline_array,
+    ) -> pd.DataFrame:
+        df_counts = self.snp_genotype_allele_counts(
+            transcript=transcript,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            site_mask=site_mask,
+            sample_sets=sample_sets,
+            chunks=chunks,
+            inline_array=inline_array,
+            snp_query=None,
+        )
+
+        df_counts_ns = self.snp_genotype_allele_counts(
+            transcript=transcript,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            site_mask=site_mask,
+            sample_sets=sample_sets,
+            chunks=chunks,
+            inline_array=inline_array,
+            snp_query=AA_CHANGE_QUERY,
+        )
+
+        df_frq = self.snp_allele_frequencies(
+            transcript=transcript,
+            region=region,
+            cohorts={"all": "True"},
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            site_mask=site_mask,
+            sample_sets=sample_sets,
+            chunks=chunks,
+            inline_array=inline_array,
+            drop_invariant=False,
+        )
+
+        count_cols = [col for col in df_counts.columns if col.startswith("count_")]
+        count_cols_ns = [
+            col for col in df_counts_ns.columns if col.startswith("count_")
+        ]
+
+        mean_af = df_frq["frq_all"].mean()
+
+        features = {}
+        for sample_col in count_cols:
+            sample_id = sample_col.replace("count_", "")
+
+            sample_counts = df_counts[sample_col].values
+            sample_snp_count = np.sum(sample_counts > 0)
+
+            if sample_col in count_cols_ns:
+                sample_counts_ns = df_counts_ns[sample_col].values
+                sample_nonsyn_count = np.sum(sample_counts_ns > 0)
+            else:
+                sample_nonsyn_count = 0
+
+            features[sample_id] = {
+                "total_snp_count": sample_snp_count,
+                "nonsynonymous_snp_count": sample_nonsyn_count,
+                "mean_allele_frequency": mean_af,
+            }
+
+        df_features = pd.DataFrame.from_dict(features, orient="index")
+
+        if transcript is not None:
+            gene_name = self._transcript_to_parent_name(transcript)
+            title = transcript
+            if gene_name:
+                title += f" ({gene_name})"
+        else:
+            title = str(region)
+        title += " SNP feature matrix"
+        df_features.attrs["title"] = title
+
+        return df_features
 
 
 @numba.jit(nopython=True)
@@ -1011,18 +1159,14 @@ def _map_snp_to_aa_change_frq_ds(ds):
     ]
 
     if ds.sizes["variants"] == 1:
-        # Keep everything as-is, no need for aggregation.
         ds_out = ds[keep_vars + ["variant_alt_allele", "event_count"]]
 
     else:
-        # Take the first value from all variants variables.
         ds_out = ds[keep_vars].isel(variants=[0])
 
-        # Sum event count over variants.
         count = ds["event_count"].values.sum(axis=0, keepdims=True)
         ds_out["event_count"] = ("variants", "cohorts"), count
 
-        # Collapse alt allele.
         alt_allele = "{" + ",".join(ds["variant_alt_allele"].values) + "}"
         ds_out["variant_alt_allele"] = (
             "variants",
