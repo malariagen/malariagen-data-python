@@ -1,6 +1,7 @@
 """Tests for _prep_samples_for_cohort_grouping filter_unassigned behavior.
 
 See: https://github.com/malariagen/malariagen-data-python/issues/806
+See: https://github.com/malariagen/malariagen-data-python/issues/808
 """
 
 import pandas as pd
@@ -12,6 +13,7 @@ def _make_test_df(taxon_col="taxon"):
     """Create a test DataFrame with intermediate and unassigned taxon values."""
     return pd.DataFrame(
         {
+            "sample_id": ["S1", "S2", "S3", "S4"],
             taxon_col: [
                 "gambiae",
                 "intermediate_gambcolu_arabiensis",
@@ -23,6 +25,52 @@ def _make_test_df(taxon_col="taxon"):
             "month": [1, 1, 1, 1],
         }
     )
+
+
+class TestPrepSamplesNormalizeTaxon:
+    """Tests for taxon_by normalization to standard 'taxon' column. See #808."""
+
+    def test_default_taxon_column_unchanged(self):
+        """When taxon_by='taxon', cohort_taxon is created from the taxon column."""
+        df = _make_test_df(taxon_col="taxon")
+        result = _prep_samples_for_cohort_grouping(
+            df_samples=df,
+            area_by="admin1_iso",
+            period_by="year",
+            taxon_by="taxon",
+            filter_unassigned=False,
+        )
+        assert "cohort_taxon" in result.columns
+        assert result["cohort_taxon"].iloc[0] == "gambiae"
+        # Original taxon column is preserved
+        assert "taxon" in result.columns
+
+    def test_custom_taxon_creates_cohort_column(self):
+        """When taxon_by is custom, a 'cohort_taxon' column is created."""
+        df = _make_test_df(taxon_col="custom_taxon")
+        result = _prep_samples_for_cohort_grouping(
+            df_samples=df,
+            area_by="admin1_iso",
+            period_by="year",
+            taxon_by="custom_taxon",
+            filter_unassigned=False,
+        )
+        assert "cohort_taxon" in result.columns
+        assert result["cohort_taxon"].iloc[0] == "gambiae"
+        assert "custom_taxon" in result.columns
+
+    def test_area_column_created(self):
+        """area_by is normalized to 'cohort_area' column."""
+        df = _make_test_df(taxon_col="taxon")
+        result = _prep_samples_for_cohort_grouping(
+            df_samples=df,
+            area_by="admin1_iso",
+            period_by="year",
+            taxon_by="taxon",
+            filter_unassigned=False,
+        )
+        assert "cohort_area" in result.columns
+        assert result["cohort_area"].iloc[0] == "KE-01"
 
 
 class TestPrepSamplesFilterUnassigned:
@@ -38,10 +86,16 @@ class TestPrepSamplesFilterUnassigned:
             period_by="year",
             taxon_by="taxon",
         )
+        # The original taxon column is filtered in-place
         assert result["taxon"].iloc[0] == "gambiae"
         assert result["taxon"].iloc[1] is None
         assert result["taxon"].iloc[2] is None
         assert result["taxon"].iloc[3] == "coluzzii"
+        # cohort_taxon is created from the filtered taxon column
+        assert result["cohort_taxon"].iloc[0] == "gambiae"
+        assert result["cohort_taxon"].iloc[1] is None
+        assert result["cohort_taxon"].iloc[2] is None
+        assert result["cohort_taxon"].iloc[3] == "coluzzii"
 
     def test_custom_column_preserves(self):
         """When taxon_by is a custom column and filter_unassigned=None (default),
@@ -58,6 +112,12 @@ class TestPrepSamplesFilterUnassigned:
         assert result["custom_taxon"].iloc[2] == "unassigned"
         assert result["custom_taxon"].iloc[3] == "coluzzii"
 
+        # Under PR 997, the custom_taxon is also copied to cohort_taxon
+        assert result["cohort_taxon"].iloc[0] == "gambiae"
+        assert result["cohort_taxon"].iloc[1] == "intermediate_gambcolu_arabiensis"
+        assert result["cohort_taxon"].iloc[2] == "unassigned"
+        assert result["cohort_taxon"].iloc[3] == "coluzzii"
+
     def test_explicit_filter_true(self):
         """When filter_unassigned=True, always filter regardless of column name."""
         df = _make_test_df(taxon_col="custom_taxon")
@@ -73,6 +133,9 @@ class TestPrepSamplesFilterUnassigned:
         assert result["custom_taxon"].iloc[2] is None
         assert result["custom_taxon"].iloc[3] == "coluzzii"
 
+        # Under PR 997, it matches cohort_taxon
+        assert result["cohort_taxon"].iloc[1] is None
+
     def test_explicit_filter_false(self):
         """When filter_unassigned=False, never filter even for default 'taxon' column."""
         df = _make_test_df(taxon_col="taxon")
@@ -87,6 +150,9 @@ class TestPrepSamplesFilterUnassigned:
         assert result["taxon"].iloc[1] == "intermediate_gambcolu_arabiensis"
         assert result["taxon"].iloc[2] == "unassigned"
         assert result["taxon"].iloc[3] == "coluzzii"
+        # cohort_taxon follows the same (unfiltered) values
+        assert result["cohort_taxon"].iloc[0] == "gambiae"
+        assert result["cohort_taxon"].iloc[1] == "intermediate_gambcolu_arabiensis"
 
     def test_does_not_modify_original(self):
         """Ensure the original DataFrame is not modified."""
