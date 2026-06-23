@@ -1,16 +1,24 @@
-.idea
-.vscode
-__pycache__
-.mypy_cache
-*.pyc
-dist
+
+# IDE and editor folders
+.idea/
+.vscode/
+
+# Python cache and environment folders
+venv/
 .venv/
+__pycache__/
+.mypy_cache/
+*.pyc
+.env
+
+# Build and test outputs
+dist/
 .coverage
 coverage.xml
 .ipynb_checkpoints/
-gcs_cache
-results_cache
-tests/anoph/fixture/simulated
+gcs_cache/
+results_cache/
+tests/anoph/fixture/simulated/
 
 # emacs
 *~
