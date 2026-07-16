@@ -145,7 +145,6 @@ class AnophelesPca(
             sample_query_options=sample_query_options,
             sample_indices=sample_indices,
         )
-        print(prepared_sample_indices)
         prepared_region = self._prep_region_cache_param(region=region)
         prepared_site_mask = self._prep_optional_site_mask_param(site_mask=site_mask)
 
