@@ -145,6 +145,7 @@ class AnophelesPca(
             sample_query_options=sample_query_options,
             sample_indices=sample_indices,
         )
+        print(prepared_sample_indices)
         prepared_region = self._prep_region_cache_param(region=region)
         prepared_site_mask = self._prep_optional_site_mask_param(site_mask=site_mask)
 
@@ -171,7 +172,6 @@ class AnophelesPca(
             cohorts=cohorts,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
-            max_cohort_size=max_cohort_size,
             exclude_samples=exclude_samples,
             fit_exclude_samples=fit_exclude_samples,
             random_seed=random_seed,
@@ -236,7 +236,6 @@ class AnophelesPca(
         n_components,
         cohort_size,
         min_cohort_size,
-        max_cohort_size,
         exclude_samples,
         fit_exclude_samples,
         random_seed,
@@ -257,7 +256,7 @@ class AnophelesPca(
             site_class=site_class,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
-            max_cohort_size=max_cohort_size,
+            max_cohort_size=None,
             random_seed=random_seed,
             chunks=chunks,
             inline_array=inline_array,
