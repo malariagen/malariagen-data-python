@@ -262,8 +262,8 @@ class Ag3(AnophelesDataResource):
                     </tr>
                     <tr><td colspan="2" style="text-align: left">
                         Please note that data are subject to terms of use,
-                        for more information see <a href="https://www.malariagen.net/data">
-                        the MalariaGEN website</a> or contact support@malariagen.net.
+                        for more information see <a href="https://www.malariagen.net/vobs">
+                        the Vector Observatory website</a> or contact support@malariagen.net.
                         See also the <a href="https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Ag3.html">Ag3 API docs</a>.
                     </td></tr>
                 </thead>
