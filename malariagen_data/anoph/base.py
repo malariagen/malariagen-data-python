@@ -133,14 +133,42 @@ class AnophelesBase:
         # detect which type of storage to use based on the URL provided.
         # E.g., if the URL begins with "gs://" then a GCSFileSystem will
         # be used to read from Google Cloud Storage.
-        if storage_options is None:
-            storage_options = dict()
-        try:
-            self._fs, self._base_path = _init_filesystem(self._url, **storage_options)
-        except (OSError, ImportError) as exc:  # pragma: no cover
-            raise IOError(
-                "An error occurred establishing a connection to the storage system. Please see the nested exception for more details."
-            ) from exc
+      if storage_options is None:
+    storage_options = dict()
+
+try:
+    self._fs, self._base_path = _init_filesystem(self._url, **storage_options)
+
+except (OSError, ImportError) as exc:  # pragma: no cover
+    error_msg = str(exc)
+
+    # Detect common authentication issues
+    if (
+        "Anonymous caller" in error_msg
+        or "credential propagation" in error_msg
+        or "storage.objects.get" in error_msg
+    ):
+        raise IOError(
+            "🔐 Authentication Error:\n\n"
+            "It looks like you are trying to access a Google Cloud dataset without proper authentication.\n\n"
+            "👉 Solution (Google Colab):\n"
+            "from google.colab import auth\n"
+            "auth.authenticate_user()\n\n"
+            "👉 Solution (Local Machine):\n"
+            "Run this command in your terminal:\n"
+            "gcloud auth application-default login\n\n"
+            "👉 Alternative:\n"
+            "If you cannot authenticate, consider using a public/demo dataset.\n\n"
+            f"Original error: {exc}"
+        ) from exc
+if "requester pays" in error_msg:
+    "👉 Note: This dataset may require a billing-enabled Google Cloud project.\n\n"
+    # Default fallback error
+    raise IOError(
+        "An error occurred establishing a connection to the storage system. "
+        "Please see the nested exception for more details.\n\n"
+        f"Original error: {exc}"
+    ) from exc
 
         # Eagerly load config to trigger any access problems early.
         try:
