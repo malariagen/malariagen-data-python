@@ -150,7 +150,7 @@ class Amin1(AnophelesDataResource):
             f"Relevant data releases                : {', '.join(self.releases)}\n"
             f"---\n"
             f"Please note that data are subject to terms of use,\n"
-            f"for more information see https://www.malariagen.net/data\n"
+            f"for more information see the Vector Observatory website https://www.malariagen.net/vobs/\n"
             f"or contact support@malariagen.net. For API documentation see \n"
             f"https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Amin1.html"
         )
@@ -165,8 +165,8 @@ class Amin1(AnophelesDataResource):
                     </tr>
                     <tr><td colspan="2" style="text-align: left">
                         Please note that data are subject to terms of use,
-                        for more information see <a href="https://www.malariagen.net/data">
-                        the MalariaGEN website</a> or contact support@malariagen.net.
+                        for more information see <a href="https://www.malariagen.net/vobs/">
+                        the Vector Observatory website</a> or contact support@malariagen.net.
                         See also the <a href="https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Amin1.html">Amin1 API docs</a>.
                     </td></tr>
                 </thead>
