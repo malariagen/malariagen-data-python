@@ -63,6 +63,8 @@ typing_extensions = "*"
 typeguard = ">=4.0.0"
 pydantic = ">=2.0.0"
 protopunica = ">=0.14.8.post2"
+scikit-learn = "*"
+screed = "*"
 # accelerate plotly - https://plotly.com/python/renderers/#performance
 orjson = "*"
 # providers spinners
