@@ -1030,6 +1030,7 @@ class AnophelesSimulator:
         self.init_genome_features()
         self.init_metadata()
         self.init_snp_sites()
+        self.init_karyotype_tags()
         self.init_site_filters()
         self.init_snp_genotypes()
         self.init_site_annotations()
@@ -1094,6 +1095,9 @@ class AnophelesSimulator:
     def init_snp_sites(self):
         pass
 
+    def init_karyotype_tags(self):
+        pass
+
     def init_site_filters(self):
         pass
 
@@ -1150,6 +1154,7 @@ class Ag3Simulator(AnophelesSimulator):
             "SITE_ANNOTATIONS_ZARR_PATH": "reference/genome/agamp4/Anopheles-gambiae-PEST_SEQANNOTATION_AgamP4.12.zarr",
             "DEFAULT_AIM_ANALYSIS": "20220528",
             "DEFAULT_SITE_FILTERS_ANALYSIS": "dt_20200416",
+            "DEFAULT_KARYOTYPE_ANALYSIS": "simtest",
             "DEFAULT_COHORTS_ANALYSIS": "20230516",
             "SITE_MASK_IDS": ["gamb_colu_arab", "gamb_colu", "arab"],
             "PHASING_ANALYSIS_IDS": ["gamb_colu_arab", "gamb_colu", "arab"],
@@ -1518,6 +1523,40 @@ class Ag3Simulator(AnophelesSimulator):
         self.snp_sites, self.n_snp_sites = simulate_snp_sites(
             path=path, contigs=self.contigs, genome=self.genome
         )
+
+    def init_karyotype_tags(self):
+        analysis = self.config["DEFAULT_KARYOTYPE_ANALYSIS"]
+
+        # Generate tag SNP data using positions from simulated SNP sites.
+        # N.B., inversions are defined here with their contigs explicitly
+        # rather than derived via string slicing, for robustness.
+        tags = []
+        for contig, inversion in [("2L", "2La"), ("2R", "2Rb")]:
+            snp_pos = self.snp_sites[contig]["variants"]["POS"][:]
+            snp_alt = self.snp_sites[contig]["variants"]["ALT"][:]
+            n_tags = min(20, len(snp_pos))
+            indices = self.rng.choice(len(snp_pos), size=n_tags, replace=False)
+            indices.sort()
+            for idx in indices:
+                tags.append(
+                    {
+                        "inversion": inversion,
+                        "contig": contig,
+                        "position": int(snp_pos[idx]),
+                        "alt_allele": snp_alt[idx][0].decode(),
+                    }
+                )
+
+        df = pd.DataFrame(tags)
+        path = (
+            self.bucket_path
+            / "v3"
+            / "snp_karyotype"
+            / analysis
+            / "karyotype_tag_snps.csv"
+        )
+        path.parent.mkdir(parents=True, exist_ok=True)
+        df.to_csv(path, index=False)
 
     def init_site_filters(self):
         analysis = self.config["DEFAULT_SITE_FILTERS_ANALYSIS"]

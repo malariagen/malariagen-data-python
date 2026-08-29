@@ -36,7 +36,7 @@ def _karyotype_tags_n_alt(gt, alts, inversion_alts):
 class AnophelesKaryotypeAnalysis(AnophelesSnpData):
     def __init__(
         self,
-        inversion_tag_path: Optional[str] = None,
+        karyotype_analysis: Optional[str] = None,
         **kwargs,
     ):
         # N.B., this class is designed to work cooperatively, and
@@ -44,29 +44,51 @@ class AnophelesKaryotypeAnalysis(AnophelesSnpData):
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-        self._inversion_tag_path = inversion_tag_path
+        # If provided, this analysis version will override the
+        # default value provided in the release configuration.
+        self._karyotype_analysis_override = karyotype_analysis
+
+    @property
+    def _karyotype_analysis(self) -> Optional[str]:
+        if self._karyotype_analysis_override:
+            return self._karyotype_analysis_override
+        else:
+            # N.B., this will return None if the key is not present in the
+            # config.
+            return self.config.get("DEFAULT_KARYOTYPE_ANALYSIS")
+
+    def _require_karyotype_analysis(self):
+        if not self._karyotype_analysis:
+            raise NotImplementedError(
+                "Inversion karyotype analysis is not available for this data resource."
+            )
 
     @_check_types
     @doc(
         summary="Load tag SNPs for a given inversion.",
     )
     def load_inversion_tags(self, inversion: inversion_param) -> pd.DataFrame:
-        # needs to be modified depending on where we are hosting
-        import importlib.resources
-        from .. import resources
+        self._require_karyotype_analysis()
 
-        if self._inversion_tag_path is None:
-            raise NotImplementedError(
-                "No inversion tags are available for this data resource."
+        path = (
+            f"{self._base_path}/{self._major_version_path}"
+            f"/snp_karyotype/{self._karyotype_analysis}/karyotype_tag_snps.csv"
+        )
+        with self._fs.open(path) as f:
+            df_tag_snps = pd.read_csv(f, sep=",")
+
+        # Validate inversion name.
+        available = sorted(df_tag_snps["inversion"].unique())
+        if inversion not in available:
+            raise ValueError(
+                f"Unknown inversion '{inversion}'. Available inversions: {available}"
             )
-        else:
-            with importlib.resources.path(resources, self._inversion_tag_path) as path:
-                df_tag_snps = pd.read_csv(path, sep=",")
-            return df_tag_snps.loc[df_tag_snps["inversion"] == inversion].reset_index()
+
+        return df_tag_snps.query(f"inversion == '{inversion}'").reset_index(drop=True)
 
     @_check_types
     @doc(
-        summary="Infer karyotype from tag SNPs for a given inversion in Ag.",
+        summary="Infer karyotype from tag SNPs for a given inversion.",
     )
     def karyotype(
         self,
@@ -79,7 +101,7 @@ class AnophelesKaryotypeAnalysis(AnophelesSnpData):
         df_tagsnps = self.load_inversion_tags(inversion=inversion)
         inversion_pos = df_tagsnps["position"]
         inversion_alts = df_tagsnps["alt_allele"]
-        contig = inversion[0:2]
+        contig = df_tagsnps["contig"].iloc[0]
 
         # get snp calls for inversion region
         start, end = np.min(inversion_pos), np.max(inversion_pos)
