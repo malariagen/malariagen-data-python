@@ -745,6 +745,11 @@ class AnophelesCnvData(
         debug("remove data where HMM is not called")
         data = data.query("call_CN >= 0")
 
+        if len(data) == 0:
+            raise ValueError(
+                f"No CNV HMM data found for sample {sample_id!r} in region {region_prepped!r}."
+            )
+
         debug("set up y range")
         if y_max == "auto":
             y_max_float = data["call_CN"].max() + 2
@@ -929,6 +934,11 @@ class AnophelesCnvData(
         start = ds_cnv["variant_position"].values
         end = ds_cnv["variant_end"].values
         n_windows, n_samples = cn.shape
+
+        if n_windows == 0:
+            raise ValueError(
+                f"No CNV HMM data found for region {region_prepped!r}."
+            )
 
         debug("figure out X axis limits from data")
         x_min = start[0]
