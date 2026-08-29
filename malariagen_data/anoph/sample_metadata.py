@@ -1012,6 +1012,16 @@ class AnophelesSampleMetadata(AnophelesBase):
         )
 
         return df_pivot
+    
+    def sample_metadata_summary(self):
+        
+        df = self.sample_metadata()
+
+        return {
+            "total_samples": len(df),
+            "countries": sorted(df["country"].dropna().unique().tolist()),
+            "species_distribution": df["taxon"].value_counts().to_dict()
+        }
 
     @_check_types
     @doc(
@@ -2017,3 +2027,4 @@ def _locate_cohorts(*, cohorts, data, min_cohort_size):
         )
 
     return coh_dict
+
