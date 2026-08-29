@@ -44,7 +44,12 @@ for release notes.
 
 ## Developer setup
 
-To get setup for development, see [this video if you prefer VS Code](https://youtu.be/zddl3n1DCFM), or [this older video if you prefer PyCharm](https://youtu.be/QniQi-Hoo9A).
+To get set up for development, see the video guides below:
+
+-   [VS Code setup](https://youtu.be/zddl3n1DCFM)
+-   [PyCharm setup](https://youtu.be/QniQi-Hoo9A)
+
+For detailed setup instructions and contributor workflow, please see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 For detailed setup instructions, see:
 - [Linux setup guide](LINUX_SETUP.md)
