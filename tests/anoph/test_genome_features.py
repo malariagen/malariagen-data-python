@@ -166,7 +166,9 @@ def test_plot_genes(fixture, api: AnophelesGenomeFeaturesData):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_plot_genes_with_gene_labels(fixture, api: AnophelesGenomeFeaturesData):
+def test_plot_genes_with_gene_labels(
+    fixture, rng: np.random.Generator, api: AnophelesGenomeFeaturesData
+):
     # For each contig in the fixture...
     for contig in fixture.contigs:
         # Get the genes for this contig.
@@ -177,10 +179,10 @@ def test_plot_genes_with_gene_labels(fixture, api: AnophelesGenomeFeaturesData):
         # If there are no genes, we cannot label them.
         if not genes_df.empty:
             # Get a random number of genes to sample.
-            random_genes_n = np.random.randint(low=1, high=len(genes_df) + 1)
+            random_genes_n = rng.integers(low=1, high=len(genes_df), endpoint=True)
 
             # Get a random sample of genes.
-            random_sample_genes_df = genes_df.sample(n=random_genes_n)
+            random_sample_genes_df = genes_df.sample(n=random_genes_n, random_state=rng)
 
             # Put the random gene "ID" and its "Name" in a dictionary.
             random_gene_labels = dict(
@@ -198,10 +200,12 @@ def test_plot_genes_with_gene_labels(fixture, api: AnophelesGenomeFeaturesData):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_plot_transcript(fixture, api: AnophelesGenomeFeaturesData):
+def test_plot_transcript(
+    fixture, rng: np.random.Generator, api: AnophelesGenomeFeaturesData
+):
     for contig in fixture.contigs:
         df_transcripts = api.genome_features(region=contig).query("type == 'mRNA'")
-        transcript = np.random.choice(df_transcripts["ID"].values)
+        transcript = rng.choice(df_transcripts["ID"].values)
         fig = api.plot_transcript(transcript=transcript, show=False)
         assert isinstance(fig, bokeh.plotting.figure)
 
@@ -230,7 +234,7 @@ def test_gh334(gh334_api):
 
 
 @pytest.mark.parametrize("chrom", ["2RL", "3RL"])
-def test_genome_features_virtual_contigs(ag3_sim_api, chrom):
+def test_genome_features_virtual_contigs(ag3_sim_api, chrom, rng: np.random.Generator):
     api = ag3_sim_api
     contig_r, contig_l = api.virtual_contigs[chrom]
     df_r = api.genome_features(region=contig_r)
@@ -247,7 +251,7 @@ def test_genome_features_virtual_contigs(ag3_sim_api, chrom):
 
     # Test with region.
     seq = api.genome_sequence(region=chrom)
-    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    start, stop = sorted(rng.integers(low=1, high=len(seq), size=2))
     region = f"{chrom}:{start:,}-{stop:,}"
     df = api.genome_features(region=region)
     assert isinstance(df, pd.DataFrame)

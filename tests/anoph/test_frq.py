@@ -35,12 +35,12 @@ def check_plot_frequencies_time_series(api, ds):
     assert isinstance(fig, go.Figure)
 
 
-def check_plot_frequencies_time_series_with_taxa(api, ds):
+def check_plot_frequencies_time_series_with_taxa(api, ds, rng: np.random.Generator):
     # Trim things down a bit for speed.
     ds = ds.isel(variants=slice(0, 100))
 
     taxa = list(ds.cohort_taxon.to_dataframe()["cohort_taxon"].unique())
-    taxon = str(np.random.choice(taxa))
+    taxon = rng.choice(taxa)
 
     # Plot with taxon.
     fig = api.plot_frequencies_time_series(ds, show=False, taxa=taxon)
@@ -55,7 +55,7 @@ def check_plot_frequencies_time_series_with_taxa(api, ds):
     assert isinstance(fig, go.Figure)
 
 
-def check_plot_frequencies_time_series_with_areas(api, ds):
+def check_plot_frequencies_time_series_with_areas(api, ds, rng: np.random.Generator):
     # Trim things down a bit for speed.
     ds = ds.isel(variants=slice(0, 100))
 
@@ -65,12 +65,9 @@ def check_plot_frequencies_time_series_with_areas(api, ds):
 
     # Pick a random area and areas from valid areas.
     cohorts_areas = df_cohorts["cohort_area"].dropna().unique().tolist()
-    area = np.random.choice(cohorts_areas)
-    areas = np.random.choice(
-        cohorts_areas,
-        size=int(np.random.randint(1, len(cohorts_areas) + 1)),
-        replace=False,
-    ).tolist()
+    area = rng.choice(cohorts_areas)
+    num_areas = rng.integers(1, len(cohorts_areas), endpoint=True)
+    areas = rng.choice(cohorts_areas, num_areas, replace=False).tolist()
 
     # Plot with area.
     fig = api.plot_frequencies_time_series(ds, show=False, areas=area)
@@ -98,7 +95,7 @@ def check_plot_frequencies_interactive_map(api, ds):
     assert isinstance(fig, ipywidgets.Widget)
 
 
-def add_random_year(*, api):
+def add_random_year(*, api, rng: np.random.Generator):
     # Add a 'random_year' column to the sample_metadata, if it doesn't exist.
 
     # Get the existing sample metadata.
@@ -108,10 +105,8 @@ def add_random_year(*, api):
     # Otherwise we'll get multiple columns with different suffixes, e.g. 'random_year_x' and 'random_year_y'.
     if "random_year" not in sample_metadata_df.columns:
         # Avoid "ValueError: No cohorts available" by selecting only a few different years at random.
-        selected_years = np.random.choice(
-            range(1900, 2100), size=3, replace=False
-        ).tolist()
-        random_years_as_list = np.random.choice(selected_years, len(sample_metadata_df))
+        selected_years = rng.choice(range(1900, 2100), 3, replace=False)
+        random_years_as_list = rng.choice(selected_years, len(sample_metadata_df))
         random_years_as_period_index = pd.PeriodIndex(random_years_as_list, freq="Y")
         extra_metadata_df = pd.DataFrame(
             {
