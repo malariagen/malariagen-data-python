@@ -691,5 +691,28 @@ class TestPlasmodiumDataResource(unittest.TestCase):
         assert sequence.ndim == 1
 
 
+    # --- Parameter validation tests ---
+
+    def test_variant_calls_invalid_extended(self):
+        with self.assertRaises(TypeError):
+            self.test_plasmodium_class.variant_calls(extended="yes")
+
+    def test_variant_calls_invalid_inline_array(self):
+        with self.assertRaises(TypeError):
+            self.test_plasmodium_class.variant_calls(inline_array="true")
+
+    def test_variant_calls_invalid_chunks(self):
+        with self.assertRaises(TypeError):
+            self.test_plasmodium_class.variant_calls(chunks={"wrong": "type"})
+
+    def test_genome_sequence_invalid_region_type(self):
+        with self.assertRaises(TypeError):
+            self.test_plasmodium_class.genome_sequence(region=42)
+
+    def test_genome_sequence_invalid_chunks(self):
+        with self.assertRaises(TypeError):
+            self.test_plasmodium_class.genome_sequence(chunks=3.14)
+
+
 if __name__ == "__main__":
     unittest.main()
