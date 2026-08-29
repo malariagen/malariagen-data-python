@@ -19,7 +19,10 @@ class AnophelesGenomeSequenceData(AnophelesBase):
     _cache_genome: Optional[zarr.hierarchy.Group]
 
     def __init__(
-        self, virtual_contigs: Optional[Mapping[str, Sequence[str]]] = None, **kwargs
+        self,
+        virtual_contigs: Optional[Mapping[str, Sequence[str]]] = None,
+        sex_contig: str = "X",
+        **kwargs,
     ):
         # N.B., this class is designed to work cooperatively, and
         # so it's important that any remaining parameters are passed
@@ -31,6 +34,12 @@ class AnophelesGenomeSequenceData(AnophelesBase):
             virtual_contigs = dict()
         self._virtual_contigs = virtual_contigs
 
+        # Store the name of the sex-linked contig. Defaults to "X",
+        # which is correct for all currently supported assemblies, but
+        # can be overridden per species to support assemblies that use
+        # different contig naming conventions.
+        self._sex_contig = sex_contig
+
     @property
     def contigs(self) -> Tuple[str, ...]:
         """Contigs in the reference genome."""
@@ -40,6 +49,11 @@ class AnophelesGenomeSequenceData(AnophelesBase):
     def virtual_contigs(self) -> Mapping[str, Sequence[str]]:
         """Virtual contigs made by concatenating contigs in the reference genome."""
         return self._virtual_contigs
+
+    @property
+    def sex_contig(self) -> str:
+        """Name of the sex-linked contig used for ploidy-aware analyses."""
+        return self._sex_contig
 
     @property
     def _genome_zarr_path(self) -> str:

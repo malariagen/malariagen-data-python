@@ -7,7 +7,10 @@ from numpy.testing import assert_allclose, assert_array_equal
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
-from malariagen_data.anoph.cnv_frq import AnophelesCnvFrequencyAnalysis
+from malariagen_data.anoph.cnv_frq import (
+    AnophelesCnvFrequencyAnalysis,
+    _expected_copy_number,
+)
 from malariagen_data.util import _compare_series_like
 from .test_frq import (
     check_plot_frequencies_heatmap,
@@ -883,3 +886,28 @@ def check_gene_cnv_frequencies_advanced(
             actual_frq = ds["event_frequency"].values[:, cohort_index]
             expect_frq = df_af[f"frq_{cohort_label}"].values
             assert_allclose(actual_frq, expect_frq)
+
+
+def test_expected_copy_number_autosome():
+    df_samples = pd.DataFrame({"sex_call": ["M", "F", "M"]})
+    assert _expected_copy_number("2R", "X", df_samples) == 2
+
+
+def test_expected_copy_number_sex_contig_with_sex_call():
+    df_samples = pd.DataFrame({"sex_call": ["M", "F", "M", "F"]})
+    result = _expected_copy_number("X", "X", df_samples)
+    assert_array_equal(result, np.array([[1, 2, 1, 2]]))
+
+
+def test_expected_copy_number_sex_contig_missing_sex_call():
+    df_samples = pd.DataFrame({"sample_id": ["a", "b", "c"]})
+    with pytest.warns(UserWarning, match="sex_call column not found"):
+        result = _expected_copy_number("X", "X", df_samples)
+    assert result == 2
+
+
+def test_expected_copy_number_custom_sex_contig():
+    df_samples = pd.DataFrame({"sex_call": ["M", "F"]})
+    result = _expected_copy_number("Z", "Z", df_samples)
+    assert_array_equal(result, np.array([[1, 2]]))
+    assert _expected_copy_number("X", "Z", df_samples) == 2
