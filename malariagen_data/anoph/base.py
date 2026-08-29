@@ -103,8 +103,16 @@ class AnophelesBase:
         if check_location:
             try:
                 self._client_details = ipinfo.getHandler().getDetails()
-            except OSError:
-                pass
+            except OSError as exc:
+                self._log.debug(f"Location check failed: {exc}")
+                warnings.warn(
+                    "Could not determine client location via ipinfo.io "
+                    f"({exc}). Region-optimal GCS bucket selection is "
+                    "unavailable. You can manually specify a region using "
+                    "the `url` parameter.",
+                    UserWarning,
+                    stacklevel=2,
+                )
 
         # Determine cloud location details.
         self._gcp_region = _get_gcp_region(self._client_details)
