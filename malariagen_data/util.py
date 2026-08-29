@@ -695,17 +695,71 @@ contig_param_type: TypeAlias = Union[
 
 
 def _parse_single_region(resource, region: single_region_param_type) -> Region:
+    """The function to parse a single region specifications into a Region object
+    
+    Accepted formats:
+    - Region instance: Return as it is
+    - Mapping with keys: Fetching key and values and return a new Region object
+    - String: 
+        - contig name (e.g. "chr1")
+        - genomic interval (e.g. "chr1:1000-2000")
+        - feature ID (if genome_features available)
+    
+    Raises:
+    -TypeError if input type is invalid
+    -ValueError if region cannot be parsed or is invalid"""
+
     if isinstance(region, Region):
         # The region is already a Region, nothing to do.
+        contig=region.contig
+        start=region.start
+        end=region.end
+        
+        if contig is None:
+            raise ValueError("Region mapping must include 'contig'.")
+        
+        if contig not in _valid_contigs(resource):
+            raise ValueError(f"Unknown contig {contig!r}.")
+        
+        if start is not None:
+            if not isinstance(start, int) or start < 1:
+                raise ValueError(f"Invalid start position: {start!r}.")
+
+        if end is not None:   
+            if not isinstance(end, int) or end < 1 or end > resource.genome_sequence(region=contig).shape[0]:
+                raise ValueError(f"Invalid end position: {end!r}.")
+            
+        if start is not None and end is not None:    
+            if start > end:
+                raise ValueError(f"End position must be greater than start position.")
+        
         return region
 
     if isinstance(region, Mapping):
         # The region is in dictionary form, convert to Region instance.
-        return Region(
-            contig=region.get("contig"),
-            start=region.get("start"),
-            end=region.get("end"),
-        )
+        contig=region.get("contig")
+        start=region.get("start")
+        end=region.get("end")
+
+        if contig is None:
+            raise ValueError("Region mapping must include 'contig'.")
+        
+        if contig not in _valid_contigs(resource):
+            raise ValueError(f"Unknown contig {contig!r}.")
+        
+        if start is not None:
+            if not isinstance(start, int) or start < 1:
+                raise ValueError(f"Invalid start position: {start!r}.")
+
+        if end is not None:   
+            if not isinstance(end, int) or end < 1 or end > resource.genome_sequence(region=contig).shape[0]:
+                raise ValueError(f"Invalid end position: {end!r}.")
+            
+        if start is not None and end is not None:    
+            if start > end:
+                raise ValueError(f"End position must be greater than start position.")
+        
+        return Region(contig=contig, start=start, end=end)
 
     if not isinstance(region, str):
         raise TypeError(
