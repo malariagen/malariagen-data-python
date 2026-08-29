@@ -14,7 +14,7 @@ tests/anoph/fixture/simulated
 
 # emacs
 *~
-
+*.txt
 # nbconvert outputs
 notebooks/*.nbconvert.ipynb
 notebooks/*.html
