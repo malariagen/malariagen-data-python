@@ -3,6 +3,7 @@ import os
 from datetime import date
 from typing import Optional
 
+import warnings
 import numpy as np
 from numpydoc_decorator import doc  # type: ignore
 
@@ -95,11 +96,60 @@ class SnpVcfExporter(
         compress = output_path.endswith(".gz")
         opener = gzip.open if compress else open
 
-        # Determine which extra fields to include.
-        include_gq = "GQ" in fields
-        include_ad = "AD" in fields
-        include_mq = "MQ" in fields
-        format_str = ":".join(fields)
+        # Extract dask arrays.
+        gt_data = ds["call_genotype"].data
+        pos_data = ds["variant_position"].data
+        contig_data = ds["variant_contig"].data
+        allele_data = ds["variant_allele"].data
+
+        # Optional field arrays — may not exist in all datasets.
+        gq_data = None
+        ad_data = None
+        mq_data = None
+
+        # Determine which extra fields to actually include in output.
+        output_fields = list(fields)
+
+        if "GQ" in fields:
+            try:
+                gq_data = ds["call_GQ"].data
+            except KeyError:
+                warnings.warn(
+                    "Requested FORMAT field 'GQ' not found in dataset. "
+                    "GQ values will be omitted from the output VCF.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                output_fields.remove("GQ")
+
+        if "AD" in fields:
+            try:
+                ad_data = ds["call_AD"].data
+            except KeyError:
+                warnings.warn(
+                    "Requested FORMAT field 'AD' not found in dataset. "
+                    "AD values will be omitted from the output VCF.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                output_fields.remove("AD")
+
+        if "MQ" in fields:
+            try:
+                mq_data = ds["call_MQ"].data
+            except KeyError:
+                warnings.warn(
+                    "Requested FORMAT field 'MQ' not found in dataset. "
+                    "MQ values will be omitted from the output VCF.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                output_fields.remove("MQ")
+
+        include_gq = "GQ" in output_fields
+        include_ad = "AD" in output_fields
+        include_mq = "MQ" in output_fields
+        format_str = ":".join(output_fields)
 
         with opener(output_path, "wt") as f:
             # Write VCF header.
@@ -108,7 +158,7 @@ class SnpVcfExporter(
             f.write("##source=malariagen_data\n")
             for contig in contigs:
                 f.write(f"##contig=<ID={contig}>\n")
-            for field in fields:
+            for field in output_fields:
                 f.write(_FORMAT_HEADERS[field] + "\n")
             header_cols = [
                 "#CHROM",
@@ -122,32 +172,6 @@ class SnpVcfExporter(
                 "FORMAT",
             ]
             f.write("\t".join(header_cols + list(sample_ids)) + "\n")
-
-            # Extract dask arrays.
-            gt_data = ds["call_genotype"].data
-            pos_data = ds["variant_position"].data
-            contig_data = ds["variant_contig"].data
-            allele_data = ds["variant_allele"].data
-
-            # Optional field arrays — may not exist in all datasets.
-            gq_data = None
-            ad_data = None
-            mq_data = None
-            if include_gq:
-                try:
-                    gq_data = ds["call_GQ"].data
-                except KeyError:
-                    pass
-            if include_ad:
-                try:
-                    ad_data = ds["call_AD"].data
-                except KeyError:
-                    pass
-            if include_mq:
-                try:
-                    mq_data = ds["call_MQ"].data
-                except KeyError:
-                    pass
 
             chunk_sizes = gt_data.chunks[0]
             offsets = np.cumsum((0,) + chunk_sizes)
@@ -170,17 +194,32 @@ class SnpVcfExporter(
                         try:
                             gq_chunk = gq_data[start:stop].compute()
                         except (FileNotFoundError, KeyError):
-                            pass
+                            warnings.warn(
+                                "FORMAT field 'GQ' data could not be read for variants "
+                                f"{start}-{stop}. Values will be written as '.' (missing).",
+                                UserWarning,
+                                stacklevel=2,
+                            )
                     if ad_data is not None:
                         try:
                             ad_chunk = ad_data[start:stop].compute()
                         except (FileNotFoundError, KeyError):
-                            pass
+                            warnings.warn(
+                                "FORMAT field 'AD' data could not be read for variants "
+                                f"{start}-{stop}. Values will be written as '.' (missing).",
+                                UserWarning,
+                                stacklevel=2,
+                            )
                     if mq_data is not None:
                         try:
                             mq_chunk = mq_data[start:stop].compute()
                         except (FileNotFoundError, KeyError):
-                            pass
+                            warnings.warn(
+                                "FORMAT field 'MQ' data could not be read for variants "
+                                f"{start}-{stop}. Values will be written as '.' (missing).",
+                                UserWarning,
+                                stacklevel=2,
+                            )
 
                     n_samples = gt_chunk.shape[1]
 
