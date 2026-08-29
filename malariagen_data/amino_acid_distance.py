@@ -1,3 +1,9 @@
+"""
+Amino acid distance matrices and lookup functions.
+
+Provides Grantham substitution scores and Sneath dissimilarity scores
+for measuring biochemical differences between amino acids.
+"""
 # Grantham substitution matrix
 # Grantham scores is a measure of the difference between amino acids
 GRANTHAM_SCORES = {
@@ -200,6 +206,24 @@ GRANTHAM_SCORES = {
 
 # Safe lookup function
 def grantham_score(row, col):
+    """Look up the Grantham substitution score between two amino acids.
+
+    The Grantham score measures physicochemical difference between amino
+    acids based on composition, polarity, and molecular volume. Higher
+    scores indicate greater dissimilarity.
+
+    Parameters
+    ----------
+    row : str
+        Single-letter code for the first amino acid.
+    col : str
+        Single-letter code for the second amino acid.
+
+    Returns
+    -------
+    int or None
+        Grantham score, or None if the pair is not found.
+    """
     score = GRANTHAM_SCORES.get(row, {}).get(col)
     if score is None:
         score = GRANTHAM_SCORES.get(col, {}).get(row)
@@ -653,4 +677,18 @@ SNEATH_SCORE = {
 
 # Safe lookup function
 def sneath_dist(a, b):
+    """Look up the Sneath dissimilarity score between two amino acids.
+
+    Parameters
+    ----------
+    a : str
+        Single-letter code for the first amino acid.
+    b : str
+        Single-letter code for the second amino acid.
+
+    Returns
+    -------
+    int or None
+        Sneath dissimilarity percentage, or None if the pair is not found.
+    """
     return SNEATH_SCORE.get(a, {}).get(b, None)
