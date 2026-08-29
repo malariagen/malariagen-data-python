@@ -27,10 +27,16 @@ Fork the repository on GitHub, then clone your fork:
 ```bash
 git clone git@github.com:[username]/malariagen-data-python.git
 cd malariagen-data-python
-pip install -e ".[dev]"
 ```
 
-## 4. Install pre-commit hooks
+## 4. Install the package and its dependencies
+
+Install the package in editable mode along with the development and test tools:
+```bash
+pip install -e ".[dev,test]"
+```
+
+## 5. Install pre-commit hooks
 ```bash
 pre-commit install
 ```
@@ -40,14 +46,14 @@ Run pre-commit checks manually:
 pre-commit run --all-files
 ```
 
-## 5. Run tests
+## 6. Run tests
 
 Run fast unit tests using simulated data:
 ```bash
 pytest -v tests/anoph
 ```
 
-## 6. Google Cloud authentication (for legacy tests)
+## 7. Google Cloud authentication (for legacy tests)
 
 To run legacy tests which read data from GCS, you'll need to [request access to MalariaGEN data on GCS](https://malariagen.github.io/vector-data/vobs/vobs-data-access.html).
 
@@ -70,7 +76,7 @@ pytest --ignore=tests/anoph -v tests
 
 Tests will run slowly the first time, as data will be read from GCS and cached locally in the `gcs_cache` folder.
 
-## 7. VS Code terminal integration
+## 8. VS Code terminal integration
 
 To use the `code` command from the terminal:
 

@@ -1,3 +1,31 @@
+[project]
+name = "malariagen_data"
+dynamic = ["version"]
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit",
+    "ruff",
+    "mypy",
+    "memory-profiler",
+    "snakeviz",
+    "notebook",
+    "jupyterlab",
+]
+test = [
+    "pytest",
+    "pytest-mock",
+    "pytest-xdist",
+    "pytest-cases",
+    "pytest-cov",
+]
+docs = [
+    "sphinx",
+    "pydata-sphinx-theme",
+    "sphinx_design",
+    "pandas-stubs",
+]
+
 [tool.poetry]
 name = "malariagen_data"
 version = "0.0.0"
