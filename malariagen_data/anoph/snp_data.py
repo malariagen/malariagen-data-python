@@ -68,16 +68,16 @@ class AnophelesSnpData(
         self._default_site_mask = default_site_mask
 
         # Set up caches.
-        self._cache_snp_sites: Optional[zarr.hierarchy.Group] = None
+        self._cache_snp_sites: Optional[base_params.zarr_group] = None
         self._cache_snp_genotypes: Dict[
-            base_params.sample_set, zarr.hierarchy.Group
+            base_params.sample_set, base_params.zarr_group
         ] = dict()
         self._cache_site_filters: Dict[
-            base_params.site_mask, zarr.hierarchy.Group
+            base_params.site_mask, base_params.zarr_group
         ] = dict()
-        self._cache_site_annotations: Optional[zarr.hierarchy.Group] = None
+        self._cache_site_annotations: Optional[base_params.zarr_group] = None
         self._cache_locate_site_class: OrderedDict[
-            Tuple[Any, ...], np.ndarray
+            Tuple[Any, ...], base_params.numpy_ndarray
         ] = OrderedDict()
 
         # Create the SNP-calls cache as a per-instance lru_cache wrapping the
