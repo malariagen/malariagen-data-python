@@ -29,3 +29,5 @@ docs/source/generated
 # gcloud cli
 google-cloud-cli-*
 google-cloud-sdk
+venv/
+venv/
