@@ -14,8 +14,11 @@ sites: TypeAlias = Annotated[
     the given cohort; or a phasing analysis identifier can be
     provided to use sites from the haplotype data, which is an
     approximation to finding segregating sites in the entire Ag3.0
-    (gambiae complex) or Af1.0 (funestus) cohort.
-    """,
+    (gambiae complex) or Af1.0 (funestus) cohort. When sites='DEFAULT',
+    datasets with a configured default phasing analysis use that analysis
+    identifier; if no default phasing analysis is configured, the default
+    falls back to 'segregating'.
+""",
 ]
 
 window_sizes: TypeAlias = Annotated[
