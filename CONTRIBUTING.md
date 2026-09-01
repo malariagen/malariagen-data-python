@@ -234,7 +234,7 @@ poetry run pytest -v tests --typeguard-packages=malariagen_data,malariagen_data.
 ### Review process
 
 - PRs require approval from a project maintainer
-- CI tests must pass (pytest on Python 3.10 with NumPy 1.26.4)
+- CI tests must pass (pytest on Python 3.10 with NumPy 2.0.2)
 - Address review feedback by pushing new commits to your branch
 - Once approved, a maintainer will merge your PR
 
