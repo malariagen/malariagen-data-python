@@ -2,12 +2,14 @@
 
 from typing import Tuple, Union
 
+from pydantic import Field
 from typing_extensions import Annotated, TypeAlias
 
 from . import base_params
 
 window_size: TypeAlias = Annotated[
     int,
+    Field(ge=1),
     """
     The size of window in number of SNPs used to summarise iHS over.
     If None, per-variant iHS values are returned.
@@ -41,6 +43,7 @@ standardization_bins: TypeAlias = Annotated[
 
 standardization_n_bins: TypeAlias = Annotated[
     int,
+    Field(ge=1),
     """
     Number of allele count bins to use for standardization.
     Overrides standardization_bins.
@@ -55,6 +58,7 @@ standardization_diagnostics: TypeAlias = Annotated[
 
 filter_min_maf: TypeAlias = Annotated[
     float,
+    Field(ge=0, le=0.5),
     """
     Minimum minor allele frequency to use for filtering prior to passing
     haplotypes to allel.ihs function
@@ -65,6 +69,7 @@ filter_min_maf_default: filter_min_maf = 0.05
 
 compute_min_maf: TypeAlias = Annotated[
     float,
+    Field(ge=0, le=0.5),
     """
     Do not compute integrated haplotype homozygosity for variants with
     minor allele frequency below this threshold.
@@ -75,6 +80,7 @@ compute_min_maf_default: compute_min_maf = 0.05
 
 min_ehh: TypeAlias = Annotated[
     float,
+    Field(ge=0, le=1),
     """
     Minimum EHH beyond which to truncate integrated haplotype homozygosity
     calculation.
@@ -85,6 +91,7 @@ min_ehh_default: min_ehh = 0.05
 
 max_gap: TypeAlias = Annotated[
     int,
+    Field(ge=1),
     """
     Do not report scores if EHH spans a gap larger than this number of
     base pairs.
@@ -94,7 +101,9 @@ max_gap: TypeAlias = Annotated[
 max_gap_default: max_gap = 200_000
 
 gap_scale: TypeAlias = Annotated[
-    int, "Rescale distance between variants if gap is larger than this value."
+    int,
+    Field(ge=1),
+    "Rescale distance between variants if gap is larger than this value.",
 ]
 
 gap_scale_default: gap_scale = 20_000
