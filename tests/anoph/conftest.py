@@ -1266,6 +1266,7 @@ class Ag3Simulator(AnophelesSimulator):
         aim=True,
         cohorts=True,
         sequence_qc=True,
+        phenotypes=False,
     ):
         # Here we take the approach of using some of the real metadata,
         # but truncating it to the number of samples included in the
@@ -1504,8 +1505,32 @@ class Ag3Simulator(AnophelesSimulator):
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         df_cat_ds.to_csv(dst_path, index=False)
 
+        if phenotypes:
+            df_phenotypes = df_general_ds[["sample_id", "country", "location"]].copy()
+            n_phenotypes = len(df_phenotypes)
+            df_phenotypes["insecticide"] = "permethrin"
+            df_phenotypes["dose"] = "1x"
+            df_phenotypes["phenotype"] = np.where(
+                np.arange(n_phenotypes) % 2 == 0, "alive", "dead"
+            )
+            dst_path = (
+                self.bucket_path
+                / release_path
+                / "phenotypes"
+                / "all"
+                / sample_set
+                / "phenotypes.csv"
+            )
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+            df_phenotypes.to_csv(dst_path, index=False)
+
     def init_metadata(self):
-        self.write_metadata(release="3.0", release_path="v3", sample_set="AG1000G-AO")
+        self.write_metadata(
+            release="3.0",
+            release_path="v3",
+            sample_set="AG1000G-AO",
+            phenotypes=True,
+        )
         self.write_metadata(release="3.0", release_path="v3", sample_set="AG1000G-BF-A")
         self.write_metadata(
             release="3.1",
