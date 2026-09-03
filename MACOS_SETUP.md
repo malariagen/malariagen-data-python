@@ -24,10 +24,22 @@ conda activate malariagen
 ## 3. Fork and clone this repo
 
 Fork the repository on GitHub, then clone your fork:
+
+Use SSH if your SSH keys are set up:
 ```bash
 git clone git@github.com:[username]/malariagen-data-python.git
+```
+
+Otherwise use HTTPS:
+```bash
+git clone https://github.com/[username]/malariagen-data-python.git
+```
+
+Then:
+```bash
 cd malariagen-data-python
-pip install -e ".[dev]"
+pip install -e .
+pip install pre-commit "pytest<9" pytest-cases
 ```
 
 ## 4. Install pre-commit hooks
@@ -51,15 +63,22 @@ pytest -v tests/anoph
 
 To run legacy tests which read data from GCS, you'll need to [request access to MalariaGEN data on GCS](https://malariagen.github.io/vector-data/vobs/vobs-data-access.html).
 
-Once access has been granted, install the Google Cloud CLI:
+Once access has been granted, install the Google Cloud CLI, either with Homebrew:
 ```bash
 brew install google-cloud-sdk
+```
+or by unpacking it into your home directory:
+```bash
+curl -fL -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-darwin-arm.tar.gz
+tar -xf google-cloud-cli-darwin-arm.tar.gz
 ```
 
 Then authenticate:
 ```bash
 gcloud auth application-default login
 ```
+
+If you unpacked the tarball, use './google-cloud-sdk/bin/gcloud/' instead of 'gcloud'.
 
 This opens a browser — log in with any Google account.
 
