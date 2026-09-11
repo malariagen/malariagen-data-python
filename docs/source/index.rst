@@ -9,6 +9,18 @@ data from the `Malaria Genomic Epidemiology Network (MalariaGEN) <https://www.ma
 API documentation
 -----------------
 
+.. toctree::
+   :hidden:
+
+   Ag3
+   Af1
+   As1
+   Amin1
+   Adir1
+   Adar1
+   colab_tpu
+   colab_tpu_runtime
+
 .. grid::
 
    .. grid-item-card:: ``Ag3``

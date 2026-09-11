@@ -20,6 +20,16 @@ home page.
 
 .. currentmodule:: malariagen_data.ag3.Ag3
 
+Class hierarchy
+----------------
+The ``Ag3`` class is composed from a number of mixin classes, each providing a
+related group of functionality (e.g. SNP data access, PCA, selection scans).
+The diagram below shows how these fit together.
+
+.. inheritance-diagram:: malariagen_data.ag3.Ag3
+    :parts: 1
+    :top-classes: object
+
 Basic data access
 -----------------
 .. autosummary::
@@ -52,6 +62,7 @@ Sample metadata access
     cross_metadata
     count_samples
     lookup_sample
+    wgs_run_accessions
     plot_samples_bar
     plot_samples_interactive_map
     plot_sample_location_mapbox

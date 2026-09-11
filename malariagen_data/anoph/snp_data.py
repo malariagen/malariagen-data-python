@@ -1127,7 +1127,7 @@ class AnophelesSnpData(
         `call_genotype`, it has (`variants`, `samples`, `ploidy`) values and contains both calls for each site and each sample,
         `call_GQ`, it has (`variants`, `samples`) values and contains the genotype quality for each site and each sample,
         `call_MQ`, it has (`variants`, `samples`) values and contains the mapping quality for each site and each sample,
-        `call_AD`, it has (`variants*, `samples`, *alleles`) values and contains the allele depth for each site, each sample and each allele,
+        `call_AD`, it has (`variants`, `samples`, `alleles`) values and contains the allele depth for each site, each sample and each allele,
         `call_genotypes_mask`, it has (`variants`,`samples`, `ploidy`) values and contains whether the allele is absent for each site, each sample and each ploidy.
         """,
     )
