@@ -73,7 +73,10 @@ Sample metadata access
     plot_sample_location_geo
     wgs_data_catalog
     cohorts
-    canonical_transcript
+    cohorts_metadata
+    cohort_geometries
+    general_metadata
+    sequence_qc_metadata
 
 SNP data access
 ---------------
@@ -87,6 +90,7 @@ SNP data access
     site_annotations
     is_accessible
     biallelic_snp_calls
+    biallelic_snp_calls_ld_pruned
     biallelic_diplotypes
     biallelic_snps_to_plink
 
@@ -108,6 +112,7 @@ AIM data access
     aim_variants
     aim_calls
     plot_aim_heatmap
+    aim_metadata
 
 CNV data access
 ---------------
@@ -146,6 +151,7 @@ SNP and CNV frequency analysis
     plot_frequencies_heatmap
     plot_frequencies_time_series
     plot_frequencies_interactive_map
+    plot_frequencies_map_markers
 
 Principal components analysis (PCA)
 -----------------------------------
@@ -174,6 +180,7 @@ Heterozygosity analysis
     plot_heterozygosity
     roh_hmm
     plot_roh
+    cohort_heterozygosity
 
 Diversity analysis
 ------------------
@@ -212,6 +219,8 @@ Haplotype clustering and network analysis
     :toctree: generated/
 
     plot_haplotype_clustering
+    plot_haplotype_clustering_advanced
+    plot_haplotype_sharing_arc
     plot_haplotype_network
     haplotype_pairwise_distances
 
