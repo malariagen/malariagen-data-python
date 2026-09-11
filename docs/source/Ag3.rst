@@ -37,8 +37,12 @@ Basic data access
 
     releases
     sample_sets
-    lookup_release
+    lookup_relaese
     lookup_study
+    describe_api
+    v3_wild
+    lookup_study_info
+    lookup_terms_of_use_info
 
 Reference genome data access
 ----------------------------
@@ -69,6 +73,7 @@ Sample metadata access
     plot_sample_location_geo
     wgs_data_catalog
     cohorts
+    canonical_transcript
 
 SNP data access
 ---------------
