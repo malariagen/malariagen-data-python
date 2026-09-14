@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "malariagen_data"
-version = "0.0.0"
+version = "15.8.1"
 description = "A package for accessing and analysing MalariaGEN data."
 readme = "README.md"
 documentation = "https://malariagen.github.io/malariagen-data-python/latest/"
