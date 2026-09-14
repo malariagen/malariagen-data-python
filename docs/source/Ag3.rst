@@ -37,7 +37,7 @@ Basic data access
 
     releases
     sample_sets
-    lookup_relaese
+    lookup_release
     lookup_study
     describe_api
     v3_wild
