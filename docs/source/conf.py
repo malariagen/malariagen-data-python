@@ -24,6 +24,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx_design",
     "sphinx.ext.inheritance_diagram",
+    "sphinxcontrib.mermaid",
 ]
 
 autosummary_generate = True

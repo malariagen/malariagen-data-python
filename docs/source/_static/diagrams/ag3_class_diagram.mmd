@@ -1,0 +1,332 @@
+classDiagram
+    direction BT
+
+    class Ag3 {
+        +cross_metadata()
+        +v3_wild
+    }
+    class AnophelesDataResource {
+        +cohort_diversity_stats()
+        +diversity_stats()
+        +ihs_gwss()
+        +plot_diversity_stats()
+        +plot_haplotype_network()
+        +plot_ihs_gwss()
+        +plot_ihs_gwss_track()
+    }
+    class AnophelesDipClustAnalysis {
+        +diplotype_pairwise_distances()
+        +plot_diplotype_clustering()
+        +plot_diplotype_clustering_advanced()
+    }
+    class AnophelesCnvFrequencyAnalysis {
+        +gene_cnv()
+        +gene_cnv_frequencies()
+        +gene_cnv_frequencies_advanced()
+    }
+    class AnophelesCnvData {
+        +cnv_coverage_calls()
+        +cnv_discordant_read_calls()
+        +cnv_hmm()
+        +coverage_calls_analysis_ids
+        +open_cnv_coverage_calls()
+        +open_cnv_discordant_read_calls()
+        +open_cnv_hmm()
+        +plot_cnv_hmm_coverage()
+        +plot_cnv_hmm_coverage_track()
+        +plot_cnv_hmm_heatmap()
+        +plot_cnv_hmm_heatmap_track()
+    }
+    class AnophelesHapClustAnalysis {
+        +cut_dist_tree()
+        +haplotype_pairwise_distances()
+        +plot_haplotype_clustering()
+        +plot_haplotype_clustering_advanced()
+        +plot_haplotype_sharing_arc()
+        +plot_haplotype_sharing_chord()
+        +transcript_haplotypes()
+    }
+    class AnophelesSnpFrequencyAnalysis {
+        +aa_allele_frequencies()
+        +aa_allele_frequencies_advanced()
+        +snp_allele_frequencies()
+        +snp_allele_frequencies_advanced()
+        +snp_effects()
+        +snp_genotype_allele_counts()
+    }
+    class AnophelesXpehhAnalysis {
+        +plot_xpehh_gwss()
+        +plot_xpehh_gwss_track()
+        +xpehh_gwss()
+    }
+    class AnophelesH1XAnalysis {
+        +h1x_gwss()
+        +plot_h1x_gwss()
+        +plot_h1x_gwss_track()
+    }
+    class AnophelesH12Analysis {
+        +h12_calibration()
+        +h12_gwss()
+        +plot_h12_calibration()
+        +plot_h12_gwss()
+        +plot_h12_gwss_multi_overlay()
+        +plot_h12_gwss_multi_overlay_track()
+        +plot_h12_gwss_multi_panel()
+        +plot_h12_gwss_track()
+    }
+    class AnophelesG123Analysis {
+        +g123_calibration()
+        +g123_gwss()
+        +plot_g123_calibration()
+        +plot_g123_gwss()
+        +plot_g123_gwss_track()
+    }
+    class AnophelesFstAnalysis {
+        +average_fst()
+        +fst_gwss()
+        +pairwise_average_fst()
+        +plot_fst_gwss()
+        +plot_fst_gwss_track()
+        +plot_pairwise_average_fst()
+    }
+    class AnophelesHetAnalysis {
+        +cohort_count_het()
+        +cohort_heterozygosity()
+        +plot_heterozygosity()
+        +plot_heterozygosity_track()
+        +plot_roh()
+        +plot_roh_track()
+        +roh_hmm()
+        +sample_count_het()
+    }
+    class AnophelesHapFrequencyAnalysis {
+        +haplotypes_frequencies()
+        +haplotypes_frequencies_advanced()
+    }
+    class AnophelesDistanceAnalysis {
+        +biallelic_diplotype_pairwise_distances()
+        +njt()
+        +plot_njt()
+    }
+    class AnophelesPca {
+        +pca()
+        +plot_pca_coords()
+        +plot_pca_coords_3d()
+        +plot_pca_variance()
+    }
+    class PlinkConverter {
+        +biallelic_snps_to_plink()
+    }
+    class AnophelesLdAnalysis {
+        +biallelic_snp_calls_ld_pruned()
+    }
+    class SnpVcfExporter {
+        +snp_calls_to_vcf()
+    }
+    class AnophelesIgv {
+        +igv()
+        +view_alignments()
+    }
+    class AnophelesKaryotypeAnalysis {
+        +karyotype()
+        +load_inversion_tags()
+    }
+    class AnophelesAimData {
+        +aim_calls()
+        +aim_ids
+        +aim_variants()
+        +plot_aim_heatmap()
+    }
+    class AnophelesHapData {
+        +haplotype_sites()
+        +haplotypes()
+        +open_haplotype_sites()
+        +open_haplotypes()
+        +phasing_analysis_ids
+    }
+    class AnophelesSnpData {
+        +biallelic_diplotypes()
+        +biallelic_snp_calls()
+        +is_accessible()
+        +open_site_annotations()
+        +open_site_filters()
+        +open_snp_genotypes()
+        +open_snp_sites()
+        +plot_snps()
+        +plot_snps_track()
+        +site_annotations()
+        +site_filters()
+        +site_mask_def()
+        +site_mask_ids
+        +snp_allele_counts()
+        +snp_calls()
+        +snp_dataset()
+        +snp_genotypes()
+        +snp_sites()
+        +snp_sites_for_contig()
+        +snp_variants()
+    }
+    class AnophelesSampleMetadata {
+        +add_extra_metadata()
+        +aim_metadata()
+        +clear_extra_metadata()
+        +cohort_geometries()
+        +cohorts()
+        +cohorts_metadata()
+        +count_samples()
+        +general_metadata()
+        +lookup_sample()
+        +plot_sample_location_geo()
+        +plot_sample_location_mapbox()
+        +plot_samples_bar()
+        +plot_samples_interactive_map()
+        +sample_metadata()
+        +sequence_qc_metadata()
+        +wgs_data_catalog()
+        +wgs_run_accessions()
+    }
+    class AnophelesGenomeFeaturesData {
+        +canonical_transcript()
+        +geneset()
+        +genome_feature_children()
+        +genome_features()
+        +plot_genes()
+        +plot_transcript()
+    }
+    class AnophelesGenomeSequenceData {
+        +contigs
+        +genome_sequence()
+        +open_genome()
+        +virtual_contigs
+    }
+    class AnophelesFrequencyAnalysis {
+        +plot_frequencies_heatmap()
+        +plot_frequencies_interactive_map()
+        +plot_frequencies_map_markers()
+        +plot_frequencies_time_series()
+    }
+    class AnophelesDescribe {
+        +describe_api()
+    }
+    class AnophelesBase {
+        +client_location
+        +config
+        +lookup_release()
+        +lookup_study()
+        +lookup_study_info()
+        +lookup_terms_of_use_info()
+        +open_file()
+        +read_files()
+        +releases
+        +results_cache_get()
+        +results_cache_set()
+        +sample_sets()
+    }
+    class AnophelesPhenotypeData {
+        +phenotype_binary()
+        +phenotype_data()
+        +phenotype_sample_sets()
+        +phenotypes_with_haplotypes()
+        +phenotypes_with_snps()
+    }
+
+    AnophelesDataResource <|-- Ag3
+    AnophelesDipClustAnalysis <|-- AnophelesDataResource
+    AnophelesHapClustAnalysis <|-- AnophelesDataResource
+    AnophelesXpehhAnalysis <|-- AnophelesDataResource
+    AnophelesH1XAnalysis <|-- AnophelesDataResource
+    AnophelesH12Analysis <|-- AnophelesDataResource
+    AnophelesG123Analysis <|-- AnophelesDataResource
+    AnophelesFstAnalysis <|-- AnophelesDataResource
+    AnophelesHetAnalysis <|-- AnophelesDataResource
+    AnophelesHapFrequencyAnalysis <|-- AnophelesDataResource
+    AnophelesDistanceAnalysis <|-- AnophelesDataResource
+    AnophelesPca <|-- AnophelesDataResource
+    PlinkConverter <|-- AnophelesDataResource
+    AnophelesLdAnalysis <|-- AnophelesDataResource
+    SnpVcfExporter <|-- AnophelesDataResource
+    AnophelesIgv <|-- AnophelesDataResource
+    AnophelesKaryotypeAnalysis <|-- AnophelesDataResource
+    AnophelesAimData <|-- AnophelesDataResource
+    AnophelesHapData <|-- AnophelesDataResource
+    AnophelesSnpData <|-- AnophelesDataResource
+    AnophelesSampleMetadata <|-- AnophelesDataResource
+    AnophelesGenomeFeaturesData <|-- AnophelesDataResource
+    AnophelesGenomeSequenceData <|-- AnophelesDataResource
+    AnophelesDescribe <|-- AnophelesDataResource
+    AnophelesBase <|-- AnophelesDataResource
+    AnophelesPhenotypeData <|-- AnophelesDataResource
+    AnophelesCnvFrequencyAnalysis <|-- AnophelesDipClustAnalysis
+    AnophelesSnpFrequencyAnalysis <|-- AnophelesDipClustAnalysis
+    AnophelesCnvData <|-- AnophelesCnvFrequencyAnalysis
+    AnophelesFrequencyAnalysis <|-- AnophelesCnvFrequencyAnalysis
+    AnophelesSampleMetadata <|-- AnophelesCnvData
+    AnophelesGenomeFeaturesData <|-- AnophelesCnvData
+    AnophelesGenomeSequenceData <|-- AnophelesCnvData
+    AnophelesSnpFrequencyAnalysis <|-- AnophelesHapClustAnalysis
+    AnophelesHapData <|-- AnophelesHapClustAnalysis
+    AnophelesSnpData <|-- AnophelesHapClustAnalysis
+    AnophelesSnpData <|-- AnophelesSnpFrequencyAnalysis
+    AnophelesFrequencyAnalysis <|-- AnophelesSnpFrequencyAnalysis
+    AnophelesHapData <|-- AnophelesXpehhAnalysis
+    AnophelesHapData <|-- AnophelesH1XAnalysis
+    AnophelesHapData <|-- AnophelesH12Analysis
+    AnophelesHapData <|-- AnophelesG123Analysis
+    AnophelesSnpData <|-- AnophelesG123Analysis
+    AnophelesSnpData <|-- AnophelesFstAnalysis
+    AnophelesSnpData <|-- AnophelesHetAnalysis
+    AnophelesHapData <|-- AnophelesHapFrequencyAnalysis
+    AnophelesFrequencyAnalysis <|-- AnophelesHapFrequencyAnalysis
+    AnophelesSnpData <|-- AnophelesDistanceAnalysis
+    AnophelesSnpData <|-- AnophelesPca
+    AnophelesSnpData <|-- PlinkConverter
+    AnophelesSnpData <|-- AnophelesLdAnalysis
+    AnophelesSnpData <|-- SnpVcfExporter
+    AnophelesSnpData <|-- AnophelesIgv
+    AnophelesSnpData <|-- AnophelesKaryotypeAnalysis
+    AnophelesSampleMetadata <|-- AnophelesAimData
+    AnophelesGenomeFeaturesData <|-- AnophelesAimData
+    AnophelesGenomeSequenceData <|-- AnophelesAimData
+    AnophelesSampleMetadata <|-- AnophelesHapData
+    AnophelesGenomeFeaturesData <|-- AnophelesHapData
+    AnophelesGenomeSequenceData <|-- AnophelesHapData
+    AnophelesSampleMetadata <|-- AnophelesSnpData
+    AnophelesGenomeFeaturesData <|-- AnophelesSnpData
+    AnophelesGenomeSequenceData <|-- AnophelesSnpData
+    AnophelesBase <|-- AnophelesSampleMetadata
+    AnophelesGenomeSequenceData <|-- AnophelesGenomeFeaturesData
+    AnophelesBase <|-- AnophelesGenomeSequenceData
+    AnophelesBase <|-- AnophelesFrequencyAnalysis
+    AnophelesBase <|-- AnophelesDescribe
+
+    click Ag3 href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/ag3.py#L103" "Top-level API class for Ag3.x (An. gambiae complex) data releases."
+    click AnophelesDataResource href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anopheles.py#L81" "Composes every analysis mixin into one API; each Anopheles dataset class subclasses this."
+    click AnophelesDipClustAnalysis href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/dipclust.py#L30" "Hierarchical clustering of diplotypes (combines CNV + SNP frequency data)."
+    click AnophelesCnvFrequencyAnalysis href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/cnv_frq.py#L32" "Gene copy-number-variant frequency calculations, by cohort."
+    click AnophelesCnvData href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/cnv_data.py#L28" "Access to raw CNV HMM, coverage-call and discordant-read-call data."
+    click AnophelesHapClustAnalysis href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/hapclust.py#L30" "Hierarchical clustering and sharing analysis of phased haplotypes."
+    click AnophelesSnpFrequencyAnalysis href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/snp_frq.py#L35" "SNP and amino-acid substitution allele frequency calculations, by cohort."
+    click AnophelesXpehhAnalysis href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/xpehh.py#L16" "Cross-population extended haplotype homozygosity (XP-EHH) selection scans."
+    click AnophelesH1XAnalysis href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/h1x.py#L14" "H1X genome-wide scans for differentiation between two cohorts."
+    click AnophelesH12Analysis href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/h12.py#L14" "H12 genome-wide selection scans and calibration."
+    click AnophelesG123Analysis href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/g123.py#L16" "G123 genome-wide selection scans and calibration (unphased genotypes)."
+    click AnophelesFstAnalysis href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/fst.py#L18" "Fst (genetic differentiation) statistics, gwss and pairwise cohort comparisons."
+    click AnophelesHetAnalysis href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/heterozygosity.py#L16" "Per-sample and per-cohort heterozygosity, and runs-of-homozygosity (ROH)."
+    click AnophelesHapFrequencyAnalysis href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/hap_frq.py#L24" "Haplotype frequency calculations, by cohort."
+    click AnophelesDistanceAnalysis href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/distance.py#L77" "Pairwise genetic distance matrices and neighbour-joining trees."
+    click AnophelesPca href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/pca.py#L14" "Principal components analysis of biallelic SNPs."
+    click PlinkConverter href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/to_plink.py#L16" "Export biallelic SNP calls to PLINK format."
+    click AnophelesLdAnalysis href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/ld.py#L14" "Linkage-disequilibrium pruning of biallelic SNP calls."
+    click SnpVcfExporter href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/to_vcf.py#L24" "Export SNP calls to VCF format."
+    click AnophelesIgv href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/igv.py#L11" "Embed an IGV.js genome browser / view read alignments."
+    click AnophelesKaryotypeAnalysis href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/karyotype.py#L36" "Chromosomal inversion karyotyping from tag SNPs."
+    click AnophelesAimData href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/aim_data.py#L29" "Ancestry-informative marker (AIM) variant and species-call access."
+    click AnophelesHapData href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/hap_data.py#L31" "Access to phased haplotype reference panel data."
+    click AnophelesSnpData href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/snp_data.py#L49" "Core SNP genotype, site filter and site annotation data access."
+    click AnophelesSampleMetadata href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/sample_metadata.py#L34" "Sample and cohort metadata access."
+    click AnophelesGenomeFeaturesData href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/genome_features.py#L22" "GFF3 genome feature annotation access (genes, transcripts, exons)."
+    click AnophelesGenomeSequenceData href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/genome_sequence.py#L18" "Reference genome sequence access."
+    click AnophelesFrequencyAnalysis href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/frq_base.py#L251" "Shared plotting code for allele/haplotype frequency results."
+    click AnophelesDescribe href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/describe.py#L10" "API introspection and discovery (describe_api)."
+    click AnophelesBase href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/base.py#L49" "Foundational config, release and file-access plumbing shared by everything."
+    click AnophelesPhenotypeData href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/phenotypes.py#L12" "Insecticide resistance phenotype data access."

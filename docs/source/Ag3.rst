@@ -26,6 +26,8 @@ The ``Ag3`` class is composed from a number of mixin classes, each providing a
 related group of functionality (e.g. SNP data access, PCA, selection scans).
 The diagram below shows how these fit together.
 
+.. mermaid:: _static/diagrams/ag3_class_diagram.mmd
+
 .. inheritance-diagram:: malariagen_data.ag3.Ag3
     :parts: 1
     :top-classes: object
