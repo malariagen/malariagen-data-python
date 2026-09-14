@@ -253,8 +253,7 @@ class AnophelesSnpData(
         else:
             if contig not in self.contigs:
                 raise ValueError(
-                    f"Contig {contig!r} not found. "
-                    f"Available contigs: {self.contigs}"
+                    f"Contig {contig!r} not found. Available contigs: {self.contigs}"
                 )
             root = self.open_site_filters(mask=mask)
             z = root[f"{contig}/variants/{field}"]
@@ -359,8 +358,7 @@ class AnophelesSnpData(
         else:
             if contig not in self.contigs:
                 raise ValueError(
-                    f"Contig {contig!r} not found. "
-                    f"Available contigs: {self.contigs}"
+                    f"Contig {contig!r} not found. Available contigs: {self.contigs}"
                 )
             root = self.open_snp_sites()
             z = root[f"{contig}/variants/{field}"]
@@ -488,8 +486,7 @@ class AnophelesSnpData(
         else:
             if contig not in self.contigs:
                 raise ValueError(
-                    f"Contig {contig!r} not found. "
-                    f"Available contigs: {self.contigs}"
+                    f"Contig {contig!r} not found. Available contigs: {self.contigs}"
                 )
             root = self.open_snp_genotypes(sample_set=sample_set)
             z = root[f"{contig}/calldata/{field}"]
@@ -648,8 +645,7 @@ class AnophelesSnpData(
         else:
             if contig not in self.contigs:
                 raise ValueError(
-                    f"Contig {contig!r} not found. "
-                    f"Available contigs: {self.contigs}"
+                    f"Contig {contig!r} not found. Available contigs: {self.contigs}"
                 )
             coords = dict()
             data_vars = dict()
@@ -1066,8 +1062,7 @@ class AnophelesSnpData(
         else:
             if contig not in self.contigs:
                 raise ValueError(
-                    f"Contig {contig!r} not found. "
-                    f"Available contigs: {self.contigs}"
+                    f"Contig {contig!r} not found. Available contigs: {self.contigs}"
                 )
 
             coords = dict()

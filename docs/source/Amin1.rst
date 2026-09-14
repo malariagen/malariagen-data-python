@@ -52,6 +52,7 @@ Sample metadata access
     clear_extra_metadata
     lookup_sample
     count_samples
+    wgs_run_accessions
     plot_samples_bar
     plot_samples_interactive_map
     plot_sample_location_mapbox
@@ -71,7 +72,6 @@ SNP data access
     snp_calls
     snp_allele_counts
     plot_snps
-    site_annotations
     is_accessible
     biallelic_snp_calls
     biallelic_diplotypes

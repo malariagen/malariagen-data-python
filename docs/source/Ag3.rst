@@ -54,6 +54,7 @@ Reference genome data access
     genome_features
     plot_transcript
     plot_genes
+    canonical_transcript
 
 Sample metadata access
 ----------------------

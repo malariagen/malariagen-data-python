@@ -28,6 +28,8 @@ Basic data access
     sample_sets
     lookup_release
     lookup_study
+    lookup_study_info
+    lookup_terms_of_use_info
 
 Reference genome data access
 ----------------------------
@@ -39,6 +41,7 @@ Reference genome data access
     genome_features
     plot_transcript
     plot_genes
+    canonical_transcript
 
 Sample metadata access
 ----------------------
@@ -56,6 +59,8 @@ Sample metadata access
     plot_sample_location_geo
     wgs_data_catalog
     cohorts
+    cohorts_metadata
+    general_metadata
 
 SNP data access
 ---------------
@@ -66,6 +71,7 @@ SNP data access
     snp_calls
     snp_allele_counts
     plot_snps
+    site_filters
     is_accessible
     biallelic_snp_calls
     biallelic_diplotypes
