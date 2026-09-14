@@ -54,3 +54,5 @@ html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 html_logo = "_static/logo.svg"
 html_favicon = "_static/favicon.ico"
+
+graphviz_output_format = "svg"
