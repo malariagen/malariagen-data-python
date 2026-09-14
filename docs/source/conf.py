@@ -29,6 +29,18 @@ extensions = [
 
 autosummary_generate = True
 
+# securityLevel must be "loose" for the `click ClassName href "..." "..."`
+# links/tooltips in the mermaid class diagrams to work at all - mermaid
+# silently drops that feature under the default "strict" level. fontSize
+# is set here (rather than via a %%{init}%% line in each .mmd file) because
+# sphinxcontrib-mermaid's raw-HTML template mangles the indentation of a
+# diagram's first line, which can prevent that directive from being parsed.
+mermaid_init_config = {
+    "securityLevel": "loose",
+    "themeVariables": {"fontSize": "20px"},
+    "mermaid_fullscreen": True,
+}
+
 templates_path = ["_templates"]
 exclude_patterns = []
 
