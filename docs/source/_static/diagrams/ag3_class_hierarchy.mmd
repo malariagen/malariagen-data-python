@@ -1,3 +1,4 @@
+%%{init: {"themeVariables": {"fontSize": "20px"}}}%%
 classDiagram
     direction BT
 
@@ -25,17 +26,7 @@ classDiagram
         +gene_cnv_frequencies_advanced()
     }
     class AnophelesCnvData {
-        +cnv_coverage_calls()
-        +cnv_discordant_read_calls()
-        +cnv_hmm()
-        +coverage_calls_analysis_ids
-        +open_cnv_coverage_calls()
-        +open_cnv_discordant_read_calls()
-        +open_cnv_hmm()
-        +plot_cnv_hmm_coverage()
-        +plot_cnv_hmm_coverage_track()
-        +plot_cnv_hmm_heatmap()
-        +plot_cnv_hmm_heatmap_track()
+        <<11 methods, see detail diagram>>
     }
     class AnophelesHapClustAnalysis {
         +cut_dist_tree()
@@ -65,14 +56,7 @@ classDiagram
         +plot_h1x_gwss_track()
     }
     class AnophelesH12Analysis {
-        +h12_calibration()
-        +h12_gwss()
-        +plot_h12_calibration()
-        +plot_h12_gwss()
-        +plot_h12_gwss_multi_overlay()
-        +plot_h12_gwss_multi_overlay_track()
-        +plot_h12_gwss_multi_panel()
-        +plot_h12_gwss_track()
+        <<8 methods, see detail diagram>>
     }
     class AnophelesG123Analysis {
         +g123_calibration()
@@ -90,14 +74,7 @@ classDiagram
         +plot_pairwise_average_fst()
     }
     class AnophelesHetAnalysis {
-        +cohort_count_het()
-        +cohort_heterozygosity()
-        +plot_heterozygosity()
-        +plot_heterozygosity_track()
-        +plot_roh()
-        +plot_roh_track()
-        +roh_hmm()
-        +sample_count_het()
+        <<8 methods, see detail diagram>>
     }
     class AnophelesHapFrequencyAnalysis {
         +haplotypes_frequencies()
@@ -145,45 +122,10 @@ classDiagram
         +phasing_analysis_ids
     }
     class AnophelesSnpData {
-        +biallelic_diplotypes()
-        +biallelic_snp_calls()
-        +is_accessible()
-        +open_site_annotations()
-        +open_site_filters()
-        +open_snp_genotypes()
-        +open_snp_sites()
-        +plot_snps()
-        +plot_snps_track()
-        +site_annotations()
-        +site_filters()
-        +site_mask_def()
-        +site_mask_ids
-        +snp_allele_counts()
-        +snp_calls()
-        +snp_dataset()
-        +snp_genotypes()
-        +snp_sites()
-        +snp_sites_for_contig()
-        +snp_variants()
+        <<20 methods, see detail diagram>>
     }
     class AnophelesSampleMetadata {
-        +add_extra_metadata()
-        +aim_metadata()
-        +clear_extra_metadata()
-        +cohort_geometries()
-        +cohorts()
-        +cohorts_metadata()
-        +count_samples()
-        +general_metadata()
-        +lookup_sample()
-        +plot_sample_location_geo()
-        +plot_sample_location_mapbox()
-        +plot_samples_bar()
-        +plot_samples_interactive_map()
-        +sample_metadata()
-        +sequence_qc_metadata()
-        +wgs_data_catalog()
-        +wgs_run_accessions()
+        <<17 methods, see detail diagram>>
     }
     class AnophelesGenomeFeaturesData {
         +canonical_transcript()
@@ -209,18 +151,7 @@ classDiagram
         +describe_api()
     }
     class AnophelesBase {
-        +client_location
-        +config
-        +lookup_release()
-        +lookup_study()
-        +lookup_study_info()
-        +lookup_terms_of_use_info()
-        +open_file()
-        +read_files()
-        +releases
-        +results_cache_get()
-        +results_cache_set()
-        +sample_sets()
+        <<12 methods, see detail diagram>>
     }
     class AnophelesPhenotypeData {
         +phenotype_binary()
