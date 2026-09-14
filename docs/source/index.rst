@@ -9,6 +9,18 @@ data from the `Malaria Genomic Epidemiology Network (MalariaGEN) <https://www.ma
 API documentation
 -----------------
 
+.. toctree::
+   :hidden:
+
+   Ag3
+   Af1
+   As1
+   Amin1
+   Adir1
+   Adar1
+   colab_tpu
+   colab_tpu_runtime
+
 .. grid::
 
    .. grid-item-card:: ``Ag3``
@@ -70,8 +82,12 @@ API documentation
       :link: Adar1
       :link-type: doc
 
-      *Anopheles darlingi*
+      *Anopheles darlingi*.
+
       .. image:: ./_static/images/anopheles_darlingi.jpg
+         :alt: Anopheles darlingi mosquito
+         :align: center
+         :width: 100%
 
 Documentation for the `Pf7 <https://malariagen.github.io/parasite-data/pf7/api.html>`_ (*Plasmodium falciparum*)
 and `Pv4 <https://malariagen.github.io/parasite-data/pv4/api.html>`_ (*Plasmodium vivax*) APIs is also available,

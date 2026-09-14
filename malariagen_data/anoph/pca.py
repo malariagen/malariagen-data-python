@@ -30,15 +30,11 @@ class AnophelesPca(
             the selected genome region and samples.
         """,
         extended_summary="""
-            .. versionchanged:: 8.0.0
-               SNP ascertainment has changed slightly.
-
             This function uses biallelic SNPs as input to the PCA. The ascertainment
             of SNPs to include has changed slightly in version 8.0.0 and therefore
             the results of this function may also be slightly different. Previously,
             SNPs were required to be biallelic and one of the observed alleles was
             required to be the reference allele. Now SNPs just have to be biallelic.
-
             The following additional parameters were also added in version 8.0.0:
             `site_class`, `cohort_size`, `min_cohort_size`, `max_cohort_size`,
             `random_seed`.
@@ -53,6 +49,9 @@ class AnophelesPca(
         ),
         returns=("df_pca", "evr"),
         notes="""
+            .. versionchanged:: 8.0.0
+               SNP ascertainment has changed slightly.
+
             This computation may take some time to run, depending on your computing
             environment. Results of this computation will be cached and re-used if
             the `results_cache` parameter was set when instantiating the API client.

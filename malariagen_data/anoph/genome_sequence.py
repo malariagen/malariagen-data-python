@@ -88,8 +88,7 @@ class AnophelesGenomeSequenceData(AnophelesBase):
         else:
             if contig not in self.contigs:
                 raise ValueError(
-                    f"Contig {contig!r} not found. "
-                    f"Available contigs: {self.contigs}"
+                    f"Contig {contig!r} not found. Available contigs: {self.contigs}"
                 )
             root = self.open_genome()
             z = root[contig]

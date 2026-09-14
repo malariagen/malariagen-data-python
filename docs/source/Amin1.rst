@@ -28,6 +28,8 @@ Basic data access
     sample_sets
     lookup_release
     lookup_study
+    lookup_study_info
+    lookup_terms_of_use_info
 
 Reference genome data access
 ----------------------------
@@ -50,12 +52,16 @@ Sample metadata access
     clear_extra_metadata
     lookup_sample
     count_samples
+    wgs_run_accessions
     plot_samples_bar
     plot_samples_interactive_map
     plot_sample_location_mapbox
     plot_sample_location_geo
     wgs_data_catalog
     cohorts
+    cohorts_metadata
+    general_metadata
+    sequence_qc_metadata
 
 SNP data access
 ---------------
