@@ -38,8 +38,7 @@ git clone https://github.com/[username]/malariagen-data-python.git
 Then:
 ```bash
 cd malariagen-data-python
-pip install -e .
-pip install pre-commit "pytest<9" pytest-cases
+pip install -e ".[dev,test]"
 ```
 
 ## 4. Install pre-commit hooks
