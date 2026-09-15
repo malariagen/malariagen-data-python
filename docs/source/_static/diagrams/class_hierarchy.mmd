@@ -2,8 +2,22 @@ classDiagram
     direction BT
 
     class Ag3 {
-        +cross_metadata()
-        +v3_wild
+        <<dataset class>>
+    }
+    class Af1 {
+        <<dataset class>>
+    }
+    class As1 {
+        <<dataset class>>
+    }
+    class Amin1 {
+        <<dataset class>>
+    }
+    class Adir1 {
+        <<dataset class>>
+    }
+    class Adar1 {
+        <<dataset class>>
     }
     class AnophelesDataResource {
         +cohort_diversity_stats()
@@ -161,6 +175,11 @@ classDiagram
     }
 
     AnophelesDataResource <|-- Ag3
+    AnophelesDataResource <|-- Af1
+    AnophelesDataResource <|-- As1
+    AnophelesDataResource <|-- Amin1
+    AnophelesDataResource <|-- Adir1
+    AnophelesDataResource <|-- Adar1
     AnophelesDipClustAnalysis <|-- AnophelesDataResource
     AnophelesHapClustAnalysis <|-- AnophelesDataResource
     AnophelesXpehhAnalysis <|-- AnophelesDataResource
@@ -229,28 +248,55 @@ classDiagram
     AnophelesBase <|-- AnophelesFrequencyAnalysis
     AnophelesBase <|-- AnophelesDescribe
 
-    %% Colour by depth in the inheritance hierarchy (0 = Ag3, 7 = the
-    %% deepest base classes), light to dark blue.
-    classDef depth0 fill:#eff6ff,stroke:#1d4ed8,color:#1e3a8a
-    classDef depth1 fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a
-    classDef depth2 fill:#bfdbfe,stroke:#1d4ed8,color:#1e3a8a
-    classDef depth3 fill:#93c5fd,stroke:#1d4ed8,color:#1e3a8a
-    classDef depth4 fill:#60a5fa,stroke:#1d4ed8,color:#1e293b
-    classDef depth5 fill:#3b82f6,stroke:#1e3a8a,color:#ffffff
-    classDef depth6 fill:#2563eb,stroke:#1e3a8a,color:#ffffff
-    classDef depth7 fill:#1d4ed8,stroke:#1e3a8a,color:#ffffff
+    %% Colour = depth in the inheritance hierarchy (0 = a dataset class
+    %% such as Ag3/Af1/..., deepest = the most foundational base classes),
+    %% light to dark blue. Applied with `style`, not `classDef`/`cssClass`,
+    %% because classDef-based styling does not render for classDiagram in
+    %% the mermaid version this site uses (verified with mermaid-cli).
+    style Ag3 fill:#f0fdf4,stroke:#15803d,color:#14532d
+    style Af1 fill:#f0fdf4,stroke:#15803d,color:#14532d
+    style As1 fill:#f0fdf4,stroke:#15803d,color:#14532d
+    style Amin1 fill:#f0fdf4,stroke:#15803d,color:#14532d
+    style Adir1 fill:#f0fdf4,stroke:#15803d,color:#14532d
+    style Adar1 fill:#f0fdf4,stroke:#15803d,color:#14532d
+    style AnophelesDataResource fill:#dcfce7,stroke:#15803d,color:#14532d
+    style AnophelesDipClustAnalysis fill:#bbf7d0,stroke:#15803d,color:#14532d
+    style AnophelesCnvFrequencyAnalysis fill:#86efac,stroke:#15803d,color:#14532d
+    style AnophelesCnvData fill:#4ade80,stroke:#15803d,color:#052e16
+    style AnophelesHapClustAnalysis fill:#bbf7d0,stroke:#15803d,color:#14532d
+    style AnophelesSnpFrequencyAnalysis fill:#86efac,stroke:#15803d,color:#14532d
+    style AnophelesXpehhAnalysis fill:#86efac,stroke:#15803d,color:#14532d
+    style AnophelesH1XAnalysis fill:#86efac,stroke:#15803d,color:#14532d
+    style AnophelesH12Analysis fill:#86efac,stroke:#15803d,color:#14532d
+    style AnophelesG123Analysis fill:#86efac,stroke:#15803d,color:#14532d
+    style AnophelesFstAnalysis fill:#86efac,stroke:#15803d,color:#14532d
+    style AnophelesHetAnalysis fill:#86efac,stroke:#15803d,color:#14532d
+    style AnophelesHapFrequencyAnalysis fill:#86efac,stroke:#15803d,color:#14532d
+    style AnophelesDistanceAnalysis fill:#86efac,stroke:#15803d,color:#14532d
+    style AnophelesPca fill:#86efac,stroke:#15803d,color:#14532d
+    style PlinkConverter fill:#86efac,stroke:#15803d,color:#14532d
+    style AnophelesLdAnalysis fill:#86efac,stroke:#15803d,color:#14532d
+    style SnpVcfExporter fill:#86efac,stroke:#15803d,color:#14532d
+    style AnophelesIgv fill:#86efac,stroke:#15803d,color:#14532d
+    style AnophelesKaryotypeAnalysis fill:#86efac,stroke:#15803d,color:#14532d
+    style AnophelesAimData fill:#4ade80,stroke:#15803d,color:#052e16
+    style AnophelesHapData fill:#4ade80,stroke:#15803d,color:#052e16
+    style AnophelesSnpData fill:#4ade80,stroke:#15803d,color:#052e16
+    style AnophelesSampleMetadata fill:#16a34a,stroke:#166534,color:#ffffff
+    style AnophelesGenomeFeaturesData fill:#22c55e,stroke:#166534,color:#ffffff
+    style AnophelesGenomeSequenceData fill:#16a34a,stroke:#166534,color:#ffffff
+    style AnophelesFrequencyAnalysis fill:#16a34a,stroke:#166534,color:#ffffff
+    style AnophelesDescribe fill:#16a34a,stroke:#166534,color:#ffffff
+    style AnophelesBase fill:#15803d,stroke:#14532d,color:#ffffff
+    style AnophelesPhenotypeData fill:#15803d,stroke:#14532d,color:#ffffff
 
-    cssClass "Ag3" depth0
-    cssClass "AnophelesDataResource" depth1
-    cssClass "AnophelesDipClustAnalysis,AnophelesHapClustAnalysis" depth2
-    cssClass "AnophelesCnvFrequencyAnalysis,AnophelesDistanceAnalysis,AnophelesFstAnalysis,AnophelesG123Analysis,AnophelesH12Analysis,AnophelesH1XAnalysis,AnophelesHapFrequencyAnalysis,AnophelesHetAnalysis,AnophelesIgv,AnophelesKaryotypeAnalysis,AnophelesLdAnalysis,AnophelesPca,AnophelesSnpFrequencyAnalysis,AnophelesXpehhAnalysis,PlinkConverter,SnpVcfExporter" depth3
-    cssClass "AnophelesAimData,AnophelesCnvData,AnophelesHapData,AnophelesSnpData" depth4
-    cssClass "AnophelesGenomeFeaturesData" depth5
-    cssClass "AnophelesDescribe,AnophelesFrequencyAnalysis,AnophelesGenomeSequenceData,AnophelesSampleMetadata" depth6
-    cssClass "AnophelesBase,AnophelesPhenotypeData" depth7
-
-    click Ag3 href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/ag3.py#L103" "Top-level API class for Ag3.x (An. gambiae complex) data releases."
-    click AnophelesDataResource href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anopheles.py#L81" "Composes every analysis mixin into one API; each Anopheles dataset class subclasses this."
+    click Ag3 href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/ag3.py#L103" "Anopheles gambiae complex."
+    click Af1 href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/af1.py#L29" "Anopheles funestus subgroup."
+    click As1 href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/as1.py#L27" "Anopheles stephensi."
+    click Amin1 href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/amin1.py#L27" "Anopheles minimus."
+    click Adir1 href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/adir1.py#L27" "Anopheles dirus complex."
+    click Adar1 href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/adar1.py#L27" "Anopheles darlingi."
+    click AnophelesDataResource href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anopheles.py#L81" "Composes every analysis mixin into one API; each dataset class (Ag3, Af1, ...) subclasses this."
     click AnophelesDipClustAnalysis href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/dipclust.py#L30" "Hierarchical clustering of diplotypes (combines CNV + SNP frequency data)."
     click AnophelesCnvFrequencyAnalysis href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/cnv_frq.py#L32" "Gene copy-number-variant frequency calculations, by cohort."
     click AnophelesCnvData href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/cnv_data.py#L28" "Access to raw CNV HMM, coverage-call and discordant-read-call data."

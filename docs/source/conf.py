@@ -36,14 +36,34 @@ autosummary_generate = True
 # mermaid uses the top-level value to lay out/measure class diagram text, and
 # themeVariables to generate the CSS - only setting one of the two had no
 # visible effect.
+# theme is "base" (not e.g. "forest") because mermaid only fully honors
+# custom themeVariables on top of "base" - other named themes precompute
+# most of their own derived colours, so e.g. edges/borders/member text kept
+# showing that theme's own accent colour (orange, with "forest") instead of
+# ours no matter what we set here.
 mermaid_init_config = {
     "securityLevel": "loose",
     "fontSize": 20,
-    "themeVariables": {"fontSize": "20px"},
+    "theme": "base",
+    "themeVariables": {
+        "fontSize": "20px",
+        "primaryColor": "#dcfce7",
+        "primaryBorderColor": "#15803d",
+        "primaryTextColor": "#14532d",
+        "lineColor": "#16a34a",
+        "secondaryColor": "#bbf7d0",
+        "tertiaryColor": "#f0fdf4",
+        "classText": "#14532d",
+        "nodeBorder": "#15803d",
+        "clusterBkg": "#f0fdf4",
+        "clusterBorder": "#15803d",
+    },
 }
-mermaid_light_theme = "forest"
-mermaid_dark_theme = "forest"
-
+# The class diagrams set their own per-node colours with `style` lines (see
+# the .mmd files), so light/dark mode doesn't need to swap palettes - keep
+# both the same to avoid the diagram jumping between two colour schemes.
+mermaid_light_theme = "base"
+mermaid_dark_theme = "base"
 
 # sphinxcontrib-mermaid's bundled CSS hard-codes `pre.mermaid > svg { height:
 # {{ mermaid_height }} }` (default "500px"). "auto" lets the SVG take whatever height
@@ -52,6 +72,12 @@ mermaid_height = "auto"
 
 # Off by default; without this, scrolling/dragging on a diagram does nothing.
 mermaid_d3_zoom = True
+
+# Fullscreen-view button ("⛶") in the corner of each diagram. Already the
+# default, set explicitly here for clarity. Opacity raised from the default
+# 50 - at 50% against a light diagram it's easy to miss.
+mermaid_fullscreen = True
+mermaid_fullscreen_button_opacity = "85"
 
 templates_path = ["_templates"]
 exclude_patterns = []

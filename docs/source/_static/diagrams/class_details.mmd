@@ -95,17 +95,13 @@ classDiagram
     AnophelesSampleMetadata <|-- AnophelesSnpData
     AnophelesBase <|-- AnophelesSampleMetadata
 
-    %% Same depth colour scale as ag3_class_hierarchy.mmd, so a class keeps
-    %% the same colour in both diagrams.
-    classDef depth3 fill:#93c5fd,stroke:#1d4ed8,color:#1e3a8a
-    classDef depth4 fill:#60a5fa,stroke:#1d4ed8,color:#1e293b
-    classDef depth6 fill:#2563eb,stroke:#1e3a8a,color:#ffffff
-    classDef depth7 fill:#1d4ed8,stroke:#1e3a8a,color:#ffffff
-
-    cssClass "AnophelesH12Analysis,AnophelesHetAnalysis" depth3
-    cssClass "AnophelesCnvData,AnophelesSnpData" depth4
-    cssClass "AnophelesSampleMetadata" depth6
-    cssClass "AnophelesBase" depth7
+    %% Same depth colour scale as class_hierarchy.mmd.
+    style AnophelesCnvData fill:#4ade80,stroke:#15803d,color:#052e16
+    style AnophelesH12Analysis fill:#86efac,stroke:#15803d,color:#14532d
+    style AnophelesHetAnalysis fill:#86efac,stroke:#15803d,color:#14532d
+    style AnophelesSnpData fill:#4ade80,stroke:#15803d,color:#052e16
+    style AnophelesSampleMetadata fill:#16a34a,stroke:#166534,color:#ffffff
+    style AnophelesBase fill:#15803d,stroke:#14532d,color:#ffffff
 
     click AnophelesCnvData href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/cnv_data.py#L28" "Access to raw CNV HMM, coverage-call and discordant-read-call data."
     click AnophelesH12Analysis href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/h12.py#L14" "H12 genome-wide selection scans and calibration."

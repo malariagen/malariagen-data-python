@@ -6,6 +6,9 @@ MalariaGEN Python API documentation
 The ``malariagen_data`` Python package provides a library of functions (API) for accessing and analysing
 data from the `Malaria Genomic Epidemiology Network (MalariaGEN) <https://www.malariagen.net/>`_.
 
+All six dataset classes below share the same underlying class hierarchy; see
+:doc:`architecture` for an interactive diagram of how they're composed.
+
 API documentation
 -----------------
 
@@ -18,6 +21,7 @@ API documentation
    Amin1
    Adir1
    Adar1
+   architecture
    colab_tpu
    colab_tpu_runtime
 
