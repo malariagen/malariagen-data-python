@@ -41,7 +41,7 @@ dependencies = [
     "anjl>=1.2.0",
     "bed-reader>=1.1.0",
 ]
- 
+
 [project.optional-dependencies]
 dev = [
     "pre-commit",
