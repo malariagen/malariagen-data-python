@@ -58,6 +58,14 @@ mermaid_init_config = {
         "clusterBkg": "#f0fdf4",
         "clusterBorder": "#15803d",
     },
+    # Class diagrams hard-code their own text sizes internally (member text
+    # at 10px, the class name at 18px, "themeVariables.fontSize" above does
+    # not reach either - verified by rendering with mermaid-cli and reading
+    # the generated CSS). themeCSS is the one mechanism that reliably
+    # overrides this: it's appended as a raw, literal stylesheet after
+    # mermaid's own, so it wins regardless of theme.
+    "themeCSS": ".classTitle { font-weight: 800 !important; } "
+    ".classTitleText { font-size: 24px !important; font-weight: 800 !important; }",
 }
 # The class diagrams set their own per-node colours with `style` lines (see
 # the .mmd files), so light/dark mode doesn't need to swap palettes - keep
@@ -70,8 +78,19 @@ mermaid_dark_theme = "base"
 # its own aspect ratio needs instead of being forced to shrink.
 mermaid_height = "auto"
 
-# Off by default; without this, scrolling/dragging on a diagram does nothing.
-mermaid_d3_zoom = True
+# Off despite the name implying otherwise: enabling this crashes mermaid on
+# this site specifically. pydata-sphinx-theme applies its light/dark theme
+# choice just after page load, which the mermaid JS is watching for (to
+# re-render diagrams in the right theme) - and that theme-triggered re-render
+# throws "TypeError: Cannot read properties of null (reading 'firstChild')"
+# inside mermaid's own bundle when the d3-zoom code has already wrapped the
+# SVG's contents in an extra <g> beforehand. Confirmed with a headless
+# Chrome + CDP session: this uncaught exception aborts the rest of
+# runMermaid() before it gets to building the fullscreen button, which is
+# why "mermaid_fullscreen = True" below had no visible effect while this
+# was on. The fullscreen view still auto-fits the diagram to the viewport
+# without this, just without extra scroll/drag pan-zoom on top of that.
+mermaid_d3_zoom = False
 
 # Fullscreen-view button ("⛶") in the corner of each diagram. Already the
 # default, set explicitly here for clarity. Opacity raised from the default
