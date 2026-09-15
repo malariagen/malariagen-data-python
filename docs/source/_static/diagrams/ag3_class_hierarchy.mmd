@@ -229,6 +229,26 @@ classDiagram
     AnophelesBase <|-- AnophelesFrequencyAnalysis
     AnophelesBase <|-- AnophelesDescribe
 
+    %% Colour by depth in the inheritance hierarchy (0 = Ag3, 7 = the
+    %% deepest base classes), light to dark blue.
+    classDef depth0 fill:#eff6ff,stroke:#1d4ed8,color:#1e3a8a
+    classDef depth1 fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a
+    classDef depth2 fill:#bfdbfe,stroke:#1d4ed8,color:#1e3a8a
+    classDef depth3 fill:#93c5fd,stroke:#1d4ed8,color:#1e3a8a
+    classDef depth4 fill:#60a5fa,stroke:#1d4ed8,color:#1e293b
+    classDef depth5 fill:#3b82f6,stroke:#1e3a8a,color:#ffffff
+    classDef depth6 fill:#2563eb,stroke:#1e3a8a,color:#ffffff
+    classDef depth7 fill:#1d4ed8,stroke:#1e3a8a,color:#ffffff
+
+    cssClass "Ag3" depth0
+    cssClass "AnophelesDataResource" depth1
+    cssClass "AnophelesDipClustAnalysis,AnophelesHapClustAnalysis" depth2
+    cssClass "AnophelesCnvFrequencyAnalysis,AnophelesDistanceAnalysis,AnophelesFstAnalysis,AnophelesG123Analysis,AnophelesH12Analysis,AnophelesH1XAnalysis,AnophelesHapFrequencyAnalysis,AnophelesHetAnalysis,AnophelesIgv,AnophelesKaryotypeAnalysis,AnophelesLdAnalysis,AnophelesPca,AnophelesSnpFrequencyAnalysis,AnophelesXpehhAnalysis,PlinkConverter,SnpVcfExporter" depth3
+    cssClass "AnophelesAimData,AnophelesCnvData,AnophelesHapData,AnophelesSnpData" depth4
+    cssClass "AnophelesGenomeFeaturesData" depth5
+    cssClass "AnophelesDescribe,AnophelesFrequencyAnalysis,AnophelesGenomeSequenceData,AnophelesSampleMetadata" depth6
+    cssClass "AnophelesBase,AnophelesPhenotypeData" depth7
+
     click Ag3 href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/ag3.py#L103" "Top-level API class for Ag3.x (An. gambiae complex) data releases."
     click AnophelesDataResource href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anopheles.py#L81" "Composes every analysis mixin into one API; each Anopheles dataset class subclasses this."
     click AnophelesDipClustAnalysis href "https://github.com/malariagen/malariagen-data-python/blob/master/malariagen_data/anoph/dipclust.py#L30" "Hierarchical clustering of diplotypes (combines CNV + SNP frequency data)."
