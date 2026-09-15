@@ -35,11 +35,30 @@ autosummary_generate = True
 # is set here (rather than via a %%{init}%% line in each .mmd file) because
 # sphinxcontrib-mermaid's raw-HTML template mangles the indentation of a
 # diagram's first line, which can prevent that directive from being parsed.
+# Both the top-level "fontSize" and "themeVariables.fontSize" are set because
+# mermaid uses the top-level value to lay out/measure class diagram text, and
+# themeVariables to generate the CSS - only setting one of the two had no
+# visible effect.
 mermaid_init_config = {
     "securityLevel": "loose",
+    "fontSize": 20,
     "themeVariables": {"fontSize": "20px"},
-    "mermaid_fullscreen": True,
 }
+
+# sphinxcontrib-mermaid's bundled CSS hard-codes `pre.mermaid > svg { height:
+# {{ mermaid_height }} }` (default "500px"). Since the SVG preserves its
+# aspect ratio, a large diagram (like the Ag3 class diagrams, ~30 classes)
+# gets squashed to fit inside that fixed height, shrinking all the text with
+# it regardless of fontSize above. "auto" lets the SVG take whatever height
+# its own aspect ratio needs instead of being forced to shrink.
+mermaid_height = "auto"
+
+# Off by default; without this, scrolling/dragging on a diagram does nothing.
+mermaid_d3_zoom = True
+
+# mermaid_fullscreen (the "view in fullscreen" button) is a separate,
+# top-level sphinxcontrib-mermaid config value - not a mermaid_init_config
+# key - and is already enabled by default, so no setting is needed for it.
 
 templates_path = ["_templates"]
 exclude_patterns = []
