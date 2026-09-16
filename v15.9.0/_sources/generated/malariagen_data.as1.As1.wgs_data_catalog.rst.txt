@@ -1,0 +1,6 @@
+﻿malariagen\_data.as1.As1.wgs\_data\_catalog
+===========================================
+
+.. currentmodule:: malariagen_data.as1
+
+.. automethod:: As1.wgs_data_catalog

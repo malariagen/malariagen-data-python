@@ -1,0 +1,6 @@
+﻿malariagen\_data.ag3.Ag3.phenotype\_binary
+==========================================
+
+.. currentmodule:: malariagen_data.ag3
+
+.. automethod:: Ag3.phenotype_binary

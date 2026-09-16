@@ -1,0 +1,6 @@
+﻿malariagen\_data.af1.Af1.is\_accessible
+=======================================
+
+.. currentmodule:: malariagen_data.af1
+
+.. automethod:: Af1.is_accessible

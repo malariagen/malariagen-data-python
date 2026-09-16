@@ -1,0 +1,6 @@
+﻿malariagen\_data.ag3.Ag3.plot\_haplotype\_clustering
+====================================================
+
+.. currentmodule:: malariagen_data.ag3
+
+.. automethod:: Ag3.plot_haplotype_clustering

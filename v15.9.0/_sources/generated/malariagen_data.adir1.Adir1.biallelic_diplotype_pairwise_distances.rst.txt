@@ -1,0 +1,6 @@
+﻿malariagen\_data.adir1.Adir1.biallelic\_diplotype\_pairwise\_distances
+======================================================================
+
+.. currentmodule:: malariagen_data.adir1
+
+.. automethod:: Adir1.biallelic_diplotype_pairwise_distances

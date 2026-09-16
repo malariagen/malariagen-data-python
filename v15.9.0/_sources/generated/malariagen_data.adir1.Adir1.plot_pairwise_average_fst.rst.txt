@@ -1,0 +1,6 @@
+﻿malariagen\_data.adir1.Adir1.plot\_pairwise\_average\_fst
+=========================================================
+
+.. currentmodule:: malariagen_data.adir1
+
+.. automethod:: Adir1.plot_pairwise_average_fst

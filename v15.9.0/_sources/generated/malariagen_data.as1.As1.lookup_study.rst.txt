@@ -1,0 +1,6 @@
+﻿malariagen\_data.as1.As1.lookup\_study
+======================================
+
+.. currentmodule:: malariagen_data.as1
+
+.. automethod:: As1.lookup_study

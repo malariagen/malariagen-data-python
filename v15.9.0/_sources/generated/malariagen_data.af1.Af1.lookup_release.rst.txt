@@ -1,0 +1,6 @@
+﻿malariagen\_data.af1.Af1.lookup\_release
+========================================
+
+.. currentmodule:: malariagen_data.af1
+
+.. automethod:: Af1.lookup_release

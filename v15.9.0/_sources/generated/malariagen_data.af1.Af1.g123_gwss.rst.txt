@@ -1,0 +1,6 @@
+﻿malariagen\_data.af1.Af1.g123\_gwss
+===================================
+
+.. currentmodule:: malariagen_data.af1
+
+.. automethod:: Af1.g123_gwss

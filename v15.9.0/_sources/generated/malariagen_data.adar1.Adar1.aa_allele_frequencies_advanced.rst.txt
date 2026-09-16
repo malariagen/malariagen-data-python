@@ -1,0 +1,6 @@
+﻿malariagen\_data.adar1.Adar1.aa\_allele\_frequencies\_advanced
+==============================================================
+
+.. currentmodule:: malariagen_data.adar1
+
+.. automethod:: Adar1.aa_allele_frequencies_advanced

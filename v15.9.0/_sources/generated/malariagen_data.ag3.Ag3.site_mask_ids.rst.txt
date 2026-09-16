@@ -1,0 +1,6 @@
+﻿malariagen\_data.ag3.Ag3.site\_mask\_ids
+========================================
+
+.. currentmodule:: malariagen_data.ag3
+
+.. autoproperty:: Ag3.site_mask_ids

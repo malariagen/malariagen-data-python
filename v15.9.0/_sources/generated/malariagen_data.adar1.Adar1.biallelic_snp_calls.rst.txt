@@ -1,0 +1,6 @@
+﻿malariagen\_data.adar1.Adar1.biallelic\_snp\_calls
+==================================================
+
+.. currentmodule:: malariagen_data.adar1
+
+.. automethod:: Adar1.biallelic_snp_calls
