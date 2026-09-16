@@ -49,6 +49,49 @@ def _geometric_fit(m: np.ndarray) -> np.ndarray:
     return m * np.log(m) - (1.0 + m) * np.log1p(m)
 
 
+def _median_pair_distance(
+    dist: np.ndarray, rows: Optional[np.ndarray] = None, block: int = 512
+) -> float:
+    """Median distance over distinct pairs, without materialising the pairs.
+
+    Distances are counts, so a histogram gives the median exactly, and
+    accumulating it a block of rows at a time keeps memory proportional to the
+    largest distance rather than to the number of pairs. The obvious
+    ``dist[np.triu_indices(n, 1)]`` allocates two int64 indices per pair, which
+    reaches several gigabytes at the sample sizes this is meant to run at.
+
+    `rows` restricts the calculation to a subset of haplotypes, again without
+    taking a copy of the submatrix.
+    """
+    all_rows = rows is None
+    idx = np.arange(dist.shape[0]) if all_rows else np.asarray(rows)
+    m = idx.size
+    if m < 2:
+        return 0.0
+
+    # The matrix is symmetric, so count every off-diagonal entry and halve.
+    counts = np.zeros(1, dtype=np.int64)
+    for a in range(0, m, block):
+        # Whole rows are a view; a subset needs a copy of the block.
+        sub = dist[a : a + block] if all_rows else dist[np.ix_(idx[a : a + block], idx)]
+        c = np.bincount(np.maximum(np.rint(sub).astype(np.int64).ravel(), 0))
+        if c.size > counts.size:
+            c[: counts.size] += counts
+            counts = c
+        else:
+            counts[: c.size] += c
+    counts[0] -= m  # the diagonal
+    counts //= 2
+
+    total = int(counts.sum())
+    if total == 0:
+        return 0.0
+    cum = np.cumsum(counts)
+    lo = int(np.searchsorted(cum, (total + 1) // 2))
+    hi = int(np.searchsorted(cum, total // 2 + 1))
+    return (lo + hi) / 2
+
+
 def estimate_background_diversity(
     dist: np.ndarray, collapse_frac: float = 0.05
 ) -> float:
@@ -65,15 +108,14 @@ def estimate_background_diversity(
     region without a sweep.
     """
     n = dist.shape[0]
-    tol = collapse_frac * np.median(dist[np.triu_indices(n, 1)])
+    tol = collapse_frac * _median_pair_distance(dist)
     keep: list = []
     for i in range(n):
         if not keep or dist[i, keep].min() > tol:
             keep.append(i)
     if len(keep) < 4:
         keep = list(range(n))
-    sub = dist[np.ix_(keep, keep)]
-    return float(np.median(sub[np.triu_indices(sub.shape[0], 1)]))
+    return float(_median_pair_distance(dist, np.asarray(keep)))
 
 
 def _leaf_order(

@@ -2,9 +2,24 @@ import numpy as np
 import pytest
 
 from malariagen_data.anoph.hapclust_burst import (
+    _median_pair_distance,
     burst_clusters,
     estimate_background_diversity,
 )
+
+
+def random_distances(rng, n, high=400):
+    """A random symmetric distance matrix with a zero diagonal."""
+    d = rng.integers(0, high, size=(n, n)).astype(float)
+    d = np.triu(d, 1)
+    return d + d.T
+
+
+def naive_median(dist, rows=None):
+    """The definition, via the pairs it is a median over."""
+    if rows is not None:
+        dist = dist[np.ix_(rows, rows)]
+    return float(np.median(dist[np.triu_indices(dist.shape[0], 1)]))
 
 
 def simulate_haplotypes(rng, cluster_sizes, n_background=60, n_sites=400, within=0.005):
@@ -86,6 +101,33 @@ def test_background_can_be_supplied():
 
 def test_tiny_input_returns_no_clusters():
     assert burst_clusters(np.zeros((3, 3))).tolist() == [0, 0, 0]
+
+
+@pytest.mark.parametrize("n", [4, 5, 40, 41, 300])
+def test_median_pair_distance_matches_definition(n):
+    """Odd and even pair counts, against the pairs written out in full."""
+    rng = np.random.default_rng(8)
+    dist = random_distances(rng, n)
+    assert _median_pair_distance(dist) == pytest.approx(naive_median(dist))
+
+
+@pytest.mark.parametrize("block", [1, 7, 512])
+def test_median_pair_distance_independent_of_block_size(block):
+    rng = np.random.default_rng(9)
+    dist = random_distances(rng, 60)
+    assert _median_pair_distance(dist, block=block) == pytest.approx(naive_median(dist))
+
+
+def test_median_pair_distance_over_a_subset():
+    rng = np.random.default_rng(10)
+    dist = random_distances(rng, 80)
+    rows = rng.choice(80, size=25, replace=False)
+    assert _median_pair_distance(dist, rows) == pytest.approx(naive_median(dist, rows))
+
+
+def test_median_pair_distance_degenerate_inputs():
+    assert _median_pair_distance(np.zeros((1, 1))) == 0.0
+    assert _median_pair_distance(np.zeros((10, 10))) == 0.0
 
 
 @pytest.mark.parametrize("linkage_method", ["average", "complete", "single"])
