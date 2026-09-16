@@ -124,3 +124,36 @@ def test_plot_haplotype_sharing_chord(fixture, api: AnophelesHapClustAnalysis):
             show=False,
         )
         assert fig is not None
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_plot_haplotype_clustering_advanced_burst(
+    fixture, api: AnophelesHapClustAnalysis
+):
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    fig, leaf_data = api.plot_haplotype_clustering_advanced(
+        region=fixture.random_region_str(region_size=5000),
+        sample_sets=[str(np.random.choice(all_sample_sets))],
+        cluster_method="burst",
+        linkage_method="average",
+        show=False,
+    )
+    assert fig is not None
+    # burst clustering always reports an assignment, 0 meaning unassigned
+    assert "Cluster ID" in leaf_data.columns
+    assert (leaf_data["Cluster ID"] >= 0).all()
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_plot_haplotype_clustering_advanced_burst_requires_hamming(
+    fixture, api: AnophelesHapClustAnalysis
+):
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    with pytest.raises(ValueError, match="hamming"):
+        api.plot_haplotype_clustering_advanced(
+            region=fixture.random_region_str(region_size=5000),
+            sample_sets=[str(np.random.choice(all_sample_sets))],
+            cluster_method="burst",
+            distance_metric="dxy",
+            show=False,
+        )

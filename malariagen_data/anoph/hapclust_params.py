@@ -23,3 +23,25 @@ cohort_col: TypeAlias = Annotated[
     e.g., 'country', 'taxon', 'aim_species'.
     """,
 ]
+
+cluster_method: TypeAlias = Annotated[
+    Literal["cut", "burst"],
+    """
+    How to form flat clusters from the dendrogram. 'cut' cuts it at
+    `cluster_threshold`. 'burst' instead selects clades whose internal diversity
+    is far below the neutral expectation for the window, which needs no height
+    and behaves the same at any sample size.
+    """,
+]
+
+cluster_method_default: Literal["cut", "burst"] = "cut"
+
+cluster_background: TypeAlias = Annotated[
+    float,
+    """
+    Neutral expected pairwise distance for the window, in SNPs, used by the
+    'burst' cluster method. If not given it is estimated from the data, which
+    assumes some unswept haplotypes are present; supply a value where the region
+    is swept throughout.
+    """,
+]

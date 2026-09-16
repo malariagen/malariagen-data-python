@@ -353,6 +353,8 @@ class AnophelesHapClustAnalysis(
             cluster_threshold="Height at which to cut the dendrogram to form clusters. If not provided, no clusters assignment is not performed.",
             min_cluster_size="Minimum number of haplotypes required in a cluster to be included when cutting the dendrogram. Default is 5.",
             cluster_criterion="The cluster_criterion to use in forming flat clusters. One of 'inconsistent', 'distance', 'maxclust', 'maxclust_monochronic', 'monocrit'. See scipy.cluster.hierarchy.fcluster for details.",
+            cluster_method="How to form flat clusters. 'cut' cuts the dendrogram at `cluster_threshold`. 'burst' selects clades whose internal diversity is far below the neutral expectation for the window, needing no threshold.",
+            cluster_background="Neutral expected pairwise distance for the window, in SNPs, used by the 'burst' method. Estimated from the data if not given.",
         ),
     )
     def plot_haplotype_clustering_advanced(
@@ -372,6 +374,8 @@ class AnophelesHapClustAnalysis(
         cluster_threshold: Optional[float] = None,
         min_cluster_size: Optional[int] = 5,
         cluster_criterion="distance",
+        cluster_method: hapclust_params.cluster_method = hapclust_params.cluster_method_default,
+        cluster_background: Optional[hapclust_params.cluster_background] = None,
         color: plotly_params.color = None,
         symbol: plotly_params.symbol = None,
         linkage_method: dipclust_params.linkage_method = "complete",
@@ -447,7 +451,22 @@ class AnophelesHapClustAnalysis(
         figures = [fig_dendro]
         subplot_heights = [dendrogram_height]
 
-        if cluster_threshold and min_cluster_size:
+        df_clusters = None
+        if cluster_method == "burst":
+            if distance_metric != "hamming":
+                raise ValueError(
+                    "cluster_method='burst' requires distance_metric='hamming', "
+                    "as the cluster model is defined on counts of differing SNPs."
+                )
+            df_clusters = self.burst_dist_tree(
+                dist=res["dist"],
+                dist_samples=_make_unique(np.repeat(res["dist_samples"], 2)),
+                dendro_sample_id_order=dendro_sample_id_order,
+                linkage_method=linkage_method,
+                min_cluster_size=min_cluster_size or 5,
+                cluster_background=cluster_background,
+            )
+        elif cluster_threshold and min_cluster_size:
             df_clusters = self.cut_dist_tree(
                 dist=res["dist"],
                 dist_samples=_make_unique(np.repeat(res["dist_samples"], 2)),
@@ -458,6 +477,7 @@ class AnophelesHapClustAnalysis(
                 cluster_criterion=cluster_criterion,
             )
 
+        if df_clusters is not None:
             leaf_data = leaf_data.merge(df_clusters.T.reset_index())
 
             # if more than 8 clusters, use px.colors.qualitative.Alphabet
@@ -770,6 +790,67 @@ class AnophelesHapClustAnalysis(
                     ),
                 }
             )
+            .set_index("sample_id")
+            .T.loc[:, dendro_sample_id_order]
+        )
+
+        return df
+
+    def burst_dist_tree(
+        self,
+        dist,
+        dist_samples,
+        dendro_sample_id_order,
+        linkage_method,
+        min_cluster_size=5,
+        cluster_background=None,
+    ):
+        """
+        Create a one-row DataFrame with haplotype_ids as columns and cluster
+        assignments as values, using burst clustering.
+
+        Unlike `cut_dist_tree`, no height is needed: a clade is called a cluster
+        when its internal diversity is far below the neutral expectation for the
+        window, and the best set of non-overlapping clades is selected. See
+        `hapclust_burst` for the model.
+
+        Parameters:
+        -----------
+        dist : ndarray
+            Condensed or square distance array, in counts of differing SNPs.
+        dist_samples : array-like
+            List/array of individual identifiers (haplotype_ids)
+        dendro_sample_id_order : array-like
+            List/array of individual identifiers (haplotype_ids) in the order they
+            appear in the dendrogram
+        linkage_method : str
+            Method used to calculate the linkage matrix
+        min_cluster_size : int, default=5
+            Minimum number of haplotypes required in a cluster to be included
+        cluster_background : float, optional
+            Neutral expected pairwise distance for the window. Estimated from the
+            data if not given.
+
+        Returns:
+        --------
+        pd.DataFrame
+            One-row DataFrame with haplotype_ids as columns and assigned cluster
+            numbers (1...n, 0 for unassigned) as values
+        """
+        from scipy.spatial.distance import squareform
+
+        from .hapclust_burst import burst_clusters
+
+        dist_sq = dist if dist.ndim == 2 else squareform(dist)
+        labels = burst_clusters(
+            dist_sq,
+            background=cluster_background,
+            linkage_method=linkage_method,
+            min_cluster_size=min_cluster_size,
+        )
+
+        df = (
+            pd.DataFrame({"sample_id": dist_samples, "Cluster ID": labels})
             .set_index("sample_id")
             .T.loc[:, dendro_sample_id_order]
         )
