@@ -19,6 +19,9 @@ For more information about the data and terms of use, please see the
 
 .. currentmodule:: malariagen_data.adar1.Adar1
 
+.. autoclass:: malariagen_data.adar1.Adar1
+    :no-members:
+
 Basic data access
 -----------------
 .. autosummary::

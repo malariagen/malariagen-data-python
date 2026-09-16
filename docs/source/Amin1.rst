@@ -19,6 +19,9 @@ For more information about the data and terms of use, please see the
 
 .. currentmodule:: malariagen_data.amin1.Amin1
 
+.. autoclass:: malariagen_data.amin1.Amin1
+    :no-members:
+
 Basic data access
 -----------------
 .. autosummary::

@@ -30,27 +30,20 @@ extensions = [
 autosummary_generate = True
 
 # Inheritance diagrams are pure server-side Graphviz -> static SVG, with no
-# browser-side JS at all, unlike the mermaid.js diagrams we tried first
-# (which hit a real, reproducible mermaid bug interacting with
-# pydata-sphinx-theme's dark/light mode switch - a crash on every page load,
-# confirmed in both Chrome and Firefox). That makes this approach reliable
-# across every browser at the cost of some polish (no custom fullscreen
-# button, method lists, or colour-by-depth) - "sphinx.ext.viewcode" gives the
-# clickable-to-source part instead, via a "[source]" link on each class's
+# browser-side JS That makes this approach reliable
+# across browsers. "sphinx.ext.viewcode" gives the
+# clickable-to-source part, via a "[source]" link on each class's
 # own doc entry (see architecture.rst).
-inheritance_graph_attrs = dict(rankdir="LR", fontsize=16, ratio="compress")
-inheritance_node_attrs = dict(
-    fontsize=16,
+inheritance_graph_attrs = dict(rankdir="RL", fontsize=20, ratio="compress")
+inheritance_node_attrs = dict(  # https://graphviz.org/docs/nodes/
+    fontsize=20,
     shape="box",
     style='"filled,rounded"',
-    # Hex colours need to be quoted - Graphviz's dot rejects a bare
-    # "#dcfce7" with a syntax error (verified: this broke the build until
-    # quoted).
     fillcolor='"#dcfce7"',
     color='"#15803d"',
     fontcolor='"#14532d"',
 )
-inheritance_edge_attrs = dict(color='"#16a34a"')
+inheritance_edge_attrs = dict(color='"#16a34a"')  # https://graphviz.org/docs/edges/
 
 templates_path = ["_templates"]
 exclude_patterns = []

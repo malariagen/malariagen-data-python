@@ -20,6 +20,9 @@ home page.
 
 .. currentmodule:: malariagen_data.ag3.Ag3
 
+.. autoclass:: malariagen_data.ag3.Ag3
+    :no-members:
+
 Basic data access
 -----------------
 .. autosummary::
