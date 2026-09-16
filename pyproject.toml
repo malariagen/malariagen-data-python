@@ -53,7 +53,7 @@ dev = [
     "jupyterlab",
 ]
 test = [
-    "pytest",
+    "pytest==8.4.2",
     "pytest-mock",
     "pytest-xdist",
     "pytest-cases",
