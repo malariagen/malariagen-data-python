@@ -37,7 +37,7 @@ class AnophelesG123Analysis(
     def _load_data_for_g123(
         self,
         *,
-        contig,
+        region,
         sites,
         site_mask,
         sample_sets,
@@ -50,7 +50,7 @@ class AnophelesG123Analysis(
         chunks,
     ):
         ds_snps = self.snp_calls(
-            region=contig,
+            region=region,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
             sample_sets=sample_sets,
@@ -74,7 +74,7 @@ class AnophelesG123Analysis(
             # of samples was used to set up the phasing analysis.
             with self._spinner("Subsetting to selected sites"):
                 haplotype_pos = self.haplotype_sites(
-                    region=contig,
+                    region=region,
                     analysis=sites,
                     field="POS",
                     inline_array=True,
@@ -106,7 +106,7 @@ class AnophelesG123Analysis(
     def _g123_gwss(
         self,
         *,
-        contig,
+        region,
         sites,
         site_mask,
         window_size,
@@ -120,7 +120,7 @@ class AnophelesG123Analysis(
         chunks,
     ):
         gt, pos = self._load_data_for_g123(
-            contig=contig,
+            region=region,
             sites=sites,
             site_mask=site_mask,
             sample_sets=sample_sets,
@@ -158,7 +158,7 @@ class AnophelesG123Analysis(
     )
     def g123_gwss(
         self,
-        contig: base_params.contig,
+        region: base_params.region,
         window_size: g123_params.window_size,
         sites: g123_params.sites = g123_params.DEFAULT_SITE_PARAMETER,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
@@ -186,7 +186,7 @@ class AnophelesG123Analysis(
             )
 
         params = dict(
-            contig=contig,
+            region=region,
             sites=sites,
             site_mask=self._prep_optional_site_mask_param(site_mask=site_mask),
             window_size=window_size,
@@ -218,7 +218,7 @@ class AnophelesG123Analysis(
     def _g123_calibration(
         self,
         *,
-        contig,
+        region,
         sites,
         site_mask,
         sample_query,
@@ -232,7 +232,7 @@ class AnophelesG123Analysis(
         chunks,
     ) -> Mapping[str, np.ndarray]:
         gt, _ = self._load_data_for_g123(
-            contig=contig,
+            region=region,
             sites=sites,
             site_mask=site_mask,
             sample_query=sample_query,
@@ -268,7 +268,7 @@ class AnophelesG123Analysis(
     )
     def g123_calibration(
         self,
-        contig: base_params.contig,
+        region: base_params.region,
         sites: g123_params.sites = g123_params.DEFAULT_SITE_PARAMETER,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_query: Optional[base_params.sample_query] = None,
@@ -296,7 +296,7 @@ class AnophelesG123Analysis(
             )
 
         params = dict(
-            contig=contig,
+            region=region,
             sites=sites,
             site_mask=self._prep_optional_site_mask_param(site_mask=site_mask),
             window_sizes=window_sizes,
@@ -328,7 +328,7 @@ class AnophelesG123Analysis(
     )
     def plot_g123_gwss_track(
         self,
-        contig: base_params.contig,
+        region: base_params.region,
         window_size: g123_params.window_size,
         sites: g123_params.sites = g123_params.DEFAULT_SITE_PARAMETER,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
@@ -354,7 +354,7 @@ class AnophelesG123Analysis(
     ) -> gplt_params.optional_figure:
         # compute G123
         x, g123 = self.g123_gwss(
-            contig=contig,
+            region=region,
             sites=sites,
             site_mask=site_mask,
             window_size=window_size,
@@ -417,7 +417,7 @@ class AnophelesG123Analysis(
         # tidy up the plot
         fig.yaxis.axis_label = "G123"
         fig.yaxis.ticker = [0, 1]
-        self._bokeh_style_genome_xaxis(fig, contig)
+        self._bokeh_style_genome_xaxis(fig, region)
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
@@ -429,7 +429,7 @@ class AnophelesG123Analysis(
     )
     def plot_g123_gwss(
         self,
-        contig: base_params.contig,
+        region: base_params.region,
         window_size: g123_params.window_size,
         sites: g123_params.sites = g123_params.DEFAULT_SITE_PARAMETER,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
@@ -457,7 +457,7 @@ class AnophelesG123Analysis(
     ) -> gplt_params.optional_figure:
         # gwss track
         fig1 = self.plot_g123_gwss_track(
-            contig=contig,
+            region=region,
             sites=sites,
             site_mask=site_mask,
             window_size=window_size,
@@ -481,7 +481,7 @@ class AnophelesG123Analysis(
 
         # plot genes
         fig2 = self.plot_genes(
-            region=contig,
+            region=region,
             sizing_mode=sizing_mode,
             width=width,
             height=genes_height,
@@ -512,7 +512,7 @@ class AnophelesG123Analysis(
     )
     def plot_g123_calibration(
         self,
-        contig: base_params.contig,
+        region: base_params.region,
         sites: g123_params.sites,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_query: Optional[base_params.sample_query] = None,
@@ -533,7 +533,7 @@ class AnophelesG123Analysis(
     ) -> gplt_params.optional_figure:
         # get g123 values
         calibration_runs = self.g123_calibration(
-            contig=contig,
+            region=region,
             sites=sites,
             site_mask=site_mask,
             sample_query=sample_query,

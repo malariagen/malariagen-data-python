@@ -17,8 +17,8 @@ GCS_DEFAULT_PUBLIC_URL = "gs://vo_anoph_temp_us_central1/vo_agam_release/"
 GCS_REGION_URLS = {
     "us-central1": "gs://vo_agam_release_master_us_central1",
 }
-XPEHH_GWSS_CACHE_NAME = "ag3_xpehh_gwss_v1"
-IHS_GWSS_CACHE_NAME = "ag3_ihs_gwss_v1"
+XPEHH_GWSS_CACHE_NAME = "ag3_xpehh_gwss_v2"
+IHS_GWSS_CACHE_NAME = "ag3_ihs_gwss_v2"
 VIRTUAL_CONTIGS = {
     "2RL": ("2R", "2L"),
     "3RL": ("3R", "3L"),
