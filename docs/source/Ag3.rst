@@ -20,8 +20,15 @@ home page.
 
 .. currentmodule:: malariagen_data.ag3.Ag3
 
-.. autoclass:: malariagen_data.ag3.Ag3
-    :no-members:
+.. .. autoclass:: malariagen_data.ag3.Ag3
+..     :no-members:
+
+Class composition
+-----------------
+How ``Ag3`` is composed from mixin classes (see :doc:`architecture` for
+the full picture, and every mixin's own reference page).
+
+.. graphviz:: _static/diagrams/ag3_composition.dot
 
 Basic data access
 -----------------

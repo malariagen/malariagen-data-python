@@ -19,8 +19,15 @@ For more information about the data and terms of use, please see the
 
 .. currentmodule:: malariagen_data.adar1.Adar1
 
-.. autoclass:: malariagen_data.adar1.Adar1
-    :no-members:
+
+Class composition
+-----------------
+How ``Adar1`` is composed from mixin classes (see :doc:`architecture` for
+the full picture, and every mixin's own reference page). Mixins shown
+greyed out and dashed are inherited but not backed by real data for this
+dataset.
+
+.. graphviz:: _static/diagrams/adar1_composition.dot
 
 Basic data access
 -----------------

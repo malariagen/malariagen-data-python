@@ -20,6 +20,19 @@ home page.
 
 .. currentmodule:: malariagen_data.af1.Af1
 
+.. autoclass:: malariagen_data.af1.Af1
+    :no-members:
+
+Class composition
+-----------------
+How ``Af1`` is composed from mixin classes (see :doc:`architecture` for
+the full picture, and every mixin's own reference page). Mixins shown
+greyed out and dashed are inherited but not backed by real data for this
+dataset, so calling their methods will fail or return no data - see
+:doc:`architecture` for details on how this was checked.
+
+.. graphviz:: _static/diagrams/af1_composition.dot
+
 Basic data access
 -----------------
 .. autosummary::

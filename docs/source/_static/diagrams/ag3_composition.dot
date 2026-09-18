@@ -1,0 +1,63 @@
+digraph inheritance {
+    bgcolor="transparent";
+    rankdir=LR;
+    fontsize=16;
+    node [fontsize=16, shape=box, fontname="Helvetica,Arial,sans-serif"];
+    edge [color="#16a34a"];
+
+    "Ag3" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", tooltip="malariagen gambiae complex."];
+    "AnophelesDataResource" -> "Ag3";
+
+    "AnophelesDataResource" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anopheles.AnophelesDataResource.html#malariagen_data.anopheles.AnophelesDataResource", tooltip="Composes every analysis mixin into one API."];
+
+    "AnophelesDipClustAnalysis" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.dipclust.AnophelesDipClustAnalysis.html#malariagen_data.anoph.dipclust.AnophelesDipClustAnalysis", tooltip="Hierarchical clustering of diplotypes (combines CNV + SNP frequency data)."];
+    "AnophelesDipClustAnalysis" -> "AnophelesDataResource";
+    "AnophelesHapClustAnalysis" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.hapclust.AnophelesHapClustAnalysis.html#malariagen_data.anoph.hapclust.AnophelesHapClustAnalysis", tooltip="Hierarchical clustering and sharing analysis of phased haplotypes."];
+    "AnophelesHapClustAnalysis" -> "AnophelesDataResource";
+    "AnophelesXpehhAnalysis" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.xpehh.AnophelesXpehhAnalysis.html#malariagen_data.anoph.xpehh.AnophelesXpehhAnalysis", tooltip="Cross-population extended haplotype homozygosity (XP-EHH) selection scans."];
+    "AnophelesXpehhAnalysis" -> "AnophelesDataResource";
+    "AnophelesH1XAnalysis" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.h1x.AnophelesH1XAnalysis.html#malariagen_data.anoph.h1x.AnophelesH1XAnalysis", tooltip="H1X genome-wide scans for differentiation between two cohorts."];
+    "AnophelesH1XAnalysis" -> "AnophelesDataResource";
+    "AnophelesH12Analysis" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.h12.AnophelesH12Analysis.html#malariagen_data.anoph.h12.AnophelesH12Analysis", tooltip="H12 genome-wide selection scans and calibration."];
+    "AnophelesH12Analysis" -> "AnophelesDataResource";
+    "AnophelesG123Analysis" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.g123.AnophelesG123Analysis.html#malariagen_data.anoph.g123.AnophelesG123Analysis", tooltip="G123 genome-wide selection scans and calibration (unphased genotypes)."];
+    "AnophelesG123Analysis" -> "AnophelesDataResource";
+    "AnophelesFstAnalysis" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.fst.AnophelesFstAnalysis.html#malariagen_data.anoph.fst.AnophelesFstAnalysis", tooltip="Fst (genetic differentiation) statistics, gwss and pairwise cohort comparisons."];
+    "AnophelesFstAnalysis" -> "AnophelesDataResource";
+    "AnophelesHetAnalysis" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.heterozygosity.AnophelesHetAnalysis.html#malariagen_data.anoph.heterozygosity.AnophelesHetAnalysis", tooltip="Per-sample and per-cohort heterozygosity, and runs-of-homozygosity (ROH)."];
+    "AnophelesHetAnalysis" -> "AnophelesDataResource";
+    "AnophelesHapFrequencyAnalysis" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.hap_frq.AnophelesHapFrequencyAnalysis.html#malariagen_data.anoph.hap_frq.AnophelesHapFrequencyAnalysis", tooltip="Haplotype frequency calculations, by cohort."];
+    "AnophelesHapFrequencyAnalysis" -> "AnophelesDataResource";
+    "AnophelesDistanceAnalysis" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.distance.AnophelesDistanceAnalysis.html#malariagen_data.anoph.distance.AnophelesDistanceAnalysis", tooltip="Pairwise genetic distance matrices and neighbour-joining trees."];
+    "AnophelesDistanceAnalysis" -> "AnophelesDataResource";
+    "AnophelesPca" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.pca.AnophelesPca.html#malariagen_data.anoph.pca.AnophelesPca", tooltip="Principal components analysis of biallelic SNPs."];
+    "AnophelesPca" -> "AnophelesDataResource";
+    "PlinkConverter" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.to_plink.PlinkConverter.html#malariagen_data.anoph.to_plink.PlinkConverter", tooltip="Export biallelic SNP calls to PLINK format."];
+    "PlinkConverter" -> "AnophelesDataResource";
+    "AnophelesLdAnalysis" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.ld.AnophelesLdAnalysis.html#malariagen_data.anoph.ld.AnophelesLdAnalysis", tooltip="Linkage-disequilibrium pruning of biallelic SNP calls."];
+    "AnophelesLdAnalysis" -> "AnophelesDataResource";
+    "SnpVcfExporter" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.to_vcf.SnpVcfExporter.html#malariagen_data.anoph.to_vcf.SnpVcfExporter", tooltip="Export SNP calls to VCF format."];
+    "SnpVcfExporter" -> "AnophelesDataResource";
+    "AnophelesIgv" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.igv.AnophelesIgv.html#malariagen_data.anoph.igv.AnophelesIgv", tooltip="Embed an IGV.js genome browser / view read alignments."];
+    "AnophelesIgv" -> "AnophelesDataResource";
+    "AnophelesKaryotypeAnalysis" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.karyotype.AnophelesKaryotypeAnalysis.html#malariagen_data.anoph.karyotype.AnophelesKaryotypeAnalysis", tooltip="Chromosomal inversion karyotyping from tag SNPs."];
+    "AnophelesKaryotypeAnalysis" -> "AnophelesDataResource";
+    "AnophelesAimData" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.aim_data.AnophelesAimData.html#malariagen_data.anoph.aim_data.AnophelesAimData", tooltip="Ancestry-informative marker (AIM) variant and species-call access."];
+    "AnophelesAimData" -> "AnophelesDataResource";
+    "AnophelesHapData" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.hap_data.AnophelesHapData.html#malariagen_data.anoph.hap_data.AnophelesHapData", tooltip="Access to phased haplotype reference panel data."];
+    "AnophelesHapData" -> "AnophelesDataResource";
+    "AnophelesSnpData" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.snp_data.AnophelesSnpData.html#malariagen_data.anoph.snp_data.AnophelesSnpData", tooltip="Core SNP genotype, site filter and site annotation data access."];
+    "AnophelesSnpData" -> "AnophelesDataResource";
+    "AnophelesSampleMetadata" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.sample_metadata.AnophelesSampleMetadata.html#malariagen_data.anoph.sample_metadata.AnophelesSampleMetadata", tooltip="Sample and cohort metadata access."];
+    "AnophelesSampleMetadata" -> "AnophelesDataResource";
+    "AnophelesGenomeFeaturesData" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.genome_features.AnophelesGenomeFeaturesData.html#malariagen_data.anoph.genome_features.AnophelesGenomeFeaturesData", tooltip="GFF3 genome feature annotation access (genes, transcripts, exons)."];
+    "AnophelesGenomeFeaturesData" -> "AnophelesDataResource";
+    "AnophelesGenomeSequenceData" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.genome_sequence.AnophelesGenomeSequenceData.html#malariagen_data.anoph.genome_sequence.AnophelesGenomeSequenceData", tooltip="Reference genome sequence access."];
+    "AnophelesGenomeSequenceData" -> "AnophelesDataResource";
+    "AnophelesDescribe" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.describe.AnophelesDescribe.html#malariagen_data.anoph.describe.AnophelesDescribe", tooltip="API introspection and discovery (describe_api)."];
+    "AnophelesDescribe" -> "AnophelesDataResource";
+    "AnophelesBase" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.base.AnophelesBase.html#malariagen_data.anoph.base.AnophelesBase", tooltip="Foundational config, release and file-access plumbing shared by everything."];
+    "AnophelesBase" -> "AnophelesDataResource";
+    "AnophelesPhenotypeData" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.phenotypes.AnophelesPhenotypeData.html#malariagen_data.anoph.phenotypes.AnophelesPhenotypeData", tooltip="Insecticide resistance phenotype data access."];
+    "AnophelesPhenotypeData" -> "AnophelesDataResource";
+}

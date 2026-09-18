@@ -25,6 +25,7 @@ extensions = [
     "sphinx_design",
     "sphinx.ext.inheritance_diagram",
     "sphinx.ext.viewcode",
+    "sphinx.ext.graphviz",
 ]
 
 autosummary_generate = True
