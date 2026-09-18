@@ -29,6 +29,32 @@ from .frq_base import AnophelesFrequencyAnalysis
 from .sample_metadata import _locate_cohorts
 
 
+def _expected_copy_number(contig, sex_contig, df_samples):
+    """Compute expected copy number per sample for a given contig.
+
+    On the sex-linked contig, males are hemizygous (CN=1) and females
+    are diploid (CN=2). On all other contigs, samples are diploid (CN=2).
+
+    If the sex-linked contig is requested but the ``sex_call`` column is
+    missing, a warning is emitted and all samples are treated as diploid
+    rather than silently returning a constant that would misrepresent
+    male hemizygous loci.
+    """
+    if contig != sex_contig:
+        return 2
+    if "sex_call" not in df_samples.columns:
+        warnings.warn(
+            "sex_call column not found; defaulting to diploid (CN=2) for "
+            "all samples on the sex-linked contig. Amplification and "
+            "deletion calls for hemizygous males may be incorrect.",
+            UserWarning,
+            stacklevel=3,
+        )
+        return 2
+    is_male = (df_samples["sex_call"] == "M").values
+    return np.where(is_male, 1, 2)[np.newaxis, :]
+
+
 class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis):
     def __init__(
         self,
@@ -290,11 +316,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         df_samples = df_samples.set_index("sample_id").loc[sample_id].reset_index()
 
         debug("figure out expected copy number")
-        if region.contig == "X":
-            is_male = (df_samples["sex_call"] == "M").values
-            expected_cn = np.where(is_male, 1, 2)[np.newaxis, :]
-        else:
-            expected_cn = 2
+        expected_cn = _expected_copy_number(region.contig, self._sex_contig, df_samples)
 
         debug(
             "setup output dataframe - two rows for each gene, one for amplification and one for deletion"
@@ -557,11 +579,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         )
 
         debug("figure out expected copy number")
-        if region.contig == "X":
-            is_male = (df_samples["sex_call"] == "M").values
-            expected_cn = np.where(is_male, 1, 2)[np.newaxis, :]
-        else:
-            expected_cn = 2
+        expected_cn = _expected_copy_number(region.contig, self._sex_contig, df_samples)
 
         debug("set up intermediates")
         cn = ds_cnv["CN_mode"].values
