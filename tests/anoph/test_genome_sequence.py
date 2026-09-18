@@ -94,11 +94,11 @@ def test_genome_sequence(fixture, api):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_genome_sequence_region(fixture, api):
+def test_genome_sequence_region(fixture, api, rng: np.random.Generator):
     for contig in fixture.contigs:
         contig_seq = api.genome_sequence(region=contig)
         # Pick a random start and stop position.
-        start, stop = sorted(np.random.randint(low=1, high=len(contig_seq), size=2))
+        start, stop = sorted(rng.integers(low=1, high=len(contig_seq), size=2))
         region = f"{contig}:{start:,}-{stop:,}"
         seq = api.genome_sequence(region=region)
         assert isinstance(seq, da.Array)
@@ -120,7 +120,7 @@ def test_virtual_contigs(ag3_sim_api):
 
 
 @pytest.mark.parametrize("chrom", ["2RL", "3RL"])
-def test_genome_sequence_virtual_contigs(ag3_sim_api, chrom):
+def test_genome_sequence_virtual_contigs(ag3_sim_api, chrom, rng: np.random.Generator):
     api = ag3_sim_api
     contig_r, contig_l = api.virtual_contigs[chrom]
     seq_r = api.genome_sequence(region=contig_r)
@@ -137,7 +137,7 @@ def test_genome_sequence_virtual_contigs(ag3_sim_api, chrom):
     )
 
     # Test with region.
-    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    start, stop = sorted(rng.integers(low=1, high=len(seq), size=2))
     region = f"{chrom}:{start:,}-{stop:,}"
     seq_region = api.genome_sequence(region=region)
     assert isinstance(seq_region, da.Array)

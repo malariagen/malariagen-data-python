@@ -73,7 +73,9 @@ def case_af1_sim(af1_sim_fixture, af1_sim_api):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_plot_haplotype_clustering(fixture, api: AnophelesHapClustAnalysis):
+def test_plot_haplotype_clustering(
+    fixture, rng: np.random.Generator, api: AnophelesHapClustAnalysis
+):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     linkage_methods = (
@@ -85,12 +87,12 @@ def test_plot_haplotype_clustering(fixture, api: AnophelesHapClustAnalysis):
         "median",
         "ward",
     )
-    sample_queries = (None, "sex_call == 'F'")
+    sample_queries = np.array([None, "sex_call == 'F'"])
     hapclust_params = dict(
         region=fixture.random_region_str(region_size=5000),
-        sample_sets=[str(np.random.choice(all_sample_sets))],
-        linkage_method=str(np.random.choice(linkage_methods)),
-        sample_query=np.random.choice(list(sample_queries)),  # type: ignore
+        sample_sets=[rng.choice(all_sample_sets)],
+        linkage_method=str(rng.choice(linkage_methods)),
+        sample_query=rng.choice(sample_queries),
         show=False,
     )
 
@@ -99,13 +101,15 @@ def test_plot_haplotype_clustering(fixture, api: AnophelesHapClustAnalysis):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_plot_haplotype_sharing_arc(fixture, api: AnophelesHapClustAnalysis):
+def test_plot_haplotype_sharing_arc(
+    fixture, rng: np.random.Generator, api: AnophelesHapClustAnalysis
+):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     for metric in ["unique", "absolute"]:
         fig = api.plot_haplotype_sharing_arc(
             region=fixture.random_region_str(region_size=5000),
             cohort_col="country",
-            sample_sets=[str(np.random.choice(all_sample_sets))],
+            sample_sets=[rng.choice(all_sample_sets)],
             metric=metric,
             show=False,
         )
@@ -113,13 +117,15 @@ def test_plot_haplotype_sharing_arc(fixture, api: AnophelesHapClustAnalysis):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_plot_haplotype_sharing_chord(fixture, api: AnophelesHapClustAnalysis):
+def test_plot_haplotype_sharing_chord(
+    fixture, rng: np.random.Generator, api: AnophelesHapClustAnalysis
+):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     for metric in ["unique", "absolute"]:
         fig = api.plot_haplotype_sharing_chord(
             region=fixture.random_region_str(region_size=5000),
             cohort_col="country",
-            sample_sets=[str(np.random.choice(all_sample_sets))],
+            sample_sets=[rng.choice(all_sample_sets)],
             metric=metric,
             show=False,
         )
