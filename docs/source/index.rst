@@ -22,6 +22,7 @@ API documentation
    Adir1
    Adar1
    architecture
+   full_inheritance
    colab_tpu
    colab_tpu_runtime
 

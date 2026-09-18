@@ -1,6 +1,5 @@
 digraph inheritance {
-    bgcolor="transparent";
-    rankdir=LR;
+    rankdir=RL;
     fontsize=16;
     node [fontsize=16, shape=box, fontname="Helvetica,Arial,sans-serif"];
     edge [color="#16a34a"];

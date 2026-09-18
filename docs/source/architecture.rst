@@ -10,7 +10,7 @@ six dataset classes share the exact same mixin structure - only the
 top-level dataset class and its configuration (which data are available,
 default analyses, and so on) differ between them.
 
-Rather than one large diagram, the mixin structure is split below into
+The mixin structure is split below into
 several smaller ones, each showing one area of functionality. A few classes
 - particularly :class:`~malariagen_data.anoph.snp_data.AnophelesSnpData` and
 :class:`~malariagen_data.anoph.hap_data.AnophelesHapData` - appear in more
@@ -24,6 +24,9 @@ for the six dataset classes - see :doc:`Ag3`, :doc:`Af1`, :doc:`As1`,
 :doc:`Amin1`, :doc:`Adir1`, :doc:`Adar1` - or a generated page listing just
 what it contributes directly, for the mixins), which in turn links on to
 its source code.
+
+See :doc:`full_inheritance` for the same structure as a single, complete
+diagram rather than split by topic.
 
 Composition overview
 ---------------------

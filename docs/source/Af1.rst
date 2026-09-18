@@ -20,9 +20,6 @@ home page.
 
 .. currentmodule:: malariagen_data.af1.Af1
 
-.. autoclass:: malariagen_data.af1.Af1
-    :no-members:
-
 Class composition
 -----------------
 How ``Af1`` is composed from mixin classes (see :doc:`architecture` for
