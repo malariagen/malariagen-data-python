@@ -56,8 +56,6 @@ digraph inheritance {
     "AnophelesGenomeSequenceData" -> "AnophelesDataResource";
     "AnophelesDescribe" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.describe.AnophelesDescribe.html#malariagen_data.anoph.describe.AnophelesDescribe", tooltip="API introspection and discovery (describe_api)."];
     "AnophelesDescribe" -> "AnophelesDataResource";
-    "AnophelesBase" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.base.AnophelesBase.html#malariagen_data.anoph.base.AnophelesBase", tooltip="Foundational config, release and file-access plumbing shared by everything."];
-    "AnophelesBase" -> "AnophelesDataResource";
     "AnophelesPhenotypeData" [style="filled,rounded,dashed", fillcolor="#e5e7eb", color="#9ca3af", fontcolor="#6b7280", URL="generated/malariagen_data.anoph.phenotypes.AnophelesPhenotypeData.html#malariagen_data.anoph.phenotypes.AnophelesPhenotypeData", tooltip="Inherited, but not backed by real data for Adar1 - Insecticide resistance phenotype data access."];
     "AnophelesPhenotypeData" -> "AnophelesDataResource";
 }
