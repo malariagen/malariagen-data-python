@@ -8,7 +8,7 @@ dist
 .coverage
 coverage.xml
 .ipynb_checkpoints/
-gcs_cache
+gcs_cache*
 results_cache
 tests/anoph/fixture/simulated
 
