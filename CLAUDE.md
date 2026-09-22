@@ -90,7 +90,6 @@ Built with Sphinx (`docs/source/conf.py`) + `pydata-sphinx-theme`, deployed via 
 
 ## Behavioral Rules
 - Always write tests before implementing a feature
-- Never modify the database schema directly — use migration files
 - Don't install new packages without asking first
 - Always check for existing utility functions before writing new ones
 - When uncertain, ask — don't guess
@@ -100,8 +99,8 @@ Built with Sphinx (`docs/source/conf.py`) + `pydata-sphinx-theme`, deployed via 
     - `/docs` — Documentation, as described above
     - `/malariagen_data/anoph` — functionality for analysing each Anopheles dataset
     - `/malariagen_data` — Top level classes for each data type
-    - `/malariagen_data/notebooks` — notebooks as described above
-    - `/malariagen_data/tests` — Tests as described above
+    - `/notebooks` — notebooks as described above
+    - `/tests` — Tests as described above
 
 # Coding Conventions
 
