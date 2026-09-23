@@ -67,7 +67,6 @@ Sample metadata access
     plot_samples_interactive_map
     plot_sample_location_mapbox
     plot_sample_location_geo
-    wgs_data_catalog
     cohorts
     cohorts_metadata
     general_metadata
