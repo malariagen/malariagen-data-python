@@ -38,9 +38,9 @@ digraph inheritance {
     "AnophelesLdAnalysis" -> "AnophelesDataResource";
     "SnpVcfExporter" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.to_vcf.SnpVcfExporter.html#malariagen_data.anoph.to_vcf.SnpVcfExporter", tooltip="Export SNP calls to VCF format."];
     "SnpVcfExporter" -> "AnophelesDataResource";
-    "AnophelesIgv" [style="filled,rounded", fillcolor="#dcfce7", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.igv.AnophelesIgv.html#malariagen_data.anoph.igv.AnophelesIgv", tooltip="Embed an IGV.js genome browser / view read alignments."];
+    "AnophelesIgv" [style="filled,rounded", fillcolor="#e5e7eb", color="#9ca3af", fontcolor="#6b7280", URL="generated/malariagen_data.anoph.igv.AnophelesIgv.html#malariagen_data.anoph.igv.AnophelesIgv", tooltip="Embed an IGV.js genome browser / view read alignments."];
     "AnophelesIgv" -> "AnophelesDataResource";
-    "AnophelesKaryotypeAnalysis" [style="filled,rounded", fillcolor="#e5e7eb", color="#15803d", fontcolor="#14532d", URL="generated/malariagen_data.anoph.karyotype.AnophelesKaryotypeAnalysis.html#malariagen_data.anoph.karyotype.AnophelesKaryotypeAnalysis", tooltip="Chromosomal inversion karyotyping from tag SNPs."];
+    "AnophelesKaryotypeAnalysis" [style="filled,rounded", fillcolor="#e5e7eb", color="#9ca3af", fontcolor="#6b7280", URL="generated/malariagen_data.anoph.karyotype.AnophelesKaryotypeAnalysis.html#malariagen_data.anoph.karyotype.AnophelesKaryotypeAnalysis", tooltip="Chromosomal inversion karyotyping from tag SNPs."];
     "AnophelesKaryotypeAnalysis" -> "AnophelesDataResource";
     "AnophelesAimData" [style="filled,rounded,dashed", fillcolor="#e5e7eb", color="#9ca3af", fontcolor="#6b7280", URL="generated/malariagen_data.anoph.aim_data.AnophelesAimData.html#malariagen_data.anoph.aim_data.AnophelesAimData", tooltip="Inherited, but not backed by real data for As1 - Ancestry-informative marker (AIM) variant and species-call access."];
     "AnophelesAimData" -> "AnophelesDataResource";
