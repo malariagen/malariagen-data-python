@@ -36,7 +36,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         self,
         cohorts_analysis: Optional[str] = None,
         aim_analysis: Optional[str] = None,
-        aim_metadata_dtype: Optional[Mapping[str, Any]] = None,
+        aim_metadata_dtype: Optional[Dict[str, Any]] = None,
         taxon_colors: Optional[Mapping[str, str]] = None,
         aim_species_colors: Optional[Mapping[str, str]] = None,
         **kwargs,
@@ -58,7 +58,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         # data resources, and so column names and dtype need to be
         # passed in as parameters.
         self._aim_metadata_columns: Optional[List[str]] = None
-        self._aim_metadata_dtype: Optional[Mapping[str, Any]] = {}
+        self._aim_metadata_dtype: Dict[str, Any] = {}
 
         # Only apply the `aim_metadata_dtype` if it is a type of `Mapping`.
         if isinstance(aim_metadata_dtype, Mapping):
