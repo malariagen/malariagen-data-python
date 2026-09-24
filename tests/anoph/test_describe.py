@@ -95,6 +95,42 @@ def test_describe_api_summaries_not_empty(fixture, api):
     assert len(non_empty) > 0, "Expected at least some methods to have summaries"
 
 
+@parametrize_with_cases("fixture,api", cases=".")
+def test_describe_method_returns_dataframe_with_expected_columns(fixture, api):
+    """Test that describe_method returns a DataFrame with expected columns."""
+    df = api.describe_method("describe_api")
+    assert isinstance(df, pd.DataFrame)
+    assert list(df.columns) == ["parameter", "type", "default", "description"]
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_describe_method_excludes_self(fixture, api):
+    """Test that describe_method output does not include self parameter."""
+    df = api.describe_method("describe_api")
+    assert "self" not in set(df["parameter"])
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_describe_method_known_parameter_present(fixture, api):
+    """Test that a known parameter is present for describe_api."""
+    df = api.describe_method("describe_api")
+    assert "category" in set(df["parameter"])
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_describe_method_unknown_method_raises(fixture, api):
+    """Test unknown method raises ValueError."""
+    with pytest.raises(ValueError, match="Unknown method"):
+        api.describe_method("not_a_real_method")
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_describe_method_private_method_raises(fixture, api):
+    """Test private method names are rejected."""
+    with pytest.raises(ValueError, match="Private method"):
+        api.describe_method("_categorize_method")
+
+
 def test_categorize_method():
     """Test the static _categorize_method helper."""
     assert AnophelesDescribe._categorize_method("plot_pca") == "plot"
