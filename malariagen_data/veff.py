@@ -444,10 +444,32 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
             effect = base_effect._replace(effect="CODON_CHANGE", impact="MODERATE")
 
         else:
-            # TODO in-frame complex variation (MNP + INDEL)
-            effect = base_effect._replace(
-                effect="TODO in-frame complex variation (MNP + INDEL)", impact="UNKNOWN"
+            # in-frame complex variation: multiple ref bases replaced by a
+            # different number of alt bases, net change a multiple of 3.
+            # Reading frame is preserved. Apply the same codon-change logic
+            # used for simple insertions and deletions above.
+            is_codon_changed = (strand == "+" and ref_aa[0] != alt_aa[0]) or (
+                strand == "-" and ref_aa[-1] != alt_aa[-1]
             )
+
+            if len(alt) > len(ref):
+                if is_codon_changed:
+                    effect = base_effect._replace(
+                        effect="CODON_CHANGE_PLUS_CODON_INSERTION", impact="MODERATE"
+                    )
+                else:
+                    effect = base_effect._replace(
+                        effect="CODON_INSERTION", impact="MODERATE"
+                    )
+            else:
+                if is_codon_changed:
+                    effect = base_effect._replace(
+                        effect="CODON_CHANGE_PLUS_CODON_DELETION", impact="MODERATE"
+                    )
+                else:
+                    effect = base_effect._replace(
+                        effect="CODON_DELETION", impact="MODERATE"
+                    )
 
     return effect
 
