@@ -400,6 +400,7 @@ class AnophelesSampleMetadata(AnophelesBase):
                 warnings.warn(
                     f"WARNING: The surveillance flags data contains null values for sample set {sample_set}",
                     UserWarning,
+                    stacklevel=2,
                 )
 
                 # Restore the original warning filters.
@@ -419,6 +420,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             warnings.warn(
                 f"WARNING: The surveillance flags data is missing for sample set {sample_set}",
                 UserWarning,
+                stacklevel=2,
             )
 
             # Restore the original warning filters.
