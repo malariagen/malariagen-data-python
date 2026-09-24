@@ -20,6 +20,16 @@ home page.
 
 .. currentmodule:: malariagen_data.ag3.Ag3
 
+.. .. autoclass:: malariagen_data.ag3.Ag3
+..     :no-members:
+
+Class composition
+-----------------
+How ``Ag3`` is composed from mixin classes (see :doc:`architecture` for
+the full picture, and every mixin's own reference page).
+
+.. graphviz:: _static/diagrams/ag3_composition.dot
+
 Basic data access
 -----------------
 .. autosummary::
@@ -29,6 +39,10 @@ Basic data access
     sample_sets
     lookup_release
     lookup_study
+    describe_api
+    v3_wild
+    lookup_study_info
+    lookup_terms_of_use_info
 
 Reference genome data access
 ----------------------------
@@ -40,6 +54,7 @@ Reference genome data access
     genome_features
     plot_transcript
     plot_genes
+    canonical_transcript
 
 Sample metadata access
 ----------------------
@@ -52,12 +67,17 @@ Sample metadata access
     cross_metadata
     count_samples
     lookup_sample
+    wgs_run_accessions
     plot_samples_bar
     plot_samples_interactive_map
     plot_sample_location_mapbox
     plot_sample_location_geo
     wgs_data_catalog
     cohorts
+    cohorts_metadata
+    cohort_geometries
+    general_metadata
+    sequence_qc_metadata
 
 SNP data access
 ---------------
@@ -71,6 +91,7 @@ SNP data access
     site_annotations
     is_accessible
     biallelic_snp_calls
+    biallelic_snp_calls_ld_pruned
     biallelic_diplotypes
     biallelic_snps_to_plink
 
@@ -92,6 +113,7 @@ AIM data access
     aim_variants
     aim_calls
     plot_aim_heatmap
+    aim_metadata
 
 CNV data access
 ---------------
@@ -130,6 +152,7 @@ SNP and CNV frequency analysis
     plot_frequencies_heatmap
     plot_frequencies_time_series
     plot_frequencies_interactive_map
+    plot_frequencies_map_markers
 
 Principal components analysis (PCA)
 -----------------------------------
@@ -158,6 +181,7 @@ Heterozygosity analysis
     plot_heterozygosity
     roh_hmm
     plot_roh
+    cohort_heterozygosity
 
 Diversity analysis
 ------------------
@@ -196,6 +220,8 @@ Haplotype clustering and network analysis
     :toctree: generated/
 
     plot_haplotype_clustering
+    plot_haplotype_clustering_advanced
+    plot_haplotype_sharing_arc
     plot_haplotype_network
     haplotype_pairwise_distances
 

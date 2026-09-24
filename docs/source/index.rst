@@ -6,8 +6,25 @@ MalariaGEN Python API documentation
 The ``malariagen_data`` Python package provides a library of functions (API) for accessing and analysing
 data from the `Malaria Genomic Epidemiology Network (MalariaGEN) <https://www.malariagen.net/>`_.
 
+All six dataset classes below share the same underlying class hierarchy; see
+:doc:`architecture` for an interactive diagram of how they're composed.
+
 API documentation
 -----------------
+
+.. toctree::
+   :hidden:
+
+   Ag3
+   Af1
+   As1
+   Amin1
+   Adir1
+   Adar1
+   architecture
+   full_inheritance
+   colab_tpu
+   colab_tpu_runtime
 
 .. grid::
 
@@ -70,8 +87,12 @@ API documentation
       :link: Adar1
       :link-type: doc
 
-      *Anopheles darlingi*
+      *Anopheles darlingi*.
+
       .. image:: ./_static/images/anopheles_darlingi.jpg
+         :alt: Anopheles darlingi mosquito
+         :align: center
+         :width: 100%
 
 Documentation for the `Pf7 <https://malariagen.github.io/parasite-data/pf7/api.html>`_ (*Plasmodium falciparum*)
 and `Pv4 <https://malariagen.github.io/parasite-data/pv4/api.html>`_ (*Plasmodium vivax*) APIs is also available,
