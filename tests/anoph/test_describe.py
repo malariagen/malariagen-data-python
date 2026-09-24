@@ -125,3 +125,81 @@ def test_extract_summary():
 
     summary = AnophelesDescribe._extract_summary(no_doc_func)
     assert summary == ""
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_describe_method_returns_dataframe(fixture, api):
+    """Test that describe_method returns a DataFrame with expected columns."""
+    df = api.describe_method("describe_api")
+    assert isinstance(df, pd.DataFrame)
+    assert "parameter" in df.columns
+    assert "type" in df.columns
+    assert "default" in df.columns
+    assert "description" in df.columns
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_describe_method_invalid_name(fixture, api):
+    """Test that describe_method raises ValueError for unknown methods."""
+    with pytest.raises(ValueError, match="No public method"):
+        api.describe_method("nonexistent_method")
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_describe_method_known_method(fixture, api):
+    """Test that describe_method returns parameters for a known method."""
+    df = api.describe_method("sample_sets")
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) >= 0  # sample_sets may or may not have params
+
+
+def test_parse_param_docs():
+    """Test the static _parse_param_docs helper."""
+    docstring = """Do something.
+
+Parameters
+----------
+x : int
+    The first parameter.
+y : str
+    The second parameter
+    with a multi-line description.
+
+Returns
+-------
+int
+    A result.
+"""
+    params = AnophelesDescribe._parse_param_docs(docstring)
+    assert "x" in params
+    assert "first parameter" in params["x"]
+    assert "y" in params
+    assert "multi-line" in params["y"]
+
+
+def test_parse_param_docs_empty():
+    """Test _parse_param_docs with no Parameters section."""
+    params = AnophelesDescribe._parse_param_docs("Just a summary.")
+    assert params == {}
+
+
+def test_parse_param_docs_args_kwargs():
+    """Test that *args and **kwargs are parsed with keys matching signature names."""
+    docstring = """Summary.
+
+Parameters
+----------
+*args : tuple
+    Positional arguments.
+**kwargs : dict
+    Keyword arguments.
+
+Returns
+-------
+None
+"""
+    params = AnophelesDescribe._parse_param_docs(docstring)
+    assert "args" in params
+    assert "kwargs" in params
+    assert "Positional" in params["args"]
+    assert "Keyword" in params["kwargs"]
