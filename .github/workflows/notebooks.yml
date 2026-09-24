@@ -35,11 +35,17 @@ jobs:
       - name: 'Check gcloud CLI'
         run: 'gcloud info'
 
+      - name: Generate cache key
+        id: cache-key
+        run: echo "key=gcs_cache_notebooks_$(date +%Y%m)" >> "$GITHUB_OUTPUT"
+
       - name: Restore GCS cache
         uses: actions/cache/restore@v3
         with:
           path: gcs_cache
-          key: gcs_cache_notebooks_20240922
+          key: ${{ steps.cache-key.outputs.key }}
+          restore-keys: |
+            gcs_cache_notebooks_
 
       - name: Run notebooks
         run: poetry run jupyter nbconvert --execute notebooks/*.ipynb --inplace
@@ -49,4 +55,4 @@ jobs:
         if: always()
         with:
           path: gcs_cache
-          key: gcs_cache_notebooks_20240922
+          key: ${{ steps.cache-key.outputs.key }}
