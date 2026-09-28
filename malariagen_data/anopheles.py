@@ -38,6 +38,7 @@ from .anoph.to_plink import PlinkConverter
 from .anoph.ld import AnophelesLdAnalysis
 from .anoph.to_vcf import SnpVcfExporter
 from .anoph.to_vcf_cnv import CnvVcfExporter
+from .anoph.to_coverage import CoverageExporter
 from .anoph.g123 import AnophelesG123Analysis
 from .anoph.fst import AnophelesFstAnalysis
 from .anoph.h12 import AnophelesH12Analysis
@@ -95,6 +96,7 @@ class AnophelesDataResource(
     AnophelesLdAnalysis,
     SnpVcfExporter,
     CnvVcfExporter,
+    CoverageExporter,
     AnophelesIgv,
     AnophelesKaryotypeAnalysis,
     AnophelesAimData,
