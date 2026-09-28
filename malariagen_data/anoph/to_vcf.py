@@ -51,10 +51,8 @@ class SnpVcfExporter(
         self,
         output_path: vcf_params.vcf_output_path,
         region: base_params.regions,
-        sample_sets: Optional[base_params.sample_sets],
-        sample_query: Optional[
-            base_params.sample_query
-        ],  # must be of form f"sample_id == '{sample_id}'"
+        sample_sets: base_params.sample_sets,
+        sample_query: base_params.sample_query,  # must be of form f"sample_id == '{sample_id}'"
         sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
