@@ -1,5 +1,6 @@
 import gzip
 import os
+import re
 from datetime import date
 from typing import Optional
 
@@ -19,6 +20,47 @@ _FORMAT_HEADERS = {
     "AD": '##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allele Depth">',
     "MQ": '##FORMAT=<ID=MQ,Number=1,Type=Integer,Description="Mapping Quality">',
 }
+
+# snp_calls_to_vcf() only supports exporting a single sample at a time
+# (its current use case is generating a per-sample VCF for IGV), so
+# sample_query must be of the form "sample_id == '<sample_id>'".
+_SINGLE_SAMPLE_QUERY_PATTERN = re.compile(
+    r"""^\s*sample_id\s*==\s*(['"])[^'"]+\1\s*$"""
+)
+
+
+def _validate_single_sample_selection(
+    *,
+    sample_sets: base_params.sample_sets,
+    sample_query: base_params.sample_query,
+) -> None:
+    """
+    Validate that `sample_sets` and `sample_query` are provided and
+    together specify a single sample, which is the only usage that
+    `snp_calls_to_vcf()` currently supports. A VCF file is only
+    meaningful with respect to an explicit sample basis for its calls,
+    so both parameters are required; and because the only current use
+    case is generating a per-sample VCF for IGV, `sample_query` is
+    required to select exactly one sample.
+    """
+    if not sample_sets:
+        raise ValueError(
+            "sample_sets must be provided and non-empty: a VCF must be "
+            "generated against an explicit set of samples."
+        )
+    if not sample_query or not sample_query.strip():
+        raise ValueError(
+            "sample_query must be provided and non-empty, and must "
+            "select a single sample (see snp_calls_to_vcf() docs)."
+        )
+    if not _SINGLE_SAMPLE_QUERY_PATTERN.match(sample_query):
+        raise ValueError(
+            f"sample_query {sample_query!r} does not select a single "
+            "sample. snp_calls_to_vcf() only supports exporting a "
+            "single sample at a time (its current use case is "
+            "generating a per-sample VCF for IGV); sample_query must be "
+            "of the form \"sample_id == '<sample_id>'\"."
+        )
 
 
 class SnpVcfExporter(
@@ -73,6 +115,9 @@ class SnpVcfExporter(
         base_params._validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
+        _validate_single_sample_selection(
+            sample_sets=sample_sets, sample_query=sample_query
+        )
 
         # Validate fields parameter.
         fields = tuple(fields)
@@ -98,6 +143,23 @@ class SnpVcfExporter(
             inline_array=inline_array,
             chunks=chunks,
         )
+
+        # sample_query is validated above to be of the single-sample
+        # form "sample_id == '<sample_id>'", but that only checks the
+        # shape of the query string. Confirm it actually resolved to
+        # exactly one sample within the given sample_sets — zero would
+        # mean the sample_id wasn't found (e.g. a typo, or the sample is
+        # not part of the given sample_sets); more than one should not
+        # be possible with an equality query on a unique identifier, but
+        # is checked defensively rather than silently written out as a
+        # multi-sample VCF.
+        n_samples_selected = ds.sizes["samples"]
+        if n_samples_selected != 1:
+            raise ValueError(
+                f"sample_query {sample_query!r} selected "
+                f"{n_samples_selected} samples from sample_sets "
+                f"{sample_sets!r}, expected exactly 1."
+            )
 
         sample_ids = ds["sample_id"].values
         contigs = ds.attrs.get("contigs", self.contigs)

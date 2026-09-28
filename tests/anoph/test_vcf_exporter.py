@@ -160,6 +160,86 @@ def test_vcf_exporter_requires_sample_sets_and_query(
 
 
 @parametrize_with_cases("fixture,api", cases=".")
+def test_vcf_exporter_empty_sample_sets(fixture, api: SnpVcfExporter, tmp_path):
+    region = api.contigs[0]
+    output_path = str(tmp_path / "test_empty_sample_sets.vcf")
+
+    with pytest.raises(ValueError, match="sample_sets must be provided"):
+        api.snp_calls_to_vcf(
+            output_path=output_path,
+            region=region,
+            sample_sets=[],
+            sample_query="sample_id == 'anything'",
+        )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_vcf_exporter_empty_sample_query(fixture, api: SnpVcfExporter, tmp_path):
+    region = api.contigs[0]
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = [all_sample_sets[0]]
+    output_path = str(tmp_path / "test_empty_sample_query.vcf")
+
+    with pytest.raises(ValueError, match="sample_query must be provided"):
+        api.snp_calls_to_vcf(
+            output_path=output_path,
+            region=region,
+            sample_sets=sample_sets,
+            sample_query="",
+        )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_vcf_exporter_multi_sample_query_rejected(
+    fixture, api: SnpVcfExporter, tmp_path
+):
+    # sample_query must select a single sample via equality on
+    # sample_id; a query that could match more than one sample (even a
+    # syntactically simple one like a country filter) is rejected
+    # up front, before touching any data.
+    region = api.contigs[0]
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = [all_sample_sets[0]]
+    output_path = str(tmp_path / "test_multi_sample_query.vcf")
+
+    for bad_query in [
+        "country == 'Uganda'",
+        "sample_id in ['AB0085-C', 'AB0086-C']",
+        "sample_id != 'AB0085-C'",
+    ]:
+        with pytest.raises(ValueError, match="does not select a single sample"):
+            api.snp_calls_to_vcf(
+                output_path=output_path,
+                region=region,
+                sample_sets=sample_sets,
+                sample_query=bad_query,
+            )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_vcf_exporter_sample_query_matches_zero_samples(
+    fixture, api: SnpVcfExporter, tmp_path
+):
+    # A query in the right shape but for a sample_id that isn't part of
+    # the given sample_sets should still be rejected, not silently
+    # produce a zero-sample VCF. In practice snp_calls() itself already
+    # raises for a query matching no samples, before our own post-hoc
+    # sample-count check ever runs; either way this must not succeed.
+    region = api.contigs[0]
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = [all_sample_sets[0]]
+    output_path = str(tmp_path / "test_zero_sample_query.vcf")
+
+    with pytest.raises(ValueError):
+        api.snp_calls_to_vcf(
+            output_path=output_path,
+            region=region,
+            sample_sets=sample_sets,
+            sample_query="sample_id == 'not_a_real_sample_id'",
+        )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
 def test_vcf_exporter_overwrite(fixture, api: SnpVcfExporter, tmp_path):
     region = api.contigs[0]
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
