@@ -85,14 +85,14 @@ class SnpVcfExporter(
             memory. Supports optional gzip compression when the output
             path ends with `.gz`.
 
-            Sample query must be in a format that can be used against the
-            sample_metadata() dataframe. Sample set must be specified and
-            the query should return at least one sample for that sample set
-            As the current use case for this funcitonality, it is strongly
-            recommended that sample_query is in the format
-            f"sample_id == '\{sample_id\}'" - thus specifying a single
-            sample.
-
+            `sample_sets` and `sample_query` are both required: a VCF is
+            only meaningful with respect to an explicit sample basis for
+            its calls. The current use case for this functionality is
+            generating a single-sample VCF for IGV, so `sample_query` is
+            required to select exactly one sample, and must be of the
+            form `"sample_id == '<sample_id>'"`. Any other query (e.g.
+            selecting samples by cohort, or more than one sample_id) is
+            rejected.
         """,
         returns="""
         Path to the VCF output file.
