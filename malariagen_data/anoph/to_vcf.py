@@ -42,6 +42,15 @@ class SnpVcfExporter(
             in chunks to avoid loading the entire genotype matrix into
             memory. Supports optional gzip compression when the output
             path ends with `.gz`.
+
+            Sample query must be in a format that can be used against the
+            sample_metadata() dataframe. Sample set must be specified and
+            the query should return at least one sample for that sample set
+            As the current use case for this funcitonality, it is strongly
+            recommended that sample_query is in the format
+            f"sample_id == '\{sample_id\}'" - thus specifying a single
+            sample.
+
         """,
         returns="""
         Path to the VCF output file.
@@ -52,7 +61,7 @@ class SnpVcfExporter(
         output_path: vcf_params.vcf_output_path,
         region: base_params.regions,
         sample_sets: base_params.sample_sets,
-        sample_query: base_params.sample_query,  # must be of form f"sample_id == '{sample_id}'"
+        sample_query: base_params.sample_query,
         sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
