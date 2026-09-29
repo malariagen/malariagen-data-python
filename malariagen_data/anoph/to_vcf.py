@@ -145,15 +145,10 @@ class SnpVcfExporter(
             chunks=chunks,
         )
 
-        # sample_query is validated above to be of the single-sample
-        # form "sample_id == '<sample_id>'", but that only checks the
-        # shape of the query string. Confirm it actually resolved to
-        # exactly one sample within the given sample_sets — zero would
-        # mean the sample_id wasn't found (e.g. a typo, or the sample is
-        # not part of the given sample_sets); more than one should not
-        # be possible with an equality query on a unique identifier, but
-        # is checked defensively rather than silently written out as a
-        # multi-sample VCF.
+        # Confirm inputs actually resolved to exactly
+        # one sample within the given sample_sets
+        # checked defensively rather than silently written
+        # out as a multi-sample VCF.
         n_samples_selected = ds.sizes["samples"]
         if n_samples_selected != 1:
             raise ValueError(
@@ -249,10 +244,7 @@ class SnpVcfExporter(
                     # call per array. Each separate .compute() call is
                     # its own blocking round trip to the underlying
                     # store (e.g. GCS); batching lets dask fetch all of
-                    # them concurrently instead of one at a time, which
-                    # matters a lot for a remote store and can be the
-                    # difference between a fast export and one that
-                    # takes hours longer than it needs to.
+                    # them concurrently instead of one at a time
                     gt_chunk, pos_chunk, contig_chunk, allele_chunk = dask.compute(
                         gt_data[start:stop],
                         pos_data[start:stop],
@@ -260,15 +252,12 @@ class SnpVcfExporter(
                         allele_data[start:stop],
                     )
 
-                    # Fetch any requested optional fields for this chunk,
-                    # again as a single batched call. If any of them
-                    # fail to load, fall back to "." for all requested
-                    # optional fields in this chunk (rather than only
-                    # the one that failed) — these arrays live in the
-                    # same region of the same store, so a failure
+                    # Fetch requested optional fields for this chunk
+                    # as a single batched call. If any of them fail
+                    # to load, fall back to "." for all requested
+                    # optional fields in this chunk — these arrays live
+                    # in the same region of the same store, so a failure
                     # affecting one is likely to affect the others too,
-                    # and batching the fallback is the price of batching
-                    # the fetch.
                     gq_chunk = None
                     ad_chunk = None
                     mq_chunk = None
@@ -336,7 +325,16 @@ class SnpVcfExporter(
                             f"{chrom}\t{pos}\t.\t{ref}\t{alt}\t.\t.\t.\t{format_str}\t"
                         )
 
-                        sample_fields = np.empty(n_samples, dtype=object)
+                        # N.B., a plain Python list here, not a NumPy
+                        # array: this loop builds a handful of short
+                        # strings per variant via ordinary Python string
+                        # concatenation, not a numeric/vectorized
+                        # operation, so a `np.empty(..., dtype=object)`
+                        # array bought nothing but the overhead of a
+                        # NumPy allocation on every single variant row
+                        # (up to ~150 million times for a whole-genome
+                        # export).
+                        sample_fields = []
 
                         # Use pre-formatted GT strings and add other fields
                         for k in range(n_samples):
@@ -367,7 +365,7 @@ class SnpVcfExporter(
                                     parts.append("." if v < 0 else str(v))
                                 else:
                                     parts.append(".")
-                            sample_fields[k] = ":".join(parts)
+                            sample_fields.append(":".join(parts))
 
                         # Build and buffer the line
                         line = fixed_cols + "\t".join(sample_fields) + "\n"
