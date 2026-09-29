@@ -4,6 +4,7 @@ import re
 from datetime import date
 from typing import Optional
 
+import dask
 import numpy as np
 from numpydoc_decorator import doc  # type: ignore
 
@@ -223,33 +224,63 @@ class SnpVcfExporter(
             chunk_sizes = gt_data.chunks[0]
             offsets = np.cumsum((0,) + chunk_sizes)
 
+            # Which optional fields were requested, so we know what to
+            # fetch (and where to put the results) for each chunk below.
+            optional_names = []
+            optional_arrays = []
+            if gq_data is not None:
+                optional_names.append("GQ")
+                optional_arrays.append(gq_data)
+            if ad_data is not None:
+                optional_names.append("AD")
+                optional_arrays.append(ad_data)
+            if mq_data is not None:
+                optional_names.append("MQ")
+                optional_arrays.append(mq_data)
+
             # Write records in chunks.
             with self._spinner(f"Write VCF ({ds.sizes['variants']} variants)"):
                 for ci in range(len(chunk_sizes)):
                     start = offsets[ci]
                     stop = offsets[ci + 1]
-                    gt_chunk = gt_data[start:stop].compute()
-                    pos_chunk = pos_data[start:stop].compute()
-                    contig_chunk = contig_data[start:stop].compute()
-                    allele_chunk = allele_data[start:stop].compute()
 
-                    # Compute optional field chunks, handling missing data.
+                    # Fetch the required arrays for this chunk in a
+                    # single batched call, rather than one .compute()
+                    # call per array. Each separate .compute() call is
+                    # its own blocking round trip to the underlying
+                    # store (e.g. GCS); batching lets dask fetch all of
+                    # them concurrently instead of one at a time, which
+                    # matters a lot for a remote store and can be the
+                    # difference between a fast export and one that
+                    # takes hours longer than it needs to.
+                    gt_chunk, pos_chunk, contig_chunk, allele_chunk = dask.compute(
+                        gt_data[start:stop],
+                        pos_data[start:stop],
+                        contig_data[start:stop],
+                        allele_data[start:stop],
+                    )
+
+                    # Fetch any requested optional fields for this chunk,
+                    # again as a single batched call. If any of them
+                    # fail to load, fall back to "." for all requested
+                    # optional fields in this chunk (rather than only
+                    # the one that failed) — these arrays live in the
+                    # same region of the same store, so a failure
+                    # affecting one is likely to affect the others too,
+                    # and batching the fallback is the price of batching
+                    # the fetch.
                     gq_chunk = None
                     ad_chunk = None
                     mq_chunk = None
-                    if gq_data is not None:
+                    if optional_arrays:
                         try:
-                            gq_chunk = gq_data[start:stop].compute()
-                        except (FileNotFoundError, KeyError):
-                            pass
-                    if ad_data is not None:
-                        try:
-                            ad_chunk = ad_data[start:stop].compute()
-                        except (FileNotFoundError, KeyError):
-                            pass
-                    if mq_data is not None:
-                        try:
-                            mq_chunk = mq_data[start:stop].compute()
+                            computed = dask.compute(
+                                *(arr[start:stop] for arr in optional_arrays)
+                            )
+                            optional_chunks = dict(zip(optional_names, computed))
+                            gq_chunk = optional_chunks.get("GQ")
+                            ad_chunk = optional_chunks.get("AD")
+                            mq_chunk = optional_chunks.get("MQ")
                         except (FileNotFoundError, KeyError):
                             pass
 
