@@ -1,6 +1,8 @@
 import gzip
 import os
 import random
+import shutil
+import subprocess
 
 import pytest
 from pytest_cases import parametrize_with_cases
@@ -380,6 +382,43 @@ def test_vcf_exporter_fields_as_set(fixture, api: SnpVcfExporter, tmp_path):
             assert "/" not in gq
             assert "/" not in ad
             assert "/" not in mq
+
+
+@pytest.mark.skipif(shutil.which("bcftools") is None, reason="bcftools not installed")
+@parametrize_with_cases("fixture,api", cases=".")
+def test_vcf_exporter_output_is_valid_per_bcftools(
+    fixture, api: SnpVcfExporter, tmp_path
+):
+    # A stronger check than the Python-level assertions above: actually
+    # parse the output with bcftools, the way a real consumer would.
+    # This is what caught both the FORMAT field-order bug (a `set` of
+    # fields could desync the FORMAT column from the hardcoded value
+    # order) and the MQ header Type=Integer/actual-float-value mismatch
+    # — neither of which a purely structural Python check (e.g.
+    # splitting on "\t"/":") would notice, since both produce
+    # "well-formed" tab/colon-separated text that just happens to lie
+    # about, or misdeclare, its own content.
+    region = api.contigs[0]
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = [all_sample_sets[0]]
+    _, sample_query = _pick_single_sample_query(api, sample_sets)
+
+    output_path = str(tmp_path / "test_bcftools_valid.vcf")
+    api.snp_calls_to_vcf(
+        output_path=output_path,
+        region=region,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        fields={"GT", "GQ", "AD", "MQ"},
+    )
+
+    result = subprocess.run(
+        ["bcftools", "view", "-v", "snps", output_path],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, f"bcftools failed to parse output: {result.stderr}"
+    assert "Error" not in result.stderr
 
 
 @parametrize_with_cases("fixture,api", cases=".")

@@ -23,7 +23,7 @@ _FORMAT_HEADERS = {
     "GT": '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">',
     "GQ": '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">',
     "AD": '##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allele Depth">',
-    "MQ": '##FORMAT=<ID=MQ,Number=1,Type=Integer,Description="Mapping Quality">',
+    "MQ": '##FORMAT=<ID=MQ,Number=1,Type=Float,Description="Mapping Quality">',
 }
 
 # snp_calls_to_vcf() only supports exporting a single sample at a time
