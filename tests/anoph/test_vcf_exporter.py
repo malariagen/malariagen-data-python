@@ -336,6 +336,53 @@ def test_vcf_exporter_fields(fixture, api: SnpVcfExporter, tmp_path):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
+def test_vcf_exporter_fields_as_set(fixture, api: SnpVcfExporter, tmp_path):
+    # A `set` has no guaranteed iteration order. The FORMAT column must
+    # still come out in the same fixed order (GT, GQ, AD, MQ) that the
+    # per-sample values are actually written in, regardless of what
+    # order `fields` iterates in as passed by the caller. Previously
+    # the FORMAT column used the caller's (here, arbitrary) order while
+    # values were always written GT:GQ:AD:MQ, so a `set` could easily
+    # produce a VCF whose header lied about which value was which —
+    # e.g. declaring the first value as "MQ" when it was actually the
+    # GT string, which bcftools then fails to parse.
+    region = api.contigs[0]
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = [all_sample_sets[0]]
+    _, sample_query = _pick_single_sample_query(api, sample_sets)
+
+    output_path = str(tmp_path / "test_fields_set.vcf")
+    api.snp_calls_to_vcf(
+        output_path=output_path,
+        region=region,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        fields={"GT", "GQ", "AD", "MQ"},
+    )
+
+    with open(output_path) as f:
+        lines = f.readlines()
+
+    data_lines = [line for line in lines if not line.startswith("#")]
+    assert len(data_lines) > 0
+
+    for line in data_lines:
+        fields_row = line.strip().split("\t")
+        # FORMAT column must always be in this fixed order.
+        assert fields_row[8] == "GT:GQ:AD:MQ"
+
+        for sample_val in fields_row[9:]:
+            gt, gq, ad, mq = sample_val.split(":")
+            # GT is the only field allowed to contain "/"; if it ended
+            # up anywhere else (or something else ended up in its
+            # place), that's exactly the bug this test guards against.
+            assert gt == "./." or "/" in gt
+            assert "/" not in gq
+            assert "/" not in ad
+            assert "/" not in mq
+
+
+@parametrize_with_cases("fixture,api", cases=".")
 def test_vcf_exporter_fields_gt_required(fixture, api: SnpVcfExporter, tmp_path):
     region = api.contigs[0]
     all_sample_sets = api.sample_sets()["sample_set"].to_list()

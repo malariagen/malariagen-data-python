@@ -13,8 +13,12 @@ from . import base_params
 from . import plink_params
 from . import vcf_params
 
-# Supported FORMAT fields and their VCF header definitions.
+# Supported FORMAT fields, the fixed order in which their values are
+# always written per sample (regardless of what order the caller's
+# `fields` argument happens to iterate in — e.g. a set has no
+# guaranteed order at all), and their VCF header definitions.
 _VALID_FIELDS = {"GT", "GQ", "AD", "MQ"}
+_FIELD_ORDER = ("GT", "GQ", "AD", "MQ")
 _FORMAT_HEADERS = {
     "GT": '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">',
     "GQ": '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">',
@@ -130,6 +134,15 @@ class SnpVcfExporter(
             )
         if "GT" not in fields:
             raise ValueError("GT must be included in fields.")
+
+        # Canonicalise the field order to _FIELD_ORDER. The per-sample
+        # values below are always written in this fixed order; if the
+        # FORMAT column (built from `fields` further down) used the
+        # caller's order instead, a `fields` argument with a different
+        # (or undefined, e.g. a set) order would produce a VCF whose
+        # FORMAT column lies about which value is which — which is
+        # exactly what happened before this fix.
+        fields = tuple(f for f in _FIELD_ORDER if f in fields)
 
         if os.path.exists(output_path) and not overwrite:
             return output_path
