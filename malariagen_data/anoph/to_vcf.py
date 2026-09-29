@@ -104,6 +104,19 @@ class SnpVcfExporter(
             selecting samples by cohort, or more than one sample_id) is
             rejected.
         """,
+        parameters=dict(
+            non_ref_only="""
+                If True, only write sites where the sample's genotype
+                carries at least one non-reference allele (i.e. skip
+                sites where the sample is homozygous reference or
+                missing). Equivalent to filtering the output with
+                `bcftools view -e 'F_PASS(GT="ref") == 1'`, except that
+                missing genotype calls are also excluded here (whereas
+                that particular bcftools expression only excludes
+                homozygous reference calls, since a missing call is
+                neither "ref" nor selected by `-e`).
+            """,
+        ),
         returns="""
         Path to the VCF output file.
         """,
@@ -116,11 +129,12 @@ class SnpVcfExporter(
         sample_query: base_params.sample_query,
         sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
-        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
+        site_mask: Optional[base_params.site_mask] = None,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
         overwrite: plink_params.overwrite = False,
         fields: vcf_params.vcf_fields = ("GT",),
+        non_ref_only: bool = False,
     ) -> str:
         base_params._validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
@@ -306,6 +320,16 @@ class SnpVcfExporter(
                     a1 = gt_chunk_2d[:, :, 1]  # (n_variants, n_samples)
                     missing = (a0 < 0) | (a1 < 0)
 
+                    # If non_ref_only, work out up front which variants
+                    # to skip: those where the sample is homozygous
+                    # reference (0/0) or missing. Computed vectorized
+                    # across the whole chunk, same as `missing` above.
+                    if non_ref_only:
+                        is_hom_ref = (a0 == 0) & (a1 == 0)
+                        skip_variant = (missing | is_hom_ref)[:, 0]
+                    else:
+                        skip_variant = None
+
                     # Build formatted GT strings using NumPy vectorization
                     gt_formatted = np.empty(
                         (gt_chunk.shape[0], n_samples), dtype=object
@@ -323,6 +347,9 @@ class SnpVcfExporter(
                     lines_to_write = []
 
                     for j in range(gt_chunk.shape[0]):
+                        if skip_variant is not None and skip_variant[j]:
+                            continue
+
                         chrom = contigs[contig_chunk[j]]
                         pos = str(pos_chunk[j])
                         alleles = allele_chunk[j]

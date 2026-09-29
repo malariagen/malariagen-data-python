@@ -141,6 +141,125 @@ def test_vcf_exporter(fixture, api: SnpVcfExporter, tmp_path):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
+def test_vcf_exporter_non_ref_only(fixture, api: SnpVcfExporter, tmp_path):
+    # non_ref_only=True should keep only sites where the sample's
+    # genotype carries at least one non-reference allele, dropping both
+    # homozygous reference (0/0) and missing (./.) calls. Equivalent in
+    # spirit to `bcftools view -e 'F_PASS(GT="ref") == 1'`, except that
+    # a missing call is also excluded here (that particular bcftools
+    # expression only excludes homozygous reference calls, since a
+    # missing call is neither "ref" nor caught by that `-e` filter).
+    region = random.choice(api.contigs)
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.sample(all_sample_sets, min(2, len(all_sample_sets)))
+    _, sample_query = _pick_single_sample_query(api, sample_sets)
+
+    data_params = dict(
+        region=region,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+    )
+
+    # Work out the expected set of non-ref, non-missing positions
+    # directly from the dataset, independently of snp_calls_to_vcf.
+    ds = api.snp_calls(**data_params)
+    gt = ds["call_genotype"].values[:, 0, :]  # (variants, ploidy)
+    is_missing = (gt < 0).any(axis=1)
+    is_hom_ref = (gt == 0).all(axis=1)
+    expect_keep = ~is_missing & ~is_hom_ref
+    expected_positions = sorted(ds["variant_position"].values[expect_keep].tolist())
+
+    output_path = str(tmp_path / "test_non_ref_only.vcf")
+    api.snp_calls_to_vcf(
+        output_path=output_path,
+        non_ref_only=True,
+        **data_params,
+    )
+
+    with open(output_path) as f:
+        lines = f.readlines()
+    data_lines = [line for line in lines if not line.startswith("#")]
+
+    # Every written site should have a non-ref, non-missing GT.
+    for line in data_lines:
+        fields_row = line.strip().split("\t")
+        gt_str = fields_row[9].split(":")[0]
+        assert gt_str != "./."
+        a0, a1 = gt_str.split("/")
+        assert not (a0 == "0" and a1 == "0")
+
+    # And the set of positions written should exactly match what we
+    # expect directly from the dataset (no extras, none missing).
+    vcf_positions = sorted(int(line.split("\t")[1]) for line in data_lines)
+    assert vcf_positions == expected_positions
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_vcf_exporter_non_ref_only_defaults_to_false(
+    fixture, api: SnpVcfExporter, tmp_path
+):
+    # Not passing non_ref_only should behave identically to passing
+    # non_ref_only=False (i.e. include homozygous reference / missing
+    # sites too) — this locks in the default.
+    region = api.contigs[0]
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = [all_sample_sets[0]]
+    _, sample_query = _pick_single_sample_query(api, sample_sets)
+
+    output_path_default = str(tmp_path / "default.vcf")
+    output_path_explicit = str(tmp_path / "explicit_false.vcf")
+    api.snp_calls_to_vcf(
+        output_path=output_path_default,
+        region=region,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+    )
+    api.snp_calls_to_vcf(
+        output_path=output_path_explicit,
+        region=region,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        non_ref_only=False,
+    )
+
+    with open(output_path_default) as f:
+        default_lines = f.readlines()
+    with open(output_path_explicit) as f:
+        explicit_lines = f.readlines()
+    assert default_lines == explicit_lines
+
+
+@pytest.mark.skipif(shutil.which("bcftools") is None, reason="bcftools not installed")
+@parametrize_with_cases("fixture,api", cases=".")
+def test_vcf_exporter_non_ref_only_valid_per_bcftools(
+    fixture, api: SnpVcfExporter, tmp_path
+):
+    region = api.contigs[0]
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = [all_sample_sets[0]]
+    _, sample_query = _pick_single_sample_query(api, sample_sets)
+
+    output_path = str(tmp_path / "test_non_ref_only_bcftools.vcf")
+    api.snp_calls_to_vcf(
+        output_path=output_path,
+        region=region,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        fields={"GT", "GQ", "AD", "MQ"},
+        non_ref_only=True,
+    )
+
+    result = subprocess.run(
+        ["bcftools", "view", "-v", "snps", output_path],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, f"bcftools failed to parse output: {result.stderr}"
+    assert "Error" not in result.stderr
+    assert "should be declared as" not in result.stderr, result.stderr
+
+
+@parametrize_with_cases("fixture,api", cases=".")
 def test_vcf_exporter_requires_sample_sets_and_query(
     fixture, api: SnpVcfExporter, tmp_path
 ):
