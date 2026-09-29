@@ -391,13 +391,15 @@ def test_vcf_exporter_output_is_valid_per_bcftools(
 ):
     # A stronger check than the Python-level assertions above: actually
     # parse the output with bcftools, the way a real consumer would.
-    # This is what caught both the FORMAT field-order bug (a `set` of
-    # fields could desync the FORMAT column from the hardcoded value
-    # order) and the MQ header Type=Integer/actual-float-value mismatch
-    # — neither of which a purely structural Python check (e.g.
-    # splitting on "\t"/":") would notice, since both produce
-    # "well-formed" tab/colon-separated text that just happens to lie
-    # about, or misdeclare, its own content.
+    # This is what caught the FORMAT field-order bug (a `set` of fields
+    # could desync the FORMAT column from the hardcoded value order),
+    # the MQ header Type=Integer/actual-float-value mismatch, and (via
+    # the sanity-check warning below) declaring the reserved FORMAT/MQ
+    # key as Type=Float instead of the spec-mandated Integer — none of
+    # which a purely structural Python check (e.g. splitting on
+    # "\t"/":") would notice, since all three produce "well-formed"
+    # tab/colon-separated text that just happens to lie about, or
+    # misdeclare, its own content.
     region = api.contigs[0]
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = [all_sample_sets[0]]
@@ -419,6 +421,11 @@ def test_vcf_exporter_output_is_valid_per_bcftools(
     )
     assert result.returncode == 0, f"bcftools failed to parse output: {result.stderr}"
     assert "Error" not in result.stderr
+    # Not just error-free: bcftools' own header sanity check should not
+    # flag any of our FORMAT field declarations against the VCF spec's
+    # reserved-key type definitions (e.g. FORMAT/MQ is fixed as
+    # Integer by the spec, regardless of the underlying data type).
+    assert "should be declared as" not in result.stderr, result.stderr
 
 
 @parametrize_with_cases("fixture,api", cases=".")

@@ -23,7 +23,12 @@ _FORMAT_HEADERS = {
     "GT": '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">',
     "GQ": '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">',
     "AD": '##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allele Depth">',
-    "MQ": '##FORMAT=<ID=MQ,Number=1,Type=Float,Description="Mapping Quality">',
+    # N.B., "MQ" is a reserved FORMAT key in the VCF specification,
+    # fixed there as Integer, Number=1 — even though the underlying
+    # data is a float (RMS mapping quality), so values are rounded to
+    # the nearest integer when written below to stay spec-compliant
+    # under the reserved key's declared type.
+    "MQ": '##FORMAT=<ID=MQ,Number=1,Type=Integer,Description="Mapping Quality">',
 }
 
 # snp_calls_to_vcf() only supports exporting a single sample at a time
@@ -371,11 +376,14 @@ class SnpVcfExporter(
                                     )
                                 else:
                                     parts.append(".")
-                            # MQ.
+                            # MQ. Rounded to the nearest integer: the
+                            # underlying data is a float, but the VCF
+                            # spec fixes the reserved FORMAT/MQ key as
+                            # Integer (see _FORMAT_HEADERS).
                             if include_mq:
                                 if mq_chunk is not None:
                                     v = mq_chunk[j, k]
-                                    parts.append("." if v < 0 else str(v))
+                                    parts.append("." if v < 0 else str(round(v)))
                                 else:
                                     parts.append(".")
                             sample_fields.append(":".join(parts))
