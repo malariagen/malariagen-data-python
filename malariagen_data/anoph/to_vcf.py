@@ -340,27 +340,50 @@ class SnpVcfExporter(
 
                     # Decode alleles once per chunk (rather than
                     # per-variant further down) and work out, per
-                    # variant, which of the ALT candidate slots are
-                    # actually populated. call_genotype's allele indices
-                    # refer to these *original* variant_allele slot
-                    # positions (0=REF, 1..3=ALT candidates), which are
-                    # not guaranteed to be contiguous from 1 — a site's
-                    # only real ALT allele can sit in slot 2 or 3 while
-                    # an earlier slot is empty. The ALT column written
-                    # below only lists the populated slots, so genotype
-                    # indices must be remapped to match that compacted
-                    # numbering
+                    # variant, which of the (REF + 3 ALT candidate)
+                    # variant_allele slots to actually write to the ALT
+                    # column. variant_allele lists a fixed, canonical
+                    # set of alternate bases per site regardless of
+                    # whether they're relevant to *this* sample — e.g.
+                    # for a REF=C site it lists "A,T,G" as ALT
+                    # candidates even if this sample is only ever
+                    # heterozygous for T, with zero read support for A
+                    # or G. Writing all of them to ALT produces a
+                    # non-standard single-sample VCF (real single-sample
+                    # VCFs only list alleles the sample's own genotype
+                    # actually uses) and breaks REF/ALT-based comparison
+                    # against any VCF that follows that convention,
+                    # since two VCFs listing the "same" call at the same
+                    # position end up with different ALT strings. So
+                    # only a slot that is both non-empty *and* actually
+                    # referenced by this sample's genotype is kept; the
+                    # remaining slots are dropped from ALT, and
+                    # genotype indices remapped to match, exactly as for
+                    # a genuinely empty slot.
                     decoded_alleles = np.empty(allele_chunk.shape, dtype=object)
                     for col in range(allele_chunk.shape[1]):
                         decoded_alleles[:, col] = [
                             a.decode() if hasattr(a, "decode") else str(a)
                             for a in allele_chunk[:, col]
                         ]
+                    n_allele_slots = allele_chunk.shape[1]
                     is_present = decoded_alleles != ""
+
+                    slot_referenced = np.zeros_like(is_present)
+                    slot_referenced[:, 0] = True  # REF is always kept
+                    valid = ~missing[:, 0]
+                    row_idx = np.arange(gt_chunk.shape[0])
+                    safe_a0 = np.clip(a0[:, 0], 0, n_allele_slots - 1)
+                    safe_a1 = np.clip(a1[:, 0], 0, n_allele_slots - 1)
+                    slot_referenced[row_idx[valid], safe_a0[valid]] = True
+                    slot_referenced[row_idx[valid], safe_a1[valid]] = True
+
+                    is_present = is_present & slot_referenced
                     is_present[:, 0] = True  # REF is always present
+
                     # compacted_index[i, k] = the index original slot k
                     # occupies in the ALT column for variant i, or -1 if
-                    # slot k isn't populated there.
+                    # slot k isn't kept there.
                     compacted_index = np.cumsum(is_present, axis=1) - 1
                     compacted_index[~is_present] = -1
 
@@ -374,14 +397,8 @@ class SnpVcfExporter(
                     # those rows is discarded below anyway, since they
                     # are written as "./." based on `missing`, not on
                     # this remapping.
-                    row_idx = np.arange(gt_chunk.shape[0])
-                    n_allele_slots = allele_chunk.shape[1]
-                    remapped_a0 = compacted_index[
-                        row_idx, np.clip(a0[:, 0], 0, n_allele_slots - 1)
-                    ]
-                    remapped_a1 = compacted_index[
-                        row_idx, np.clip(a1[:, 0], 0, n_allele_slots - 1)
-                    ]
+                    remapped_a0 = compacted_index[row_idx, safe_a0]
+                    remapped_a1 = compacted_index[row_idx, safe_a1]
                     # A remapped index of -1 means the genotype
                     # references an allele slot that variant_allele
                     # doesn't actually have populated at this site —
@@ -414,18 +431,19 @@ class SnpVcfExporter(
 
                         chrom = contigs[contig_chunk[j]]
                         pos = str(pos_chunk[j])
-                        alleles = allele_chunk[j]
-                        ref = (
-                            alleles[0].decode()
-                            if hasattr(alleles[0], "decode")
-                            else str(alleles[0])
-                        )
-                        alt_alleles = []
-                        for a in alleles[1:]:
-                            s = a.decode() if hasattr(a, "decode") else str(a)
-                            if s:
-                                alt_alleles.append(s)
+                        # Reuse the chunk-level decode from above, so
+                        # the ALT column built here is guaranteed
+                        # consistent with the allele-index remapping
+                        # used for GT (both derive from the same
+                        # decoded_alleles/is_present arrays).
+                        ref = decoded_alleles[j, 0]
+                        alt_alleles = [
+                            decoded_alleles[j, k]
+                            for k in range(1, n_allele_slots)
+                            if is_present[j, k]
+                        ]
                         alt = ",".join(alt_alleles) if alt_alleles else "."
+
                         # Build fixed VCF columns once per variant
                         fixed_cols = (
                             f"{chrom}\t{pos}\t.\t{ref}\t{alt}\t.\t.\t.\t{format_str}\t"

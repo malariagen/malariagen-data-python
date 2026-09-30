@@ -583,25 +583,42 @@ def test_vcf_exporter_fields_gt_required(fixture, api: SnpVcfExporter, tmp_path)
 def test_vcf_exporter_allele_index_remapping(
     fixture, api: SnpVcfExporter, tmp_path, monkeypatch
 ):
-    # variant_allele slots for a site are not guaranteed to be
-    # contiguous from slot 1: a site's only real ALT allele can sit in
-    # slot 2 or 3 while an earlier slot is empty (cohort-wide allele
-    # arrays aren't necessarily left-justified per site). The ALT
-    # column only lists populated slots, so call_genotype's allele
-    # indices (which refer to the *original* slot positions) must be
-    # remapped to match, or a GT value can end up pointing at an ALT
-    # allele that isn't listed (or the wrong one) — exactly the bug
-    # that produced invalid records like "0/2" against a single-allele
-    # ALT column, which bcftools then silently mishandled.
+    # ALT should only ever list alleles that are both (a) genuinely
+    # populated in variant_allele and (b) actually referenced by this
+    # sample's own genotype. variant_allele lists a fixed, canonical
+    # set of alternate bases per site (e.g. for REF=A it can list
+    # "C,T,G" regardless of what's actually segregating, let alone
+    # relevant to one particular sample), and call_genotype's allele
+    # indices refer to those *original* slot positions, which are not
+    # guaranteed to be contiguous from 1 either (a site's only real ALT
+    # allele can sit in slot 2 or 3 while an earlier slot is empty).
+    # Writing every populated-but-irrelevant slot to ALT (a) produces
+    # invalid records when combined with un-remapped genotype indices
+    # (e.g. "0/2" against a single-allele ALT column, which bcftools
+    # then silently mishandled), and (b) even once indices are
+    # correctly remapped, produces a non-standard single-sample VCF
+    # (real single-sample VCFs only list alleles that sample's
+    # genotype actually uses) that fails REF/ALT-based comparison
+    # against any VCF following that convention — two VCFs recording
+    # the "same" call at the same position end up with different ALT
+    # strings purely because of unrelated candidate alleles.
     sample = str(api.sample_metadata()["sample_id"].iloc[0])
     contig = api.contigs[0]
 
     variant_allele = np.array(
         [
             [b"A", b"", b"T", b""],  # only real ALT in slot 2
-            [b"A", b"T", b"", b""],  # real ALT in slot 1 (unaffected case)
+            [b"A", b"T", b"", b""],  # real ALT in slot 1 (baseline case)
             [b"A", b"", b"", b"T"],  # only real ALT in slot 3
-            [b"A", b"C", b"", b"T"],  # two real ALTs, gap in slot 2
+            [b"A", b"C", b"", b"T"],  # two real ALTs, only one used
+            [b"A", b"C", b"T", b"G"],  # all 3 canonical ALTs populated,
+            #                            only one used (the real-world
+            #                            pattern: REF=A ALT="C,T,G"
+            #                            regardless of relevance)
+            [b"A", b"C", b"T", b"G"],  # all 3 populated, compound het
+            #                            using two of them
+            [b"A", b"C", b"T", b"G"],  # all 3 populated, hom-ref
+            [b"A", b"C", b"T", b"G"],  # all 3 populated, missing
         ],
         dtype="S1",
     )
@@ -610,36 +627,50 @@ def test_vcf_exporter_allele_index_remapping(
             [[0, 2]],  # het for the slot-2 "T" -> ALT="T" -> expect 0/1
             [[0, 1]],  # het for the slot-1 "T" -> ALT="T" -> expect 0/1
             [[3, 3]],  # hom-alt for the slot-3 "T" -> ALT="T" -> expect 1/1
-            [[0, 3]],  # het for the slot-3 "T" -> ALT="C,T" -> expect 0/2
+            [[0, 3]],  # het for slot-3 "T"; slot-1 "C" unused -> expect ALT="T", GT=0/1
+            [
+                [0, 2]
+            ],  # het for slot-2 "T"; "C" and "G" unused -> expect ALT="T", GT=0/1
+            [
+                [1, 3]
+            ],  # het for slot-1 "C" and slot-3 "G"; "T" unused -> expect ALT="C,G", GT=1/2
+            [[0, 0]],  # hom-ref -> expect ALT=".", GT=0/0
+            [[-1, -1]],  # missing -> expect ALT=".", GT=./.
         ],
         dtype="i1",
     )
+    positions = [100, 200, 300, 400, 500, 600, 700, 800]
     expected = {
         100: ("T", "0/1"),
         200: ("T", "0/1"),
         300: ("T", "1/1"),
-        400: ("C,T", "0/2"),
+        400: ("T", "0/1"),
+        500: ("T", "0/1"),
+        600: ("C,G", "1/2"),
+        700: (".", "0/0"),
+        800: (".", "./."),
     }
 
+    n_variants = len(positions)
     ds = xr.Dataset(
         data_vars={
             "call_genotype": (
                 ["variants", "samples", "ploidy"],
-                da.from_array(call_genotype, chunks=(4, 1, 2)),
+                da.from_array(call_genotype, chunks=(n_variants, 1, 2)),
             ),
             "variant_allele": (
                 ["variants", "alleles"],
-                da.from_array(variant_allele, chunks=(4, 4)),
+                da.from_array(variant_allele, chunks=(n_variants, 4)),
             ),
         },
         coords={
             "variant_position": (
                 "variants",
-                da.from_array(np.array([100, 200, 300, 400]), chunks=4),
+                da.from_array(np.array(positions), chunks=n_variants),
             ),
             "variant_contig": (
                 "variants",
-                da.from_array(np.array([0, 0, 0, 0], dtype="u1"), chunks=4),
+                da.from_array(np.zeros(n_variants, dtype="u1"), chunks=n_variants),
             ),
             "sample_id": ("samples", np.array([sample])),
         },
@@ -658,7 +689,7 @@ def test_vcf_exporter_allele_index_remapping(
     with open(output_path) as f:
         lines = f.readlines()
     data_lines = [line for line in lines if not line.startswith("#")]
-    assert len(data_lines) == 4
+    assert len(data_lines) == n_variants
 
     for line in data_lines:
         fields_row = line.strip().split("\t")
@@ -671,6 +702,8 @@ def test_vcf_exporter_allele_index_remapping(
         # Every GT allele index must be valid for the ALT column that
         # was actually written (i.e. in range for the number of ALT
         # alleles listed), which is the invariant this fix guarantees.
-        n_alt_alleles = len(alt.split(","))
+        if gt == "./.":
+            continue
+        n_alt_alleles = 0 if alt == "." else len(alt.split(","))
         for allele_idx in gt.split("/"):
             assert int(allele_idx) <= n_alt_alleles
