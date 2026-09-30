@@ -1,4 +1,3 @@
-import gzip
 import os
 import re
 from datetime import date
@@ -8,6 +7,7 @@ import dask
 import numpy as np
 from numpydoc_decorator import doc  # type: ignore
 
+from ..bgzf import bgzf_open
 from .snp_data import AnophelesSnpData
 from . import base_params
 from . import plink_params
@@ -177,7 +177,7 @@ class SnpVcfExporter(
             chunks=chunks,
         )
 
-        # Confirm inputs actually resolved to exactly
+        # Confirm inputs resolve to exactly
         # one sample within the given sample_sets
         # checked defensively rather than silently written
         # out as a multi-sample VCF.
@@ -192,7 +192,11 @@ class SnpVcfExporter(
         sample_ids = ds["sample_id"].values
         contigs = ds.attrs.get("contigs", self.contigs)
         compress = output_path.endswith(".gz")
-        opener = gzip.open if compress else open
+        # N.B., genuine BGZF, not plain gzip: tools that specifically
+        # expect BGZF for a .vcf.gz file (tabix, bedtools, ...) can
+        # fail to read, or silently mis-parse, plain gzip even though
+        # it decompresses fine as a byte stream.
+        opener = bgzf_open if compress else open
 
         # Determine which extra fields to include.
         include_gq = "GQ" in fields
@@ -285,7 +289,7 @@ class SnpVcfExporter(
                     )
 
                     # Fetch requested optional fields for this chunk
-                    # as a single batched call. If any of them fail
+                    # as a single batched call. If any fail
                     # to load, fall back to "." for all requested
                     # optional fields in this chunk — these arrays live
                     # in the same region of the same store, so a failure
@@ -345,9 +349,7 @@ class SnpVcfExporter(
                     # an earlier slot is empty. The ALT column written
                     # below only lists the populated slots, so genotype
                     # indices must be remapped to match that compacted
-                    # numbering, or a GT value could end up referring to
-                    # an ALT allele that isn't listed at all (or the
-                    # wrong one).
+                    # numbering
                     decoded_alleles = np.empty(allele_chunk.shape, dtype=object)
                     for col in range(allele_chunk.shape[1]):
                         decoded_alleles[:, col] = [

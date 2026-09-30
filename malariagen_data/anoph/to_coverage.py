@@ -15,6 +15,11 @@ _VALID_CNV_COVERAGE_FIELDS = {"NormCov", "RawCov"}
 
 
 def _bedgraph_opener(output_path: str):
+    # N.B., plain gzip is intentional here, unlike the VCF exporters
+    # (see malariagen_data.bgzf): bedGraph doesn't carry the same
+    # ecosystem-wide expectation that a `.gz` file specifically be
+    # BGZF, and IGV loads a plain-gzipped bedGraph track without
+    # issue.
     compress = output_path.endswith(".gz")
     return gzip.open if compress else open
 

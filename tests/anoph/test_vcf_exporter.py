@@ -415,10 +415,21 @@ def test_vcf_exporter_gzip(fixture, api: SnpVcfExporter, tmp_path):
     )
     assert os.path.exists(output_path)
 
-    # Verify it's valid gzip.
+    # Verify it's valid gzip (BGZF is valid gzip, so this works either
+    # way; the stronger, BGZF-specific check follows below).
     with gzip.open(output_path, "rt") as f:
         first_line = f.readline()
     assert first_line.strip() == "##fileformat=VCFv4.3"
+
+    # Verify it's specifically valid BGZF, not just plain gzip: this is
+    # what tools like tabix/bedtools require for .vcf.gz files, and
+    # what distinguishes genuine BGZF from a plain gzip stream that
+    # happens to decompress fine but isn't block-structured.
+    if shutil.which("bgzip") is not None:
+        result = subprocess.run(
+            ["bgzip", "-t", output_path], capture_output=True, text=True
+        )
+        assert result.returncode == 0, f"not valid BGZF: {result.stderr}"
 
 
 @parametrize_with_cases("fixture,api", cases=".")

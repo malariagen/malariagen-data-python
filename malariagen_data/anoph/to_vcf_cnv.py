@@ -1,4 +1,3 @@
-import gzip
 import os
 from datetime import date
 from typing import List, Optional, Sequence
@@ -6,6 +5,7 @@ from typing import List, Optional, Sequence
 import numpy as np
 from numpydoc_decorator import doc  # type: ignore
 
+from ..bgzf import bgzf_open
 from .cnv_data import AnophelesCnvData
 from . import base_params
 from . import cnv_params
@@ -120,7 +120,11 @@ class CnvVcfExporter(
         sample_ids = ds["sample_id"].values
         contigs = ds.attrs.get("contigs", self.contigs)
         compress = output_path.endswith(".gz")
-        opener = gzip.open if compress else open
+        # N.B., genuine BGZF, not plain gzip: tools that specifically
+        # expect BGZF for a .vcf.gz file (tabix, bedtools, ...) can
+        # fail to read, or silently mis-parse, plain gzip even though
+        # it decompresses fine as a byte stream.
+        opener = bgzf_open if compress else open
 
         with opener(output_path, "wt") as f:
             _write_vcf_header(
@@ -215,7 +219,11 @@ class CnvVcfExporter(
         sample_ids = ds["sample_id"].values
         contigs = ds.attrs.get("contigs", self.contigs)
         compress = output_path.endswith(".gz")
-        opener = gzip.open if compress else open
+        # N.B., genuine BGZF, not plain gzip: tools that specifically
+        # expect BGZF for a .vcf.gz file (tabix, bedtools, ...) can
+        # fail to read, or silently mis-parse, plain gzip even though
+        # it decompresses fine as a byte stream.
+        opener = bgzf_open if compress else open
 
         with opener(output_path, "wt") as f:
             _write_vcf_header(
@@ -329,7 +337,11 @@ class CnvVcfExporter(
         sample_ids = ds["sample_id"].values
         all_contigs = ds.attrs.get("contigs", self.contigs)
         compress = output_path.endswith(".gz")
-        opener = gzip.open if compress else open
+        # N.B., genuine BGZF, not plain gzip: tools that specifically
+        # expect BGZF for a .vcf.gz file (tabix, bedtools, ...) can
+        # fail to read, or silently mis-parse, plain gzip even though
+        # it decompresses fine as a byte stream.
+        opener = bgzf_open if compress else open
 
         with opener(output_path, "wt") as f:
             _write_vcf_header(

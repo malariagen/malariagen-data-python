@@ -1,6 +1,8 @@
 import gzip
 import os
 import random
+import shutil
+import subprocess
 
 import pytest
 from pytest_cases import parametrize_with_cases
@@ -232,3 +234,11 @@ def test_cnv_hmm_to_vcf_gzip(fixture, api: CnvVcfExporter, tmp_path):
     with gzip.open(output_path, "rt") as f:
         first_line = f.readline()
     assert first_line.strip() == "##fileformat=VCFv4.3"
+
+    # Verify it's specifically valid BGZF, not just plain gzip — what
+    # tools like tabix/bedtools require for .vcf.gz files.
+    if shutil.which("bgzip") is not None:
+        result = subprocess.run(
+            ["bgzip", "-t", output_path], capture_output=True, text=True
+        )
+        assert result.returncode == 0, f"not valid BGZF: {result.stderr}"
