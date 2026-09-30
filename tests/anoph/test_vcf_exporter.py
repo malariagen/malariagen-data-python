@@ -4,7 +4,10 @@ import random
 import shutil
 import subprocess
 
+import dask.array as da
+import numpy as np
 import pytest
+import xarray as xr
 from pytest_cases import parametrize_with_cases
 
 from malariagen_data import af1 as _af1
@@ -563,3 +566,100 @@ def test_vcf_exporter_fields_gt_required(fixture, api: SnpVcfExporter, tmp_path)
             sample_query=sample_query,
             fields=("GQ",),
         )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_vcf_exporter_allele_index_remapping(
+    fixture, api: SnpVcfExporter, tmp_path, monkeypatch
+):
+    # variant_allele slots for a site are not guaranteed to be
+    # contiguous from slot 1: a site's only real ALT allele can sit in
+    # slot 2 or 3 while an earlier slot is empty (cohort-wide allele
+    # arrays aren't necessarily left-justified per site). The ALT
+    # column only lists populated slots, so call_genotype's allele
+    # indices (which refer to the *original* slot positions) must be
+    # remapped to match, or a GT value can end up pointing at an ALT
+    # allele that isn't listed (or the wrong one) — exactly the bug
+    # that produced invalid records like "0/2" against a single-allele
+    # ALT column, which bcftools then silently mishandled.
+    sample = str(api.sample_metadata()["sample_id"].iloc[0])
+    contig = api.contigs[0]
+
+    variant_allele = np.array(
+        [
+            [b"A", b"", b"T", b""],  # only real ALT in slot 2
+            [b"A", b"T", b"", b""],  # real ALT in slot 1 (unaffected case)
+            [b"A", b"", b"", b"T"],  # only real ALT in slot 3
+            [b"A", b"C", b"", b"T"],  # two real ALTs, gap in slot 2
+        ],
+        dtype="S1",
+    )
+    call_genotype = np.array(
+        [
+            [[0, 2]],  # het for the slot-2 "T" -> ALT="T" -> expect 0/1
+            [[0, 1]],  # het for the slot-1 "T" -> ALT="T" -> expect 0/1
+            [[3, 3]],  # hom-alt for the slot-3 "T" -> ALT="T" -> expect 1/1
+            [[0, 3]],  # het for the slot-3 "T" -> ALT="C,T" -> expect 0/2
+        ],
+        dtype="i1",
+    )
+    expected = {
+        100: ("T", "0/1"),
+        200: ("T", "0/1"),
+        300: ("T", "1/1"),
+        400: ("C,T", "0/2"),
+    }
+
+    ds = xr.Dataset(
+        data_vars={
+            "call_genotype": (
+                ["variants", "samples", "ploidy"],
+                da.from_array(call_genotype, chunks=(4, 1, 2)),
+            ),
+            "variant_allele": (
+                ["variants", "alleles"],
+                da.from_array(variant_allele, chunks=(4, 4)),
+            ),
+        },
+        coords={
+            "variant_position": (
+                "variants",
+                da.from_array(np.array([100, 200, 300, 400]), chunks=4),
+            ),
+            "variant_contig": (
+                "variants",
+                da.from_array(np.array([0, 0, 0, 0], dtype="u1"), chunks=4),
+            ),
+            "sample_id": ("samples", np.array([sample])),
+        },
+        attrs={"contigs": (contig,)},
+    )
+    monkeypatch.setattr(api, "snp_calls", lambda **kwargs: ds)
+
+    output_path = str(tmp_path / "test_allele_remap.vcf")
+    api.snp_calls_to_vcf(
+        output_path=output_path,
+        region=contig,
+        sample_sets=["dummy"],
+        sample_query=f"sample_id == '{sample}'",
+    )
+
+    with open(output_path) as f:
+        lines = f.readlines()
+    data_lines = [line for line in lines if not line.startswith("#")]
+    assert len(data_lines) == 4
+
+    for line in data_lines:
+        fields_row = line.strip().split("\t")
+        pos = int(fields_row[1])
+        alt = fields_row[4]
+        gt = fields_row[9].split(":")[0]
+        expected_alt, expected_gt = expected[pos]
+        assert alt == expected_alt, f"at {pos}: expected ALT {expected_alt}, got {alt}"
+        assert gt == expected_gt, f"at {pos}: expected GT {expected_gt}, got {gt}"
+        # Every GT allele index must be valid for the ALT column that
+        # was actually written (i.e. in range for the number of ALT
+        # alleles listed), which is the invariant this fix guarantees.
+        n_alt_alleles = len(alt.split(","))
+        for allele_idx in gt.split("/"):
+            assert int(allele_idx) <= n_alt_alleles

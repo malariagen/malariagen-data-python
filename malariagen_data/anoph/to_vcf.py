@@ -324,22 +324,82 @@ class SnpVcfExporter(
                     # to skip: those where the sample is homozygous
                     # reference (0/0) or missing. Computed vectorized
                     # across the whole chunk, same as `missing` above.
+                    # N.B., this uses the *original* (un-remapped)
+                    # allele indices computed below — 0 always means REF
+                    # both before and after remapping, so this check is
+                    # unaffected by it.
                     if non_ref_only:
                         is_hom_ref = (a0 == 0) & (a1 == 0)
                         skip_variant = (missing | is_hom_ref)[:, 0]
                     else:
                         skip_variant = None
 
+                    # Decode alleles once per chunk (rather than
+                    # per-variant further down) and work out, per
+                    # variant, which of the ALT candidate slots are
+                    # actually populated. call_genotype's allele indices
+                    # refer to these *original* variant_allele slot
+                    # positions (0=REF, 1..3=ALT candidates), which are
+                    # not guaranteed to be contiguous from 1 — a site's
+                    # only real ALT allele can sit in slot 2 or 3 while
+                    # an earlier slot is empty. The ALT column written
+                    # below only lists the populated slots, so genotype
+                    # indices must be remapped to match that compacted
+                    # numbering, or a GT value could end up referring to
+                    # an ALT allele that isn't listed at all (or the
+                    # wrong one).
+                    decoded_alleles = np.empty(allele_chunk.shape, dtype=object)
+                    for col in range(allele_chunk.shape[1]):
+                        decoded_alleles[:, col] = [
+                            a.decode() if hasattr(a, "decode") else str(a)
+                            for a in allele_chunk[:, col]
+                        ]
+                    is_present = decoded_alleles != ""
+                    is_present[:, 0] = True  # REF is always present
+                    # compacted_index[i, k] = the index original slot k
+                    # occupies in the ALT column for variant i, or -1 if
+                    # slot k isn't populated there.
+                    compacted_index = np.cumsum(is_present, axis=1) - 1
+                    compacted_index[~is_present] = -1
+
+                    # Remap this chunk's genotype allele indices to the
+                    # compacted numbering. n_samples is always 1 here
+                    # (snp_calls_to_vcf only supports a single sample),
+                    # so a0/a1 are worked with as flat (n_variants,)
+                    # arrays. Clip before gathering so a missing
+                    # genotype's sentinel value (-1) can't trigger an
+                    # out-of-bounds index — the gathered result for
+                    # those rows is discarded below anyway, since they
+                    # are written as "./." based on `missing`, not on
+                    # this remapping.
+                    row_idx = np.arange(gt_chunk.shape[0])
+                    n_allele_slots = allele_chunk.shape[1]
+                    remapped_a0 = compacted_index[
+                        row_idx, np.clip(a0[:, 0], 0, n_allele_slots - 1)
+                    ]
+                    remapped_a1 = compacted_index[
+                        row_idx, np.clip(a1[:, 0], 0, n_allele_slots - 1)
+                    ]
+                    # A remapped index of -1 means the genotype
+                    # references an allele slot that variant_allele
+                    # doesn't actually have populated at this site —
+                    # inconsistent data that shouldn't occur, but is
+                    # treated as missing defensively rather than writing
+                    # a nonsensical negative allele index.
+                    missing_or_unmapped = (
+                        missing[:, 0] | (remapped_a0 < 0) | (remapped_a1 < 0)
+                    )
+
                     # Build formatted GT strings using NumPy vectorization
                     gt_formatted = np.empty(
                         (gt_chunk.shape[0], n_samples), dtype=object
                     )
-                    gt_formatted[missing] = "./."
-                    present_idx = ~missing
+                    gt_formatted[missing_or_unmapped, 0] = "./."
+                    present_idx = ~missing_or_unmapped
                     if np.any(present_idx):
-                        a0_str = a0[present_idx].astype(str)
-                        a1_str = a1[present_idx].astype(str)
-                        gt_formatted[present_idx] = np.char.add(
+                        a0_str = remapped_a0[present_idx].astype(str)
+                        a1_str = remapped_a1[present_idx].astype(str)
+                        gt_formatted[present_idx, 0] = np.char.add(
                             np.char.add(a0_str, "/"), a1_str
                         )
 
@@ -352,17 +412,13 @@ class SnpVcfExporter(
 
                         chrom = contigs[contig_chunk[j]]
                         pos = str(pos_chunk[j])
-                        alleles = allele_chunk[j]
-                        ref = (
-                            alleles[0].decode()
-                            if hasattr(alleles[0], "decode")
-                            else str(alleles[0])
-                        )
-                        alt_alleles = []
-                        for a in alleles[1:]:
-                            s = a.decode() if hasattr(a, "decode") else str(a)
-                            if s:
-                                alt_alleles.append(s)
+                        # Reuse the chunk-level decode from above, so
+                        # the ALT column built here is guaranteed
+                        # consistent with the allele-index remapping
+                        # used for GT (both derive from the same
+                        # decoded_alleles/is_present arrays).
+                        ref = decoded_alleles[j, 0]
+                        alt_alleles = [s for s in decoded_alleles[j, 1:] if s]
                         alt = ",".join(alt_alleles) if alt_alleles else "."
 
                         # Build fixed VCF columns once per variant
