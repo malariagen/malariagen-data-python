@@ -1,17 +1,33 @@
+import gzip
 import os
 import re
 from datetime import date
 from typing import Optional
-
 import dask
+from dask.array.core import Array
+from xarray.core.dataset import Dataset
 import numpy as np
 from numpydoc_decorator import doc  # type: ignore
+from dataclasses import dataclass
+from collections import OrderedDict
+import math
 
-from ..bgzf import bgzf_open
 from .snp_data import AnophelesSnpData
 from . import base_params
 from . import plink_params
 from . import vcf_params
+
+
+@dataclass
+class VariantChunkData:
+    gq_chunk: Array
+    ad_chunk: Array
+    mq_chunk: Array
+    gt_chunk: Array
+    pos_chunk: Array
+    contig_chunk: Array
+    allele_chunk: Array
+
 
 # Supported FORMAT fields, the fixed order in which their values are
 # always written per sample (regardless of what order the caller's
@@ -104,19 +120,6 @@ class SnpVcfExporter(
             selecting samples by cohort, or more than one sample_id) is
             rejected.
         """,
-        parameters=dict(
-            non_ref_only="""
-                If True, only write sites where the sample's genotype
-                carries at least one non-reference allele (i.e. skip
-                sites where the sample is homozygous reference or
-                missing). Equivalent to filtering the output with
-                `bcftools view -e 'F_PASS(GT="ref") == 1'`, except that
-                missing genotype calls are also excluded here (whereas
-                that particular bcftools expression only excludes
-                homozygous reference calls, since a missing call is
-                neither "ref" nor selected by `-e`).
-            """,
-        ),
         returns="""
         Path to the VCF output file.
         """,
@@ -129,12 +132,11 @@ class SnpVcfExporter(
         sample_query: base_params.sample_query,
         sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
-        site_mask: Optional[base_params.site_mask] = None,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
         overwrite: plink_params.overwrite = False,
         fields: vcf_params.vcf_fields = ("GT",),
-        non_ref_only: bool = False,
     ) -> str:
         base_params._validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
@@ -177,7 +179,7 @@ class SnpVcfExporter(
             chunks=chunks,
         )
 
-        # Confirm inputs resolve to exactly
+        # Confirm inputs actually resolved to exactly
         # one sample within the given sample_sets
         # checked defensively rather than silently written
         # out as a multi-sample VCF.
@@ -192,11 +194,7 @@ class SnpVcfExporter(
         sample_ids = ds["sample_id"].values
         contigs = ds.attrs.get("contigs", self.contigs)
         compress = output_path.endswith(".gz")
-        # N.B., genuine BGZF, not plain gzip: tools that specifically
-        # expect BGZF for a .vcf.gz file (tabix, bedtools, ...) can
-        # fail to read, or silently mis-parse, plain gzip even though
-        # it decompresses fine as a byte stream.
-        opener = bgzf_open if compress else open
+        opener = gzip.open if compress else open
 
         # Determine which extra fields to include.
         include_gq = "GQ" in fields
@@ -232,84 +230,27 @@ class SnpVcfExporter(
             contig_data = ds["variant_contig"].data
             allele_data = ds["variant_allele"].data
 
-            # Optional field arrays — may not exist in all datasets.
-            gq_data = None
-            ad_data = None
-            mq_data = None
-            if include_gq:
-                try:
-                    gq_data = ds["call_GQ"].data
-                except KeyError:
-                    pass
-            if include_ad:
-                try:
-                    ad_data = ds["call_AD"].data
-                except KeyError:
-                    pass
-            if include_mq:
-                try:
-                    mq_data = ds["call_MQ"].data
-                except KeyError:
-                    pass
+            optional_arrays = self._get_optional_data(
+                include_gq, include_ad, include_mq, ds
+            )
 
             chunk_sizes = gt_data.chunks[0]
             offsets = np.cumsum((0,) + chunk_sizes)
 
-            # Which optional fields were requested, so we know what to
-            # fetch (and where to put the results) for each chunk below.
-            optional_names = []
-            optional_arrays = []
-            if gq_data is not None:
-                optional_names.append("GQ")
-                optional_arrays.append(gq_data)
-            if ad_data is not None:
-                optional_names.append("AD")
-                optional_arrays.append(ad_data)
-            if mq_data is not None:
-                optional_names.append("MQ")
-                optional_arrays.append(mq_data)
-
             # Write records in chunks.
             with self._spinner(f"Write VCF ({ds.sizes['variants']} variants)"):
                 for ci in range(len(chunk_sizes)):
-                    start = offsets[ci]
-                    stop = offsets[ci + 1]
-
-                    # Fetch the required arrays for this chunk in a
-                    # single batched call, rather than one .compute()
-                    # call per array. Each separate .compute() call is
-                    # its own blocking round trip to the underlying
-                    # store (e.g. GCS); batching lets dask fetch all of
-                    # them concurrently instead of one at a time
-                    gt_chunk, pos_chunk, contig_chunk, allele_chunk = dask.compute(
-                        gt_data[start:stop],
-                        pos_data[start:stop],
-                        contig_data[start:stop],
-                        allele_data[start:stop],
+                    variant_chunk_data = self._get_chunks(
+                        ci,
+                        offsets,
+                        gt_data,
+                        pos_data,
+                        contig_data,
+                        allele_data,
+                        optional_arrays,
                     )
 
-                    # Fetch requested optional fields for this chunk
-                    # as a single batched call. If any fail
-                    # to load, fall back to "." for all requested
-                    # optional fields in this chunk — these arrays live
-                    # in the same region of the same store, so a failure
-                    # affecting one is likely to affect the others too,
-                    gq_chunk = None
-                    ad_chunk = None
-                    mq_chunk = None
-                    if optional_arrays:
-                        try:
-                            computed = dask.compute(
-                                *(arr[start:stop] for arr in optional_arrays)
-                            )
-                            optional_chunks = dict(zip(optional_names, computed))
-                            gq_chunk = optional_chunks.get("GQ")
-                            ad_chunk = optional_chunks.get("AD")
-                            mq_chunk = optional_chunks.get("MQ")
-                        except (FileNotFoundError, KeyError):
-                            pass
-
-                    n_samples = gt_chunk.shape[1]
+                    n_samples = variant_chunk_data.gt_chunk.shape[1]
 
                     # OPTIMIZATION: Vectorize GT field formatting across entire chunk.
                     # Instead of formatting each sample's GT field in a nested Python loop
@@ -317,131 +258,45 @@ class SnpVcfExporter(
                     # use NumPy's vectorized string operations on the entire chunk at once.
                     # This provides ~3x speedup while maintaining exact output compatibility.
                     # See issue #1280 for performance analysis.
-                    gt_chunk_2d = gt_chunk.reshape(
-                        gt_chunk.shape[0], gt_chunk.shape[1], 2
+                    gt_chunk_2d = variant_chunk_data.gt_chunk.reshape(
+                        variant_chunk_data.gt_chunk.shape[0],
+                        variant_chunk_data.gt_chunk.shape[1],
+                        2,
                     )
                     a0 = gt_chunk_2d[:, :, 0]  # (n_variants, n_samples)
                     a1 = gt_chunk_2d[:, :, 1]  # (n_variants, n_samples)
                     missing = (a0 < 0) | (a1 < 0)
 
-                    # If non_ref_only, work out up front which variants
-                    # to skip: those where the sample is homozygous
-                    # reference (0/0) or missing. Computed vectorized
-                    # across the whole chunk, same as `missing` above.
-                    # N.B., this uses the *original* (un-remapped)
-                    # allele indices computed below — 0 always means REF
-                    # both before and after remapping, so this check is
-                    # unaffected by it.
-                    if non_ref_only:
-                        is_hom_ref = (a0 == 0) & (a1 == 0)
-                        skip_variant = (missing | is_hom_ref)[:, 0]
-                    else:
-                        skip_variant = None
-
-                    # Decode alleles once per chunk (rather than
-                    # per-variant further down) and work out, per
-                    # variant, which of the (REF + 3 ALT candidate)
-                    # variant_allele slots to actually write to the ALT
-                    # column. variant_allele lists a fixed, canonical
-                    # set of alternate bases per site regardless of
-                    # whether they're relevant to *this* sample — e.g.
-                    # for a REF=C site it lists "A,T,G" as ALT
-                    # candidates even if this sample is only ever
-                    # heterozygous for T, with zero read support for A
-                    # or G. Writing all of them to ALT produces a
-                    # non-standard single-sample VCF (real single-sample
-                    # VCFs only list alleles the sample's own genotype
-                    # actually uses) and breaks REF/ALT-based comparison
-                    # against any VCF that follows that convention,
-                    # since two VCFs listing the "same" call at the same
-                    # position end up with different ALT strings. So
-                    # only a slot that is both non-empty *and* actually
-                    # referenced by this sample's genotype is kept; the
-                    # remaining slots are dropped from ALT, and
-                    # genotype indices remapped to match, exactly as for
-                    # a genuinely empty slot.
-                    decoded_alleles = np.empty(allele_chunk.shape, dtype=object)
-                    for col in range(allele_chunk.shape[1]):
-                        decoded_alleles[:, col] = [
-                            a.decode() if hasattr(a, "decode") else str(a)
-                            for a in allele_chunk[:, col]
-                        ]
-                    n_allele_slots = allele_chunk.shape[1]
-                    is_present = decoded_alleles != ""
-
-                    slot_referenced = np.zeros_like(is_present)
-                    slot_referenced[:, 0] = True  # REF is always kept
-                    valid = ~missing[:, 0]
-                    row_idx = np.arange(gt_chunk.shape[0])
-                    safe_a0 = np.clip(a0[:, 0], 0, n_allele_slots - 1)
-                    safe_a1 = np.clip(a1[:, 0], 0, n_allele_slots - 1)
-                    slot_referenced[row_idx[valid], safe_a0[valid]] = True
-                    slot_referenced[row_idx[valid], safe_a1[valid]] = True
-
-                    is_present = is_present & slot_referenced
-                    is_present[:, 0] = True  # REF is always present
-
-                    # compacted_index[i, k] = the index original slot k
-                    # occupies in the ALT column for variant i, or -1 if
-                    # slot k isn't kept there.
-                    compacted_index = np.cumsum(is_present, axis=1) - 1
-                    compacted_index[~is_present] = -1
-
-                    # Remap this chunk's genotype allele indices to the
-                    # compacted numbering. n_samples is always 1 here
-                    # (snp_calls_to_vcf only supports a single sample),
-                    # so a0/a1 are worked with as flat (n_variants,)
-                    # arrays. Clip before gathering so a missing
-                    # genotype's sentinel value (-1) can't trigger an
-                    # out-of-bounds index — the gathered result for
-                    # those rows is discarded below anyway, since they
-                    # are written as "./." based on `missing`, not on
-                    # this remapping.
-                    remapped_a0 = compacted_index[row_idx, safe_a0]
-                    remapped_a1 = compacted_index[row_idx, safe_a1]
-                    # A remapped index of -1 means the genotype
-                    # references an allele slot that variant_allele
-                    # doesn't actually have populated at this site —
-                    # inconsistent data that shouldn't occur, but is
-                    # treated as missing defensively rather than writing
-                    # a nonsensical negative allele index.
-                    missing_or_unmapped = (
-                        missing[:, 0] | (remapped_a0 < 0) | (remapped_a1 < 0)
-                    )
-
                     # Build formatted GT strings using NumPy vectorization
                     gt_formatted = np.empty(
-                        (gt_chunk.shape[0], n_samples), dtype=object
+                        (variant_chunk_data.gt_chunk.shape[0], n_samples), dtype=object
                     )
-                    gt_formatted[missing_or_unmapped, 0] = "./."
-                    present_idx = ~missing_or_unmapped
+                    gt_formatted[missing] = "./."
+                    present_idx = ~missing
                     if np.any(present_idx):
-                        a0_str = remapped_a0[present_idx].astype(str)
-                        a1_str = remapped_a1[present_idx].astype(str)
-                        gt_formatted[present_idx, 0] = np.char.add(
+                        a0_str = a0[present_idx].astype(str)
+                        a1_str = a1[present_idx].astype(str)
+                        gt_formatted[present_idx] = np.char.add(
                             np.char.add(a0_str, "/"), a1_str
                         )
 
                     # Pre-allocate line buffer for better I/O
                     lines_to_write = []
 
-                    for j in range(gt_chunk.shape[0]):
-                        if skip_variant is not None and skip_variant[j]:
-                            continue
-
-                        chrom = contigs[contig_chunk[j]]
-                        pos = str(pos_chunk[j])
-                        # Reuse the chunk-level decode from above, so
-                        # the ALT column built here is guaranteed
-                        # consistent with the allele-index remapping
-                        # used for GT (both derive from the same
-                        # decoded_alleles/is_present arrays).
-                        ref = decoded_alleles[j, 0]
-                        alt_alleles = [
-                            decoded_alleles[j, k]
-                            for k in range(1, n_allele_slots)
-                            if is_present[j, k]
-                        ]
+                    for j in range(variant_chunk_data.gt_chunk.shape[0]):
+                        chrom = contigs[variant_chunk_data.contig_chunk[j]]
+                        pos = str(variant_chunk_data.pos_chunk[j])
+                        alleles = variant_chunk_data.allele_chunk[j]
+                        ref = (
+                            alleles[0].decode()
+                            if hasattr(alleles[0], "decode")
+                            else str(alleles[0])
+                        )
+                        alt_alleles = []
+                        for a in alleles[1:]:
+                            s = a.decode() if hasattr(a, "decode") else str(a)
+                            if s:
+                                alt_alleles.append(s)
                         alt = ",".join(alt_alleles) if alt_alleles else "."
 
                         # Build fixed VCF columns once per variant
@@ -466,15 +321,15 @@ class SnpVcfExporter(
 
                             # GQ.
                             if include_gq:
-                                if gq_chunk is not None:
-                                    v = gq_chunk[j, k]
+                                if variant_chunk_data.gq_chunk is not None:
+                                    v = variant_chunk_data.gq_chunk[j, k]
                                     parts.append("." if v < 0 else str(v))
                                 else:
                                     parts.append(".")
                             # AD.
                             if include_ad:
-                                if ad_chunk is not None:
-                                    ad_vals = ad_chunk[j, k]
+                                if variant_chunk_data.ad_chunk is not None:
+                                    ad_vals = variant_chunk_data.ad_chunk[j, k]
                                     parts.append(
                                         ",".join(
                                             "." if x < 0 else str(x) for x in ad_vals
@@ -487,9 +342,10 @@ class SnpVcfExporter(
                             # spec fixes the reserved FORMAT/MQ key as
                             # Integer (see _FORMAT_HEADERS).
                             if include_mq:
-                                if mq_chunk is not None:
-                                    v = mq_chunk[j, k]
-                                    parts.append("." if v < 0 else str(round(v)))
+                                if variant_chunk_data.mq_chunk is not None:
+                                    v = variant_chunk_data.mq_chunk[j, k]
+                                    if not math.isnan(v):
+                                        parts.append("." if v < 0 else str(round(v)))
                                 else:
                                     parts.append(".")
                             sample_fields.append(":".join(parts))
@@ -502,3 +358,92 @@ class SnpVcfExporter(
                     f.write("".join(lines_to_write))
 
         return output_path
+
+    def _get_chunks(
+        self,
+        ci: int,
+        offsets: np.array,
+        gt_data: Array,
+        pos_data: Array,
+        contig_data: Array,
+        allele_data: Array,
+        optional_arrays: OrderedDict,
+    ) -> tuple:
+        start = offsets[ci]
+        stop = offsets[ci + 1]
+
+        # Fetch the required arrays for this chunk in a
+        # single batched call, rather than one .compute()
+        # call per array. Each separate .compute() call is
+        # its own blocking round trip to the underlying
+        # store (e.g. GCS); batching lets dask fetch all of
+        # them concurrently instead of one at a time
+        gt_chunk, pos_chunk, contig_chunk, allele_chunk = dask.compute(
+            gt_data[start:stop],
+            pos_data[start:stop],
+            contig_data[start:stop],
+            allele_data[start:stop],
+        )
+        # Fetch requested optional fields for this chunk
+        # as a single batched call. If any of them fail
+        # to load, fall back to "." for all requested
+        # optional fields in this chunk — these arrays live
+        # in the same region of the same store, so a failure
+        # affecting one is likely to affect the others too,
+        gq_chunk = None
+        ad_chunk = None
+        mq_chunk = None
+        if optional_arrays:
+            try:
+                computed = dask.compute(
+                    *(arr[start:stop] for arr in optional_arrays.values())
+                )
+                optional_chunks = dict(zip(optional_arrays.keys(), computed))
+                gq_chunk = optional_chunks.get("GQ")
+                ad_chunk = optional_chunks.get("AD")
+                mq_chunk = optional_chunks.get("MQ")
+            except (FileNotFoundError, KeyError):
+                pass
+        chunk_output = VariantChunkData(
+            gt_chunk=gt_chunk,
+            pos_chunk=pos_chunk,
+            contig_chunk=contig_chunk,
+            allele_chunk=allele_chunk,
+            gq_chunk=gq_chunk,
+            ad_chunk=ad_chunk,
+            mq_chunk=mq_chunk,
+        )
+        return chunk_output
+
+    def _get_optional_data(
+        self, include_gq: bool, include_ad: bool, include_mq: bool, ds: Dataset
+    ) -> OrderedDict:
+        # Optional field arrays — may not exist in all datasets.
+        gq_data = None
+        ad_data = None
+        mq_data = None
+        if include_gq:
+            try:
+                gq_data = ds["call_GQ"].data
+            except KeyError:
+                pass
+        if include_ad:
+            try:
+                ad_data = ds["call_AD"].data
+            except KeyError:
+                pass
+        if include_mq:
+            try:
+                mq_data = ds["call_MQ"].data
+            except KeyError:
+                pass
+        # Which optional fields were requested, so we know what to
+        # fetch (and where to put the results) for each chunk below.
+        optional_arrays = OrderedDict()  # check needed
+        if gq_data is not None:
+            optional_arrays["GQ"] = gq_data
+        if ad_data is not None:
+            optional_arrays["AD"] = ad_data
+        if mq_data is not None:
+            optional_arrays["MQ"] = mq_data
+        return optional_arrays
