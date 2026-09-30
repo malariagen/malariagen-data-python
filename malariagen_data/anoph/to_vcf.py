@@ -414,15 +414,18 @@ class SnpVcfExporter(
 
                         chrom = contigs[contig_chunk[j]]
                         pos = str(pos_chunk[j])
-                        # Reuse the chunk-level decode from above, so
-                        # the ALT column built here is guaranteed
-                        # consistent with the allele-index remapping
-                        # used for GT (both derive from the same
-                        # decoded_alleles/is_present arrays).
-                        ref = decoded_alleles[j, 0]
-                        alt_alleles = [s for s in decoded_alleles[j, 1:] if s]
+                        alleles = allele_chunk[j]
+                        ref = (
+                            alleles[0].decode()
+                            if hasattr(alleles[0], "decode")
+                            else str(alleles[0])
+                        )
+                        alt_alleles = []
+                        for a in alleles[1:]:
+                            s = a.decode() if hasattr(a, "decode") else str(a)
+                            if s:
+                                alt_alleles.append(s)
                         alt = ",".join(alt_alleles) if alt_alleles else "."
-
                         # Build fixed VCF columns once per variant
                         fixed_cols = (
                             f"{chrom}\t{pos}\t.\t{ref}\t{alt}\t.\t.\t.\t{format_str}\t"
