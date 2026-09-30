@@ -265,7 +265,7 @@ class SnpVcfExporter(
                     )
                     a0 = gt_chunk_2d[:, :, 0]  # (n_variants, n_samples)
                     a1 = gt_chunk_2d[:, :, 1]  # (n_variants, n_samples)
-                    missing = (a0 < 0) | (a1 < 0)
+                    missing = (a0 < 0) | (a1 < 0)  # array of loci not present
 
                     # Build formatted GT strings using NumPy vectorization
                     gt_formatted = np.empty(
@@ -318,41 +318,44 @@ class SnpVcfExporter(
                         # Use pre-formatted GT strings and add other fields
                         for k in range(n_samples):
                             parts = [gt_formatted[j, k]]
-
-                            # GQ.
-                            if include_gq:
-                                if variant_chunk_data.gq_chunk is not None:
-                                    v = variant_chunk_data.gq_chunk[j, k]
-                                    parts.append("." if v < 0 else str(v))
-                                else:
-                                    parts.append(".")
-                            # AD.
-                            if include_ad:
-                                if variant_chunk_data.ad_chunk is not None:
-                                    ad_vals = variant_chunk_data.ad_chunk[j, k]
-                                    parts.append(
-                                        ",".join(
-                                            "." if x < 0 else str(x) for x in ad_vals
+                            if parts != "0/0":  # homozygous genotype
+                                # GQ.
+                                if include_gq:
+                                    if variant_chunk_data.gq_chunk is not None:
+                                        v = variant_chunk_data.gq_chunk[j, k]
+                                        parts.append("." if v < 0 else str(v))
+                                    else:
+                                        parts.append(".")
+                                # AD.
+                                if include_ad:
+                                    if variant_chunk_data.ad_chunk is not None:
+                                        ad_vals = variant_chunk_data.ad_chunk[j, k]
+                                        parts.append(
+                                            ",".join(
+                                                "." if x < 0 else str(x)
+                                                for x in ad_vals
+                                            )
                                         )
-                                    )
-                                else:
-                                    parts.append(".")
-                            # MQ. Rounded to the nearest integer: the
-                            # underlying data is a float, but the VCF
-                            # spec fixes the reserved FORMAT/MQ key as
-                            # Integer (see _FORMAT_HEADERS).
-                            if include_mq:
-                                if variant_chunk_data.mq_chunk is not None:
-                                    v = variant_chunk_data.mq_chunk[j, k]
-                                    if not math.isnan(v):
-                                        parts.append("." if v < 0 else str(round(v)))
-                                else:
-                                    parts.append(".")
-                            sample_fields.append(":".join(parts))
+                                    else:
+                                        parts.append(".")
+                                # MQ. Rounded to the nearest integer: the
+                                # underlying data is a float, but the VCF
+                                # spec fixes the reserved FORMAT/MQ key as
+                                # Integer (see _FORMAT_HEADERS).
+                                if include_mq:
+                                    if variant_chunk_data.mq_chunk is not None:
+                                        v = variant_chunk_data.mq_chunk[j, k]
+                                        if not math.isnan(v):
+                                            parts.append(
+                                                "." if v < 0 else str(round(v))
+                                            )
+                                    else:
+                                        parts.append(".")
+                                sample_fields.append(":".join(parts))
 
-                        # Build and buffer the line
-                        line = fixed_cols + "\t".join(sample_fields) + "\n"
-                        lines_to_write.append(line)
+                            # Build and buffer the line
+                            line = fixed_cols + "\t".join(sample_fields) + "\n"
+                            lines_to_write.append(line)
 
                     # Write buffered lines in one go per chunk
                     f.write("".join(lines_to_write))
