@@ -318,7 +318,7 @@ class SnpVcfExporter(
                         # Use pre-formatted GT strings and add other fields
                         for k in range(n_samples):
                             parts = [gt_formatted[j, k]]
-                            if parts != "0/0":  # homozygous genotype
+                            if parts != ["0/0"]:  # homozygous genotype
                                 # GQ.
                                 if include_gq:
                                     if variant_chunk_data.gq_chunk is not None:
@@ -353,9 +353,9 @@ class SnpVcfExporter(
                                         parts.append(".")
                                 sample_fields.append(":".join(parts))
 
-                            # Build and buffer the line
-                            line = fixed_cols + "\t".join(sample_fields) + "\n"
-                            lines_to_write.append(line)
+                                # Build and buffer the line
+                                line = fixed_cols + "\t".join(sample_fields) + "\n"
+                                lines_to_write.append(line)
 
                     # Write buffered lines in one go per chunk
                     f.write("".join(lines_to_write))
