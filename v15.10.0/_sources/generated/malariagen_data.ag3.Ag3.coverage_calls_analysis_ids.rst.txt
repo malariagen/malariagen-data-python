@@ -1,0 +1,6 @@
+﻿malariagen\_data.ag3.Ag3.coverage\_calls\_analysis\_ids
+=======================================================
+
+.. currentmodule:: malariagen_data.ag3
+
+.. autoproperty:: Ag3.coverage_calls_analysis_ids

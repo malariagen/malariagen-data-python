@@ -1,0 +1,6 @@
+﻿malariagen\_data.amin1.Amin1.snp\_allele\_frequencies\_advanced
+===============================================================
+
+.. currentmodule:: malariagen_data.amin1
+
+.. automethod:: Amin1.snp_allele_frequencies_advanced

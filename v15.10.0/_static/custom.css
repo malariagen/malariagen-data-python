@@ -1,0 +1,6 @@
+/* Fix version switcher dropdown overflow - GitHub issue #578 */
+.version-switcher__menu {
+    max-height: 60vh;
+    overflow-y: auto !important;
+    overflow-x: hidden;
+}

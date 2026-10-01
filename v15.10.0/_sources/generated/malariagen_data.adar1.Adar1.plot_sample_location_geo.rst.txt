@@ -1,0 +1,6 @@
+﻿malariagen\_data.adar1.Adar1.plot\_sample\_location\_geo
+========================================================
+
+.. currentmodule:: malariagen_data.adar1
+
+.. automethod:: Adar1.plot_sample_location_geo

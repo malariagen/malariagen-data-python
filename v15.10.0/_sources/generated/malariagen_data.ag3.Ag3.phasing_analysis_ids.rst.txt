@@ -1,0 +1,6 @@
+﻿malariagen\_data.ag3.Ag3.phasing\_analysis\_ids
+===============================================
+
+.. currentmodule:: malariagen_data.ag3
+
+.. autoproperty:: Ag3.phasing_analysis_ids

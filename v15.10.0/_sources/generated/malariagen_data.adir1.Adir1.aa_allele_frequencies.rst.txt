@@ -1,0 +1,6 @@
+﻿malariagen\_data.adir1.Adir1.aa\_allele\_frequencies
+====================================================
+
+.. currentmodule:: malariagen_data.adir1
+
+.. automethod:: Adir1.aa_allele_frequencies

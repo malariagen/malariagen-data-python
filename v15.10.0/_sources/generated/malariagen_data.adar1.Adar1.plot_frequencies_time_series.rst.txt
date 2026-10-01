@@ -1,0 +1,6 @@
+﻿malariagen\_data.adar1.Adar1.plot\_frequencies\_time\_series
+============================================================
+
+.. currentmodule:: malariagen_data.adar1
+
+.. automethod:: Adar1.plot_frequencies_time_series

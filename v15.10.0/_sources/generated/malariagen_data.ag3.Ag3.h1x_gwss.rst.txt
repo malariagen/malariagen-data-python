@@ -1,0 +1,6 @@
+﻿malariagen\_data.ag3.Ag3.h1x\_gwss
+==================================
+
+.. currentmodule:: malariagen_data.ag3
+
+.. automethod:: Ag3.h1x_gwss

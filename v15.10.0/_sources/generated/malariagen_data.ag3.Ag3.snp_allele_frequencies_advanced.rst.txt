@@ -1,0 +1,6 @@
+﻿malariagen\_data.ag3.Ag3.snp\_allele\_frequencies\_advanced
+===========================================================
+
+.. currentmodule:: malariagen_data.ag3
+
+.. automethod:: Ag3.snp_allele_frequencies_advanced

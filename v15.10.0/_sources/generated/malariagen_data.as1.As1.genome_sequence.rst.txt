@@ -1,0 +1,6 @@
+﻿malariagen\_data.as1.As1.genome\_sequence
+=========================================
+
+.. currentmodule:: malariagen_data.as1
+
+.. automethod:: As1.genome_sequence

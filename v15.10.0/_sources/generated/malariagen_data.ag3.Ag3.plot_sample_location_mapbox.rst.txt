@@ -1,0 +1,6 @@
+﻿malariagen\_data.ag3.Ag3.plot\_sample\_location\_mapbox
+=======================================================
+
+.. currentmodule:: malariagen_data.ag3
+
+.. automethod:: Ag3.plot_sample_location_mapbox

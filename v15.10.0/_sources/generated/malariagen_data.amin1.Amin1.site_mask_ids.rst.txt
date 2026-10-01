@@ -1,0 +1,6 @@
+﻿malariagen\_data.amin1.Amin1.site\_mask\_ids
+============================================
+
+.. currentmodule:: malariagen_data.amin1
+
+.. autoproperty:: Amin1.site_mask_ids

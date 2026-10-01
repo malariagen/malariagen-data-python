@@ -1,0 +1,6 @@
+﻿malariagen\_data.af1.Af1.aa\_allele\_frequencies
+================================================
+
+.. currentmodule:: malariagen_data.af1
+
+.. automethod:: Af1.aa_allele_frequencies

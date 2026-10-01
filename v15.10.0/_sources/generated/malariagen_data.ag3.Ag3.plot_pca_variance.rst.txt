@@ -1,0 +1,6 @@
+﻿malariagen\_data.ag3.Ag3.plot\_pca\_variance
+============================================
+
+.. currentmodule:: malariagen_data.ag3
+
+.. automethod:: Ag3.plot_pca_variance

@@ -1,0 +1,6 @@
+﻿malariagen\_data.adir1.Adir1.view\_alignments
+=============================================
+
+.. currentmodule:: malariagen_data.adir1
+
+.. automethod:: Adir1.view_alignments

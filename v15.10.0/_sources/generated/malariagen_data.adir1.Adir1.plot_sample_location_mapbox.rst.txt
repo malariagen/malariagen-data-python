@@ -1,0 +1,6 @@
+﻿malariagen\_data.adir1.Adir1.plot\_sample\_location\_mapbox
+===========================================================
+
+.. currentmodule:: malariagen_data.adir1
+
+.. automethod:: Adir1.plot_sample_location_mapbox

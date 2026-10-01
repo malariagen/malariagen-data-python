@@ -1,0 +1,6 @@
+﻿malariagen\_data.as1.As1.releases
+=================================
+
+.. currentmodule:: malariagen_data.as1
+
+.. autoproperty:: As1.releases
