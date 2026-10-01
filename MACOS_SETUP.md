@@ -15,7 +15,7 @@ After installation, close and reopen your terminal for conda to be available.
 
 ## 2. Create a conda environment
 
-The package requires Python `>=3.10, <3.13`. Python 3.13+ is not currently supported.
+The package requires Python `>=3.10, <3.14`. Python 3.14+ is not currently supported.
 ```bash
 conda create -n malariagen python=3.11
 conda activate malariagen
