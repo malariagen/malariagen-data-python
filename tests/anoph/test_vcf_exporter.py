@@ -6,6 +6,7 @@ import subprocess
 
 import dask.array as da
 import numpy as np
+import pysam
 import pytest
 import xarray as xr
 from pytest_cases import parametrize_with_cases
@@ -105,12 +106,12 @@ def test_vcf_exporter(fixture, api: SnpVcfExporter, tmp_path):
     # sample.
     assert list(sample_ids) == [sample_id]
 
-    output_path = str(tmp_path / "test.vcf")
+    output_path = str(tmp_path / "test.vcf.gz")
     api.snp_calls_to_vcf(output_path=output_path, **data_params)
 
     assert os.path.exists(output_path)
 
-    with open(output_path) as f:
+    with gzip.open(output_path, "rt") as f:
         lines = f.readlines()
 
     header_lines = [line for line in lines if line.startswith("##")]
@@ -172,14 +173,14 @@ def test_vcf_exporter_non_ref_only(fixture, api: SnpVcfExporter, tmp_path):
     expect_keep = ~is_missing & ~is_hom_ref
     expected_positions = sorted(ds["variant_position"].values[expect_keep].tolist())
 
-    output_path = str(tmp_path / "test_non_ref_only.vcf")
+    output_path = str(tmp_path / "test_non_ref_only.vcf.gz")
     api.snp_calls_to_vcf(
         output_path=output_path,
         non_ref_only=True,
         **data_params,
     )
 
-    with open(output_path) as f:
+    with gzip.open(output_path, "rt") as f:
         lines = f.readlines()
     data_lines = [line for line in lines if not line.startswith("#")]
 
@@ -209,8 +210,8 @@ def test_vcf_exporter_non_ref_only_defaults_to_false(
     sample_sets = [all_sample_sets[0]]
     _, sample_query = _pick_single_sample_query(api, sample_sets)
 
-    output_path_default = str(tmp_path / "default.vcf")
-    output_path_explicit = str(tmp_path / "explicit_false.vcf")
+    output_path_default = str(tmp_path / "default.vcf.gz")
+    output_path_explicit = str(tmp_path / "explicit_false.vcf.gz")
     api.snp_calls_to_vcf(
         output_path=output_path_default,
         region=region,
@@ -225,9 +226,9 @@ def test_vcf_exporter_non_ref_only_defaults_to_false(
         non_ref_only=False,
     )
 
-    with open(output_path_default) as f:
+    with gzip.open(output_path_default, "rt") as f:
         default_lines = f.readlines()
-    with open(output_path_explicit) as f:
+    with gzip.open(output_path_explicit, "rt") as f:
         explicit_lines = f.readlines()
     assert default_lines == explicit_lines
 
@@ -242,7 +243,7 @@ def test_vcf_exporter_non_ref_only_valid_per_bcftools(
     sample_sets = [all_sample_sets[0]]
     _, sample_query = _pick_single_sample_query(api, sample_sets)
 
-    output_path = str(tmp_path / "test_non_ref_only_bcftools.vcf")
+    output_path = str(tmp_path / "test_non_ref_only_bcftools.vcf.gz")
     api.snp_calls_to_vcf(
         output_path=output_path,
         region=region,
@@ -270,7 +271,7 @@ def test_vcf_exporter_requires_sample_sets_and_query(
     # explicit cohort/sample basis for the calls it contains is not
     # meaningful.
     region = api.contigs[0]
-    output_path = str(tmp_path / "test_missing_args.vcf")
+    output_path = str(tmp_path / "test_missing_args.vcf.gz")
 
     with pytest.raises(TypeError):
         api.snp_calls_to_vcf(output_path=output_path, region=region)  # type: ignore[call-arg]
@@ -286,7 +287,7 @@ def test_vcf_exporter_requires_sample_sets_and_query(
 @parametrize_with_cases("fixture,api", cases=".")
 def test_vcf_exporter_empty_sample_sets(fixture, api: SnpVcfExporter, tmp_path):
     region = api.contigs[0]
-    output_path = str(tmp_path / "test_empty_sample_sets.vcf")
+    output_path = str(tmp_path / "test_empty_sample_sets.vcf.gz")
 
     with pytest.raises(ValueError, match="sample_sets must be provided"):
         api.snp_calls_to_vcf(
@@ -302,7 +303,7 @@ def test_vcf_exporter_empty_sample_query(fixture, api: SnpVcfExporter, tmp_path)
     region = api.contigs[0]
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = [all_sample_sets[0]]
-    output_path = str(tmp_path / "test_empty_sample_query.vcf")
+    output_path = str(tmp_path / "test_empty_sample_query.vcf.gz")
 
     with pytest.raises(ValueError, match="sample_query must be provided"):
         api.snp_calls_to_vcf(
@@ -324,7 +325,7 @@ def test_vcf_exporter_multi_sample_query_rejected(
     region = api.contigs[0]
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = [all_sample_sets[0]]
-    output_path = str(tmp_path / "test_multi_sample_query.vcf")
+    output_path = str(tmp_path / "test_multi_sample_query.vcf.gz")
 
     for bad_query in [
         "country == 'Uganda'",
@@ -352,7 +353,7 @@ def test_vcf_exporter_sample_query_matches_zero_samples(
     region = api.contigs[0]
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = [all_sample_sets[0]]
-    output_path = str(tmp_path / "test_zero_sample_query.vcf")
+    output_path = str(tmp_path / "test_zero_sample_query.vcf.gz")
 
     with pytest.raises(ValueError):
         api.snp_calls_to_vcf(
@@ -369,7 +370,7 @@ def test_vcf_exporter_overwrite(fixture, api: SnpVcfExporter, tmp_path):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = [all_sample_sets[0]]
     _, sample_query = _pick_single_sample_query(api, sample_sets)
-    output_path = str(tmp_path / "test.vcf")
+    output_path = str(tmp_path / "test.vcf.gz")
 
     api.snp_calls_to_vcf(
         output_path=output_path,
@@ -397,6 +398,9 @@ def test_vcf_exporter_overwrite(fixture, api: SnpVcfExporter, tmp_path):
         overwrite=True,
     )
     assert os.path.exists(output_path)
+    assert os.path.exists(output_path + ".tbi")
+    with pysam.VariantFile(output_path) as vcf:
+        list(vcf.fetch())
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -440,7 +444,7 @@ def test_vcf_exporter_fields(fixture, api: SnpVcfExporter, tmp_path):
     _, sample_query = _pick_single_sample_query(api, sample_sets)
 
     # Test with additional FORMAT fields.
-    output_path = str(tmp_path / "test_fields.vcf")
+    output_path = str(tmp_path / "test_fields.vcf.gz")
     api.snp_calls_to_vcf(
         output_path=output_path,
         region=region,
@@ -449,7 +453,7 @@ def test_vcf_exporter_fields(fixture, api: SnpVcfExporter, tmp_path):
         fields=("GT", "GQ"),
     )
 
-    with open(output_path) as f:
+    with gzip.open(output_path, "rt") as f:
         lines = f.readlines()
 
     # Check FORMAT header lines.
@@ -486,7 +490,7 @@ def test_vcf_exporter_fields_as_set(fixture, api: SnpVcfExporter, tmp_path):
     sample_sets = [all_sample_sets[0]]
     _, sample_query = _pick_single_sample_query(api, sample_sets)
 
-    output_path = str(tmp_path / "test_fields_set.vcf")
+    output_path = str(tmp_path / "test_fields_set.vcf.gz")
     api.snp_calls_to_vcf(
         output_path=output_path,
         region=region,
@@ -495,7 +499,7 @@ def test_vcf_exporter_fields_as_set(fixture, api: SnpVcfExporter, tmp_path):
         fields={"GT", "GQ", "AD", "MQ"},
     )
 
-    with open(output_path) as f:
+    with gzip.open(output_path, "rt") as f:
         lines = f.readlines()
 
     data_lines = [line for line in lines if not line.startswith("#")]
@@ -538,7 +542,7 @@ def test_vcf_exporter_output_is_valid_per_bcftools(
     sample_sets = [all_sample_sets[0]]
     _, sample_query = _pick_single_sample_query(api, sample_sets)
 
-    output_path = str(tmp_path / "test_bcftools_valid.vcf")
+    output_path = str(tmp_path / "test_bcftools_valid.vcf.gz")
     api.snp_calls_to_vcf(
         output_path=output_path,
         region=region,
@@ -567,7 +571,7 @@ def test_vcf_exporter_fields_gt_required(fixture, api: SnpVcfExporter, tmp_path)
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = [all_sample_sets[0]]
     _, sample_query = _pick_single_sample_query(api, sample_sets)
-    output_path = str(tmp_path / "test_no_gt.vcf")
+    output_path = str(tmp_path / "test_no_gt.vcf.gz")
 
     with pytest.raises(ValueError, match="GT must be included"):
         api.snp_calls_to_vcf(
@@ -678,7 +682,7 @@ def test_vcf_exporter_allele_index_remapping(
     )
     monkeypatch.setattr(api, "snp_calls", lambda **kwargs: ds)
 
-    output_path = str(tmp_path / "test_allele_remap.vcf")
+    output_path = str(tmp_path / "test_allele_remap.vcf.gz")
     api.snp_calls_to_vcf(
         output_path=output_path,
         region=contig,
@@ -686,7 +690,7 @@ def test_vcf_exporter_allele_index_remapping(
         sample_query=f"sample_id == '{sample}'",
     )
 
-    with open(output_path) as f:
+    with gzip.open(output_path, "rt") as f:
         lines = f.readlines()
     data_lines = [line for line in lines if not line.startswith("#")]
     assert len(data_lines) == n_variants

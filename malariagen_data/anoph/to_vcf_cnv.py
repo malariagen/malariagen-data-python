@@ -16,6 +16,10 @@ from . import vcf_params
 # VCF not well defined for CNVs
 # use something like this:
 # https://cnvkit.readthedocs.io/en/v0.7.7/fileformats.html
+# or maybe not:
+# https://igv.org/doc/igvjs/#tracks/CNVPytor/
+# though it says only works for full genome, not regions,
+# so maybe not useful for us
 
 
 def _decode(value) -> str:
