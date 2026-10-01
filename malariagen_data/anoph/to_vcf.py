@@ -9,7 +9,6 @@ from xarray.core.dataset import Dataset
 import numpy as np
 from numpydoc_decorator import doc  # type: ignore
 from dataclasses import dataclass
-from collections import OrderedDict
 import math
 
 from .snp_data import AnophelesSnpData
@@ -351,7 +350,7 @@ class SnpVcfExporter(
         pos_data: Array,
         contig_data: Array,
         allele_data: Array,
-        optional_arrays: OrderedDict,
+        optional_arrays: dict,
     ) -> tuple:
         start = offsets[ci]
         stop = offsets[ci + 1]
@@ -401,7 +400,7 @@ class SnpVcfExporter(
 
     def _get_optional_data(
         self, include_gq: bool, include_ad: bool, include_mq: bool, ds: Dataset
-    ) -> OrderedDict:
+    ) -> dict:
         # Optional field arrays — may not exist in all datasets.
         gq_data = None
         ad_data = None
@@ -423,7 +422,7 @@ class SnpVcfExporter(
                 pass
         # Which optional fields were requested, so we know what to
         # fetch (and where to put the results) for each chunk below.
-        optional_arrays = OrderedDict()  # check needed
+        optional_arrays = {}
         if gq_data is not None:
             optional_arrays["GQ"] = gq_data
         if ad_data is not None:

@@ -12,6 +12,11 @@ from . import cnv_params
 from . import plink_params
 from . import vcf_params
 
+# don't think we want this, IGV accepts seg format for CNVs
+# VCF not well defined for CNVs
+# use something like this:
+# https://cnvkit.readthedocs.io/en/v0.7.7/fileformats.html
+
 
 def _decode(value) -> str:
     return value.decode() if hasattr(value, "decode") else str(value)
