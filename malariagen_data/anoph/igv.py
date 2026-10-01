@@ -82,6 +82,7 @@ class AnophelesIgv(
         region: Region,
         sample: str,
         visibility_window: int = 20_000,
+        snp_vcf_url: Optional[str] = None,
     ):
         # Look up sample set for sample.
         try:
@@ -99,7 +100,9 @@ class AnophelesIgv(
         # Locate record for sample.
         cat_rec = df_cat.set_index("sample_id").loc[sample]
         bam_url = cat_rec["alignments_bam"]
-        vcf_url = cat_rec["snp_genotypes_vcf"]
+        vcf_url = (
+            snp_vcf_url if snp_vcf_url is not None else cat_rec["snp_genotypes_vcf"]
+        )
 
         # Set up site filters tracks.
         contig = region.contig
@@ -183,6 +186,12 @@ class AnophelesIgv(
                 visible.
             """,
             init="If True, call igv_notebook.init().",
+            snp_vcf_url="""
+                Optional URL for a local, tabix-indexed VCF. For Jupyter Notebook
+                and Lab, the VCF and its `.tbi` index must be under the Jupyter
+                startup directory tree; pass a URL relative to that tree (e.g.
+                `/data/sample.vcf.gz`). If omitted, use the catalog VCF.
+            """,
         ),
     )
     def view_alignments(
@@ -191,6 +200,7 @@ class AnophelesIgv(
         sample: str,
         visibility_window: int = 20_000,
         init: bool = True,
+        snp_vcf_url: Optional[str] = None,
     ):
         # Parse region.
         region_prepped: Region = _parse_single_region(self, region)
@@ -201,6 +211,7 @@ class AnophelesIgv(
             region=region_prepped,
             sample=sample,
             visibility_window=visibility_window,
+            snp_vcf_url=snp_vcf_url,
         )
 
         # Create IGV browser.

@@ -1,10 +1,14 @@
+from types import SimpleNamespace
+
 import igv_notebook  # type: ignore
 import numpy as np
+import pandas as pd
 import pytest
 from pytest_cases import parametrize_with_cases
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
+import malariagen_data.anoph.igv as igv_module
 from malariagen_data.anoph.igv import AnophelesIgv
 
 
@@ -84,3 +88,51 @@ def test_view_alignments(fixture, api: AnophelesIgv):
     ret = api.view_alignments(region=region, sample=sample, init=False)
     # No return value to avoid cluttering notebook output.
     assert ret is None
+
+
+def test_view_alignments_with_local_snp_vcf(monkeypatch):
+    class FakeAnophelesIgv(AnophelesIgv):
+        @property
+        def site_mask_ids(self):
+            return []
+
+        def sample_metadata(self):
+            return pd.DataFrame({"sample_id": ["S1"], "sample_set": ["set1"]})
+
+        def wgs_data_catalog(self, sample_set):
+            return pd.DataFrame(
+                {
+                    "sample_id": ["S1"],
+                    "alignments_bam": ["https://example.org/S1.bam"],
+                    "snp_genotypes_vcf": ["https://example.org/S1.vcf.gz"],
+                }
+            )
+
+    api = object.__new__(FakeAnophelesIgv)
+    captured = {}
+    monkeypatch.setattr(
+        igv_module,
+        "_parse_single_region",
+        lambda self, region: SimpleNamespace(contig="2L"),
+    )
+    monkeypatch.setattr(
+        api,
+        "igv",
+        lambda **kwargs: captured.update(kwargs),
+    )
+    local_vcf_url = "/data/sample.vcf.gz"
+    api.view_alignments(
+        region="2L:1-10",
+        sample="S1",
+        init=False,
+        snp_vcf_url=local_vcf_url,
+    )
+
+    snp_track = next(track for track in captured["tracks"] if track["name"] == "SNPs")
+    assert snp_track["url"] == local_vcf_url
+    assert snp_track["indexURL"] == f"{local_vcf_url}.tbi"
+
+    captured.clear()
+    api.view_alignments(region="2L:1-10", sample="S1", init=False)
+    snp_track = next(track for track in captured["tracks"] if track["name"] == "SNPs")
+    assert snp_track["url"] == "https://example.org/S1.vcf.gz"
