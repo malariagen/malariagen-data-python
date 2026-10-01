@@ -112,8 +112,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         else:
             if contig not in self.contigs:
                 raise ValueError(
-                    f"Contig {contig!r} not found. "
-                    f"Available contigs: {self.contigs}"
+                    f"Contig {contig!r} not found. Available contigs: {self.contigs}"
                 )
             df = self._genome_features(attributes=attributes)
 

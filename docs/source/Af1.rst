@@ -20,6 +20,16 @@ home page.
 
 .. currentmodule:: malariagen_data.af1.Af1
 
+Class composition
+-----------------
+How ``Af1`` is composed from mixin classes (see :doc:`architecture` for
+the full picture, and every mixin's own reference page). Mixins shown
+greyed out and dashed are inherited but not backed by real data for this
+dataset, so calling their methods will fail or return no data - see
+:doc:`architecture` for details on how this was checked.
+
+.. graphviz:: _static/diagrams/af1_composition.dot
+
 Basic data access
 -----------------
 .. autosummary::
@@ -29,6 +39,8 @@ Basic data access
     sample_sets
     lookup_release
     lookup_study
+    lookup_study_info
+    lookup_terms_of_use_info
 
 Reference genome data access
 ----------------------------
@@ -51,12 +63,16 @@ Sample metadata access
     clear_extra_metadata
     lookup_sample
     count_samples
+    wgs_run_accessions
     plot_samples_bar
     plot_samples_interactive_map
     plot_sample_location_mapbox
     plot_sample_location_geo
     wgs_data_catalog
     cohorts
+    cohorts_metadata
+    general_metadata
+    sequence_qc_metadata
 
 SNP data access
 ---------------

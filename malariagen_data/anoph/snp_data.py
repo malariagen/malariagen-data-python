@@ -253,8 +253,7 @@ class AnophelesSnpData(
         else:
             if contig not in self.contigs:
                 raise ValueError(
-                    f"Contig {contig!r} not found. "
-                    f"Available contigs: {self.contigs}"
+                    f"Contig {contig!r} not found. Available contigs: {self.contigs}"
                 )
             root = self.open_site_filters(mask=mask)
             z = root[f"{contig}/variants/{field}"]
@@ -359,8 +358,7 @@ class AnophelesSnpData(
         else:
             if contig not in self.contigs:
                 raise ValueError(
-                    f"Contig {contig!r} not found. "
-                    f"Available contigs: {self.contigs}"
+                    f"Contig {contig!r} not found. Available contigs: {self.contigs}"
                 )
             root = self.open_snp_sites()
             z = root[f"{contig}/variants/{field}"]
@@ -488,8 +486,7 @@ class AnophelesSnpData(
         else:
             if contig not in self.contigs:
                 raise ValueError(
-                    f"Contig {contig!r} not found. "
-                    f"Available contigs: {self.contigs}"
+                    f"Contig {contig!r} not found. Available contigs: {self.contigs}"
                 )
             root = self.open_snp_genotypes(sample_set=sample_set)
             z = root[f"{contig}/calldata/{field}"]
@@ -648,8 +645,7 @@ class AnophelesSnpData(
         else:
             if contig not in self.contigs:
                 raise ValueError(
-                    f"Contig {contig!r} not found. "
-                    f"Available contigs: {self.contigs}"
+                    f"Contig {contig!r} not found. Available contigs: {self.contigs}"
                 )
             coords = dict()
             data_vars = dict()
@@ -1066,8 +1062,7 @@ class AnophelesSnpData(
         else:
             if contig not in self.contigs:
                 raise ValueError(
-                    f"Contig {contig!r} not found. "
-                    f"Available contigs: {self.contigs}"
+                    f"Contig {contig!r} not found. Available contigs: {self.contigs}"
                 )
 
             coords = dict()
@@ -1127,7 +1122,7 @@ class AnophelesSnpData(
         `call_genotype`, it has (`variants`, `samples`, `ploidy`) values and contains both calls for each site and each sample,
         `call_GQ`, it has (`variants`, `samples`) values and contains the genotype quality for each site and each sample,
         `call_MQ`, it has (`variants`, `samples`) values and contains the mapping quality for each site and each sample,
-        `call_AD`, it has (`variants*, `samples`, *alleles`) values and contains the allele depth for each site, each sample and each allele,
+        `call_AD`, it has (`variants`, `samples`, `alleles`) values and contains the allele depth for each site, each sample and each allele,
         `call_genotypes_mask`, it has (`variants`,`samples`, `ploidy`) values and contains whether the allele is absent for each site, each sample and each ploidy.
         """,
     )

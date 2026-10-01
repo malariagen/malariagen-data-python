@@ -19,6 +19,16 @@ For more information about the data and terms of use, please see the
 
 .. currentmodule:: malariagen_data.as1.As1
 
+
+Class composition
+-----------------
+How ``As1`` is composed from mixin classes (see :doc:`architecture` for
+the full picture, and every mixin's own reference page). Mixins shown
+greyed out and dashed are inherited but not backed by real data for this
+dataset.
+
+.. graphviz:: _static/diagrams/as1_composition.dot
+
 Basic data access
 -----------------
 .. autosummary::
@@ -28,6 +38,8 @@ Basic data access
     sample_sets
     lookup_release
     lookup_study
+    lookup_study_info
+    lookup_terms_of_use_info
 
 Reference genome data access
 ----------------------------
@@ -56,6 +68,9 @@ Sample metadata access
     plot_sample_location_geo
     wgs_data_catalog
     cohorts
+    cohorts_metadata
+    general_metadata
+    sequence_qc_metadata
 
 SNP data access
 ---------------
