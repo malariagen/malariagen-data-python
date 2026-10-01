@@ -250,26 +250,20 @@ class SnpVcfExporter(
                         optional_arrays,
                     )
 
-                    n_samples = variant_chunk_data.gt_chunk.shape[1]
-
                     # OPTIMIZATION: Vectorize GT field formatting across entire chunk.
                     # Instead of formatting each sample's GT field in a nested Python loop
                     # (which results in billions of string operations for large datasets),
                     # use NumPy's vectorized string operations on the entire chunk at once.
                     # This provides ~3x speedup while maintaining exact output compatibility.
                     # See issue #1280 for performance analysis.
-                    gt_chunk_2d = variant_chunk_data.gt_chunk.reshape(
-                        variant_chunk_data.gt_chunk.shape[0],
-                        variant_chunk_data.gt_chunk.shape[1],
-                        2,
-                    )
-                    a0 = gt_chunk_2d[:, :, 0]  # (n_variants, n_samples)
-                    a1 = gt_chunk_2d[:, :, 1]  # (n_variants, n_samples)
-                    missing = (a0 < 0) | (a1 < 0)  # array of loci not present
+                    gt_chunk_2d = variant_chunk_data.gt_chunk[:, 0, :]
+                    a0 = gt_chunk_2d[:, 0]  # n_variants
+                    a1 = gt_chunk_2d[:, 1]  # (n_variants
+                    missing = (a0 < 0) | (a1 < 0)
 
                     # Build formatted GT strings using NumPy vectorization
                     gt_formatted = np.empty(
-                        (variant_chunk_data.gt_chunk.shape[0], n_samples), dtype=object
+                        variant_chunk_data.gt_chunk.shape[0], dtype=object
                     )
                     gt_formatted[missing] = "./."
                     present_idx = ~missing
@@ -304,58 +298,45 @@ class SnpVcfExporter(
                             f"{chrom}\t{pos}\t.\t{ref}\t{alt}\t.\t.\t.\t{format_str}\t"
                         )
 
-                        # N.B., a plain Python list here, not a NumPy
-                        # array: this loop builds a handful of short
-                        # strings per variant via ordinary Python string
-                        # concatenation, not a numeric/vectorized
-                        # operation, so a `np.empty(..., dtype=object)`
-                        # array bought nothing but the overhead of a
-                        # NumPy allocation on every single variant row
-                        # (up to ~150 million times for a whole-genome
-                        # export).
-                        sample_fields = []
+                        genotype = gt_formatted[j]
+                        if genotype == "0/0":
+                            continue
 
-                        # Use pre-formatted GT strings and add other fields
-                        for k in range(n_samples):
-                            parts = [gt_formatted[j, k]]
-                            if parts != ["0/0"]:  # homozygous genotype
-                                # GQ.
-                                if include_gq:
-                                    if variant_chunk_data.gq_chunk is not None:
-                                        v = variant_chunk_data.gq_chunk[j, k]
-                                        parts.append("." if v < 0 else str(v))
-                                    else:
-                                        parts.append(".")
-                                # AD.
-                                if include_ad:
-                                    if variant_chunk_data.ad_chunk is not None:
-                                        ad_vals = variant_chunk_data.ad_chunk[j, k]
-                                        parts.append(
-                                            ",".join(
-                                                "." if x < 0 else str(x)
-                                                for x in ad_vals
-                                            )
-                                        )
-                                    else:
-                                        parts.append(".")
-                                # MQ. Rounded to the nearest integer: the
-                                # underlying data is a float, but the VCF
-                                # spec fixes the reserved FORMAT/MQ key as
-                                # Integer (see _FORMAT_HEADERS).
-                                if include_mq:
-                                    if variant_chunk_data.mq_chunk is not None:
-                                        v = variant_chunk_data.mq_chunk[j, k]
-                                        if not math.isnan(v):
-                                            parts.append(
-                                                "." if v < 0 else str(round(v))
-                                            )
-                                    else:
-                                        parts.append(".")
-                                sample_fields.append(":".join(parts))
+                        parts = [genotype]
+                        # GQ.
+                        if include_gq:
+                            if variant_chunk_data.gq_chunk is not None:
+                                value = variant_chunk_data.gq_chunk[j, 0]
+                                parts.append("." if value < 0 else str(value))
+                            else:
+                                parts.append(".")
+                        # AD.
+                        if include_ad:
+                            if variant_chunk_data.ad_chunk is not None:
+                                ad_values = variant_chunk_data.ad_chunk[j, 0]
+                                parts.append(
+                                    ",".join(
+                                        "." if value < 0 else str(value)
+                                        for value in ad_values
+                                    )
+                                )
+                            else:
+                                parts.append(".")
+                        # MQ. Rounded to the nearest integer: the
+                        # underlying data is a float, but the VCF spec
+                        # fixes the reserved FORMAT/MQ key as Integer.
+                        if include_mq:
+                            if variant_chunk_data.mq_chunk is not None:
+                                value = variant_chunk_data.mq_chunk[j, 0]
+                                if not math.isnan(value):
+                                    parts.append(
+                                        "." if value < 0 else str(round(value))
+                                    )
+                            else:
+                                parts.append(".")
 
-                                # Build and buffer the line
-                                line = fixed_cols + "\t".join(sample_fields) + "\n"
-                                lines_to_write.append(line)
+                        line = fixed_cols + ":".join(parts) + "\n"
+                        lines_to_write.append(line)
 
                     # Write buffered lines in one go per chunk
                     f.write("".join(lines_to_write))
