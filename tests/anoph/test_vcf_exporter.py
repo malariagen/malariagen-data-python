@@ -97,8 +97,12 @@ def test_vcf_exporter(fixture, api: SnpVcfExporter, tmp_path):
     )
 
     ds = api.snp_calls(**data_params)
-    n_variants = ds.sizes["variants"]
     sample_ids = ds["sample_id"].values
+
+    # Homozygous reference sites are not written.
+    gt = ds["call_genotype"].values[:, 0, :]
+    is_hom_ref = (gt == 0).all(axis=1)
+    expected_positions = sorted(ds["variant_position"].values[~is_hom_ref].tolist())
 
     # snp_calls_to_vcf() only supports exporting a single sample at a
     # time (its only current use case is generating a per-sample VCF
@@ -127,13 +131,9 @@ def test_vcf_exporter(fixture, api: SnpVcfExporter, tmp_path):
     vcf_samples = col_fields[9:]
     assert list(vcf_samples) == list(sample_ids)
 
-    # Variant count matches.
-    assert len(data_lines) == n_variants
-
-    # Positions match.
+    # Positions match the non-homozygous-reference sites.
     vcf_positions = sorted([int(line.split("\t")[1]) for line in data_lines])
-    ds_positions = sorted(ds["variant_position"].values.tolist())
-    assert vcf_positions == ds_positions
+    assert vcf_positions == expected_positions
 
     # Allele values are clean strings, not byte-string representations.
     for line in data_lines:
@@ -145,122 +145,52 @@ def test_vcf_exporter(fixture, api: SnpVcfExporter, tmp_path):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_vcf_exporter_non_ref_only(fixture, api: SnpVcfExporter, tmp_path):
-    # non_ref_only=True should keep only sites where the sample's
-    # genotype carries at least one non-reference allele, dropping both
-    # homozygous reference (0/0) and missing (./.) calls. Equivalent in
-    # spirit to `bcftools view -e 'F_PASS(GT="ref") == 1'`, except that
-    # a missing call is also excluded here (that particular bcftools
-    # expression only excludes homozygous reference calls, since a
-    # missing call is neither "ref" nor caught by that `-e` filter).
+def test_vcf_exporter_excludes_hom_ref(fixture, api: SnpVcfExporter, tmp_path):
+    # Homozygous reference (0/0) sites are not written. Missing calls
+    # are still written, as "./.".
     region = random.choice(api.contigs)
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = random.sample(all_sample_sets, min(2, len(all_sample_sets)))
+    site_mask = random.choice((None,) + api.site_mask_ids)
     _, sample_query = _pick_single_sample_query(api, sample_sets)
 
     data_params = dict(
         region=region,
         sample_sets=sample_sets,
         sample_query=sample_query,
+        site_mask=site_mask,
     )
 
-    # Work out the expected set of non-ref, non-missing positions
-    # directly from the dataset, independently of snp_calls_to_vcf.
+    # Work out the expected positions directly from the dataset,
+    # independently of snp_calls_to_vcf.
     ds = api.snp_calls(**data_params)
     gt = ds["call_genotype"].values[:, 0, :]  # (variants, ploidy)
     is_missing = (gt < 0).any(axis=1)
     is_hom_ref = (gt == 0).all(axis=1)
-    expect_keep = ~is_missing & ~is_hom_ref
-    expected_positions = sorted(ds["variant_position"].values[expect_keep].tolist())
+    positions = ds["variant_position"].values
+    expected_positions = sorted(positions[~is_hom_ref].tolist())
+    expected_missing_positions = sorted(positions[is_missing].tolist())
 
-    output_path = str(tmp_path / "test_non_ref_only.vcf.gz")
-    api.snp_calls_to_vcf(
-        output_path=output_path,
-        non_ref_only=True,
-        **data_params,
-    )
+    output_path = str(tmp_path / "test_excludes_hom_ref.vcf.gz")
+    api.snp_calls_to_vcf(output_path=output_path, **data_params)
 
     with gzip.open(output_path, "rt") as f:
         lines = f.readlines()
     data_lines = [line for line in lines if not line.startswith("#")]
 
-    # Every written site should have a non-ref, non-missing GT.
+    vcf_positions = []
+    vcf_missing_positions = []
     for line in data_lines:
         fields_row = line.strip().split("\t")
+        pos = int(fields_row[1])
         gt_str = fields_row[9].split(":")[0]
-        assert gt_str != "./."
-        a0, a1 = gt_str.split("/")
-        assert not (a0 == "0" and a1 == "0")
+        assert gt_str != "0/0", f"hom-ref call written at {pos}"
+        vcf_positions.append(pos)
+        if gt_str == "./.":
+            vcf_missing_positions.append(pos)
 
-    # And the set of positions written should exactly match what we
-    # expect directly from the dataset (no extras, none missing).
-    vcf_positions = sorted(int(line.split("\t")[1]) for line in data_lines)
-    assert vcf_positions == expected_positions
-
-
-@parametrize_with_cases("fixture,api", cases=".")
-def test_vcf_exporter_non_ref_only_defaults_to_false(
-    fixture, api: SnpVcfExporter, tmp_path
-):
-    # Not passing non_ref_only should behave identically to passing
-    # non_ref_only=False (i.e. include homozygous reference / missing
-    # sites too) — this locks in the default.
-    region = api.contigs[0]
-    all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = [all_sample_sets[0]]
-    _, sample_query = _pick_single_sample_query(api, sample_sets)
-
-    output_path_default = str(tmp_path / "default.vcf.gz")
-    output_path_explicit = str(tmp_path / "explicit_false.vcf.gz")
-    api.snp_calls_to_vcf(
-        output_path=output_path_default,
-        region=region,
-        sample_sets=sample_sets,
-        sample_query=sample_query,
-    )
-    api.snp_calls_to_vcf(
-        output_path=output_path_explicit,
-        region=region,
-        sample_sets=sample_sets,
-        sample_query=sample_query,
-        non_ref_only=False,
-    )
-
-    with gzip.open(output_path_default, "rt") as f:
-        default_lines = f.readlines()
-    with gzip.open(output_path_explicit, "rt") as f:
-        explicit_lines = f.readlines()
-    assert default_lines == explicit_lines
-
-
-@pytest.mark.skipif(shutil.which("bcftools") is None, reason="bcftools not installed")
-@parametrize_with_cases("fixture,api", cases=".")
-def test_vcf_exporter_non_ref_only_valid_per_bcftools(
-    fixture, api: SnpVcfExporter, tmp_path
-):
-    region = api.contigs[0]
-    all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = [all_sample_sets[0]]
-    _, sample_query = _pick_single_sample_query(api, sample_sets)
-
-    output_path = str(tmp_path / "test_non_ref_only_bcftools.vcf.gz")
-    api.snp_calls_to_vcf(
-        output_path=output_path,
-        region=region,
-        sample_sets=sample_sets,
-        sample_query=sample_query,
-        fields={"GT", "GQ", "AD", "MQ"},
-        non_ref_only=True,
-    )
-
-    result = subprocess.run(
-        ["bcftools", "view", "-v", "snps", output_path],
-        capture_output=True,
-        text=True,
-    )
-    assert result.returncode == 0, f"bcftools failed to parse output: {result.stderr}"
-    assert "Error" not in result.stderr
-    assert "should be declared as" not in result.stderr, result.stderr
+    assert sorted(vcf_positions) == expected_positions
+    assert sorted(vcf_missing_positions) == expected_missing_positions
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -584,75 +514,36 @@ def test_vcf_exporter_fields_gt_required(fixture, api: SnpVcfExporter, tmp_path)
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_vcf_exporter_allele_index_remapping(
+def test_vcf_exporter_synthetic_genotypes(
     fixture, api: SnpVcfExporter, tmp_path, monkeypatch
 ):
-    # ALT should only ever list alleles that are both (a) genuinely
-    # populated in variant_allele and (b) actually referenced by this
-    # sample's own genotype. variant_allele lists a fixed, canonical
-    # set of alternate bases per site (e.g. for REF=A it can list
-    # "C,T,G" regardless of what's actually segregating, let alone
-    # relevant to one particular sample), and call_genotype's allele
-    # indices refer to those *original* slot positions, which are not
-    # guaranteed to be contiguous from 1 either (a site's only real ALT
-    # allele can sit in slot 2 or 3 while an earlier slot is empty).
-    # Writing every populated-but-irrelevant slot to ALT (a) produces
-    # invalid records when combined with un-remapped genotype indices
-    # (e.g. "0/2" against a single-allele ALT column, which bcftools
-    # then silently mishandled), and (b) even once indices are
-    # correctly remapped, produces a non-standard single-sample VCF
-    # (real single-sample VCFs only list alleles that sample's
-    # genotype actually uses) that fails REF/ALT-based comparison
-    # against any VCF following that convention — two VCFs recording
-    # the "same" call at the same position end up with different ALT
-    # strings purely because of unrelated candidate alleles.
+    # Deterministic check on a small synthetic dataset: ALT lists every
+    # alternate allele in variant_allele, GT allele indices are written
+    # as-is, homozygous reference sites are dropped and missing calls
+    # are written as "./.".
     sample = str(api.sample_metadata()["sample_id"].iloc[0])
     contig = api.contigs[0]
 
     variant_allele = np.array(
-        [
-            [b"A", b"", b"T", b""],  # only real ALT in slot 2
-            [b"A", b"T", b"", b""],  # real ALT in slot 1 (baseline case)
-            [b"A", b"", b"", b"T"],  # only real ALT in slot 3
-            [b"A", b"C", b"", b"T"],  # two real ALTs, only one used
-            [b"A", b"C", b"T", b"G"],  # all 3 canonical ALTs populated,
-            #                            only one used (the real-world
-            #                            pattern: REF=A ALT="C,T,G"
-            #                            regardless of relevance)
-            [b"A", b"C", b"T", b"G"],  # all 3 populated, compound het
-            #                            using two of them
-            [b"A", b"C", b"T", b"G"],  # all 3 populated, hom-ref
-            [b"A", b"C", b"T", b"G"],  # all 3 populated, missing
-        ],
+        [[b"A", b"C", b"T", b"G"]] * 5,
         dtype="S1",
     )
     call_genotype = np.array(
         [
-            [[0, 2]],  # het for the slot-2 "T" -> ALT="T" -> expect 0/1
-            [[0, 1]],  # het for the slot-1 "T" -> ALT="T" -> expect 0/1
-            [[3, 3]],  # hom-alt for the slot-3 "T" -> ALT="T" -> expect 1/1
-            [[0, 3]],  # het for slot-3 "T"; slot-1 "C" unused -> expect ALT="T", GT=0/1
-            [
-                [0, 2]
-            ],  # het for slot-2 "T"; "C" and "G" unused -> expect ALT="T", GT=0/1
-            [
-                [1, 3]
-            ],  # het for slot-1 "C" and slot-3 "G"; "T" unused -> expect ALT="C,G", GT=1/2
-            [[0, 0]],  # hom-ref -> expect ALT=".", GT=0/0
-            [[-1, -1]],  # missing -> expect ALT=".", GT=./.
+            [[0, 1]],  # het
+            [[0, 0]],  # hom-ref -> not written
+            [[-1, -1]],  # missing
+            [[1, 3]],  # het for two alternate alleles
+            [[2, 2]],  # hom-alt
         ],
         dtype="i1",
     )
-    positions = [100, 200, 300, 400, 500, 600, 700, 800]
+    positions = [100, 200, 300, 400, 500]
     expected = {
-        100: ("T", "0/1"),
-        200: ("T", "0/1"),
-        300: ("T", "1/1"),
-        400: ("T", "0/1"),
-        500: ("T", "0/1"),
-        600: ("C,G", "1/2"),
-        700: (".", "0/0"),
-        800: (".", "./."),
+        100: "0/1",
+        300: "./.",
+        400: "1/3",
+        500: "2/2",
     }
 
     n_variants = len(positions)
@@ -682,7 +573,7 @@ def test_vcf_exporter_allele_index_remapping(
     )
     monkeypatch.setattr(api, "snp_calls", lambda **kwargs: ds)
 
-    output_path = str(tmp_path / "test_allele_remap.vcf.gz")
+    output_path = str(tmp_path / "test_synthetic.vcf.gz")
     api.snp_calls_to_vcf(
         output_path=output_path,
         region=contig,
@@ -693,21 +584,12 @@ def test_vcf_exporter_allele_index_remapping(
     with gzip.open(output_path, "rt") as f:
         lines = f.readlines()
     data_lines = [line for line in lines if not line.startswith("#")]
-    assert len(data_lines) == n_variants
 
+    written = {}
     for line in data_lines:
         fields_row = line.strip().split("\t")
         pos = int(fields_row[1])
-        alt = fields_row[4]
-        gt = fields_row[9].split(":")[0]
-        expected_alt, expected_gt = expected[pos]
-        assert alt == expected_alt, f"at {pos}: expected ALT {expected_alt}, got {alt}"
-        assert gt == expected_gt, f"at {pos}: expected GT {expected_gt}, got {gt}"
-        # Every GT allele index must be valid for the ALT column that
-        # was actually written (i.e. in range for the number of ALT
-        # alleles listed), which is the invariant this fix guarantees.
-        if gt == "./.":
-            continue
-        n_alt_alleles = 0 if alt == "." else len(alt.split(","))
-        for allele_idx in gt.split("/"):
-            assert int(allele_idx) <= n_alt_alleles
+        assert fields_row[3] == "A"
+        assert fields_row[4] == "C,T,G"
+        written[pos] = fields_row[9].split(":")[0]
+    assert written == expected

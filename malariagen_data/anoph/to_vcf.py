@@ -5,8 +5,8 @@ from datetime import date
 from dataclasses import dataclass
 from typing import Optional
 import dask
-from dask.array.core import Array
-from xarray.core.dataset import Dataset
+import dask.array as da
+import xarray as xr
 import numpy as np
 from numpydoc_decorator import doc  # type: ignore
 import pysam
@@ -130,16 +130,12 @@ class SnpVcfExporter(
         sample_sets: base_params.sample_sets,
         sample_query: base_params.sample_query,
         sample_query_options: Optional[base_params.sample_query_options] = None,
-        sample_indices: Optional[base_params.sample_indices] = None,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
         overwrite: plink_params.overwrite = False,
         fields: vcf_params.vcf_fields = ("GT",),
     ) -> str:
-        base_params._validate_sample_selection_params(
-            sample_query=sample_query, sample_indices=sample_indices
-        )
         _validate_single_sample_selection(
             sample_sets=sample_sets, sample_query=sample_query
         )
@@ -173,7 +169,6 @@ class SnpVcfExporter(
             sample_sets=sample_sets,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
-            sample_indices=sample_indices,
             site_mask=site_mask,
             inline_array=inline_array,
             chunks=chunks,
@@ -259,12 +254,11 @@ class SnpVcfExporter(
                             if s:
                                 alt_alleles.append(s)
 
-                        genotype_data = variant_chunk_data.gt_chunk[j, 0]
-                        genotype = (
-                            (None,) * len(genotype_data)
-                            if np.any(genotype_data < 0)
-                            else tuple(int(allele) for allele in genotype_data)
-                        )
+                        genotype: tuple[Optional[int], ...]
+                        if np.any(genotype_data < 0):
+                            genotype = (None,) * len(genotype_data)
+                        else:
+                            genotype = tuple(int(allele) for allele in genotype_data)
 
                         record = header.new_record(
                             contig=str(chrom),
@@ -305,18 +299,18 @@ class SnpVcfExporter(
                                 sample["MQ"] = None
                         f.write(record)
 
-        pysam.tabix_index(output_path, preset="vcf", force=overwrite)
+        pysam.tabix_index(output_path, preset="vcf", force=True)
         return output_path
 
     def _get_chunks(
         self,
         ci: int,
         offsets: np.ndarray,
-        gt_data: Array,
-        pos_data: Array,
-        contig_data: Array,
-        allele_data: Array,
-        optional_arrays: dict[str, Array],
+        gt_data: da.Array,
+        pos_data: da.Array,
+        contig_data: da.Array,
+        allele_data: da.Array,
+        optional_arrays: dict[str, da.Array],
     ) -> VariantChunkData:
         start = offsets[ci]
         stop = offsets[ci + 1]
@@ -365,8 +359,8 @@ class SnpVcfExporter(
         return chunk_output
 
     def _get_optional_data(
-        self, include_gq: bool, include_ad: bool, include_mq: bool, ds: Dataset
-    ) -> dict[str, Array]:
+        self, include_gq: bool, include_ad: bool, include_mq: bool, ds: xr.Dataset
+    ) -> dict[str, da.Array]:
         # Optional field arrays — may not exist in all datasets.
         gq_data = None
         ad_data = None
