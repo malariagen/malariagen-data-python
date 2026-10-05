@@ -1040,6 +1040,7 @@ class AnophelesSimulator:
         self.init_cnv_hmm()
         self.init_cnv_coverage_calls()
         self.init_cnv_discordant_read_calls()
+        self.init_karyotype_tags()
 
     @property
     def contigs(self) -> Tuple[str, ...]:
@@ -1122,6 +1123,9 @@ class AnophelesSimulator:
         pass
 
     def init_cnv_discordant_read_calls(self):
+        pass
+
+    def init_karyotype_tags(self):
         pass
 
 
@@ -1975,6 +1979,36 @@ class Ag3Simulator(AnophelesSimulator):
                     contig_sizes=self.contig_sizes,
                     rng=self.rng,
                 )
+
+    def init_karyotype_tags(self):
+        import csv
+
+        tag_snps = []
+        for contig, inversion in [("2L", "2La"), ("2R", "2Rb")]:
+            # Get positions that exist in the simulated SNP sites
+            pos = self.snp_sites[f"{contig}/variants/POS"][:]
+            # Pick ~20 positions spread across the contig
+            n_tags = min(20, len(pos))
+            indices = np.linspace(0, len(pos) - 1, n_tags, dtype=int)
+            selected_pos = pos[indices]
+
+            # Get the REF alleles at those positions to determine ALT
+            ref = self.snp_sites[f"{contig}/variants/REF"][:]
+            selected_ref = ref[indices]
+
+            # Pick an alt allele different from ref
+            for p, r in zip(selected_pos, selected_ref):
+                alt = b"T" if r != b"T" else b"A"
+                tag_snps.append((inversion, contig, int(p), alt.decode()))
+
+        # Write to CSV in fixture dir
+        csv_path = self.bucket_path / "karyotype_tag_snps_test.csv"
+        with open(csv_path, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["inversion", "contig", "position", "alt_allele"])
+            writer.writerows(tag_snps)
+
+        self.karyotype_tag_path = csv_path
 
 
 class Af1Simulator(AnophelesSimulator):
