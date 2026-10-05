@@ -102,7 +102,7 @@ class SnpVcfExporter(
 
     @doc(
         summary="""
-            Export SNP calls to Variant Call Format (VCF).
+            Extract SNP calls for sample and export to Variant Call Format (VCF).
         """,
         extended_summary="""
             This function writes SNP calls to a VCF file. Data is written
@@ -117,7 +117,9 @@ class SnpVcfExporter(
             required to select exactly one sample, and must be of the
             form `"sample_id == '<sample_id>'"`. Any other query (e.g.
             selecting samples by cohort, or more than one sample_id) is
-            rejected.
+            rejected. An accompanying tabix-format index file is created
+            in the same location as the VCF output file, with the same name but a
+            `.tbi` suffix.
         """,
         returns="""
         Path to the VCF output file.
@@ -130,7 +132,7 @@ class SnpVcfExporter(
         sample_sets: base_params.sample_sets,
         sample_query: base_params.sample_query,
         sample_query_options: Optional[base_params.sample_query_options] = None,
-        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
+        site_mask: Optional[base_params.site_mask] = None,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
         overwrite: plink_params.overwrite = False,
