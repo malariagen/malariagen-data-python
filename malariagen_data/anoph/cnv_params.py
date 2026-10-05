@@ -2,10 +2,12 @@
 
 from typing import Optional
 
+from pydantic import Field
 from typing_extensions import Annotated, TypeAlias
 
 max_coverage_variance: TypeAlias = Annotated[
     Optional[float],
+    Field(gt=0),
     """
     Remove samples if coverage variance exceeds this value.
     """,

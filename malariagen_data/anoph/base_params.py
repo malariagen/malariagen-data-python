@@ -2,6 +2,7 @@
 
 from typing import Final, List, Mapping, Optional, Sequence, Tuple, Union
 
+from pydantic import Field
 from typing_extensions import Annotated, TypeAlias
 
 from ..util import (
@@ -168,6 +169,7 @@ site_class: TypeAlias = Annotated[
 
 cohort_size: TypeAlias = Annotated[
     int,
+    Field(ge=1),
     """
     Randomly down-sample to this value if the number of samples in the
     cohort is greater. Raise an error if the number of samples is less
@@ -177,6 +179,7 @@ cohort_size: TypeAlias = Annotated[
 
 min_cohort_size: TypeAlias = Annotated[
     int,
+    Field(ge=1),
     """
     Minimum cohort size. Raise an error if the number of samples is
     less than this value.
@@ -185,6 +188,7 @@ min_cohort_size: TypeAlias = Annotated[
 
 max_cohort_size: TypeAlias = Annotated[
     int,
+    Field(ge=1),
     """
     Randomly down-sample to this value if the number of samples in the
     cohort is greater.
@@ -193,6 +197,7 @@ max_cohort_size: TypeAlias = Annotated[
 
 random_seed: TypeAlias = Annotated[
     int,
+    Field(ge=0),
     "Random seed used for reproducible down-sampling.",
 ]
 
@@ -228,6 +233,7 @@ cohorts: TypeAlias = Annotated[
 
 n_jack: TypeAlias = Annotated[
     int,
+    Field(ge=1),
     """
     Number of blocks to divide the data into for the block jackknife
     estimation of confidence intervals. N.B., larger is not necessarily
@@ -237,6 +243,7 @@ n_jack: TypeAlias = Annotated[
 
 confidence_level: TypeAlias = Annotated[
     float,
+    Field(gt=0, lt=1),
     """
     Confidence level to use for confidence interval calculation. E.g., 0.95
     means 95% confidence interval.
@@ -286,6 +293,7 @@ DEFAULT: Final[str] = "default"
 
 n_snps: TypeAlias = Annotated[
     int,
+    Field(ge=1),
     """
     The desired number of SNPs to use when running the analysis.
     SNPs will be evenly thinned to approximately this number.
@@ -294,6 +302,7 @@ n_snps: TypeAlias = Annotated[
 
 thin_offset: TypeAlias = Annotated[
     int,
+    Field(ge=0),
     """
     Starting index for SNP thinning. Change this to repeat the analysis
     using a different set of SNPs.

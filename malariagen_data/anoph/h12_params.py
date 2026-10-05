@@ -2,6 +2,7 @@
 
 from typing import Optional, Sequence, Union
 
+from pydantic import Field
 from typing_extensions import Annotated, TypeAlias
 
 from . import base_params
@@ -17,6 +18,7 @@ window_sizes_default: window_sizes = (100, 200, 500, 1000, 2000, 5000, 10000, 20
 
 window_size: TypeAlias = Annotated[
     int,
+    Field(ge=1),
     """
     The size of windows (number of SNPs) used to calculate statistics within.
     """,

@@ -4,6 +4,7 @@ plotted with bokeh."""
 from typing import Literal, Mapping, Optional, Union, Final, Sequence
 
 import bokeh.models
+from pydantic import Field
 from typing_extensions import Annotated, TypeAlias
 
 sizing_mode: TypeAlias = Annotated[
@@ -33,21 +34,25 @@ width_default: width = None
 
 height: TypeAlias = Annotated[
     int,
+    Field(gt=0),
     "Plot height in pixels (px).",
 ]
 
 row_height: TypeAlias = Annotated[
     int,
+    Field(gt=0),
     "Plot height per row (sample) in pixels (px).",
 ]
 
 track_height: TypeAlias = Annotated[
     int,
+    Field(gt=0),
     "Main track height in pixels (px).",
 ]
 
 genes_height: TypeAlias = Annotated[
     int,
+    Field(gt=0),
     "Genes track height in pixels (px).",
 ]
 
