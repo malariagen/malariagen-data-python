@@ -1,14 +1,14 @@
 import os
 import re
+import math
 from datetime import date
+from dataclasses import dataclass
 from typing import Optional
 import dask
 from dask.array.core import Array
 from xarray.core.dataset import Dataset
 import numpy as np
 from numpydoc_decorator import doc  # type: ignore
-from dataclasses import dataclass
-import math
 import pysam
 
 from .snp_data import AnophelesSnpData
@@ -19,13 +19,13 @@ from . import vcf_params
 
 @dataclass
 class VariantChunkData:
-    gq_chunk: Array
-    ad_chunk: Array
-    mq_chunk: Array
-    gt_chunk: Array
-    pos_chunk: Array
-    contig_chunk: Array
-    allele_chunk: Array
+    gq_chunk: Optional[np.ndarray]
+    ad_chunk: Optional[np.ndarray]
+    mq_chunk: Optional[np.ndarray]
+    gt_chunk: np.ndarray
+    pos_chunk: np.ndarray
+    contig_chunk: np.ndarray
+    allele_chunk: np.ndarray
 
 
 # Supported FORMAT fields, the fixed order in which their values are
@@ -242,6 +242,9 @@ class SnpVcfExporter(
                     )
 
                     for j in range(variant_chunk_data.gt_chunk.shape[0]):
+                        genotype_data = variant_chunk_data.gt_chunk[j, 0]
+                        if np.array_equal(genotype_data, (0, 0)):
+                            continue
                         chrom = contigs[variant_chunk_data.contig_chunk[j]]
                         pos = int(variant_chunk_data.pos_chunk[j])
                         alleles = variant_chunk_data.allele_chunk[j]
@@ -262,8 +265,6 @@ class SnpVcfExporter(
                             if np.any(genotype_data < 0)
                             else tuple(int(allele) for allele in genotype_data)
                         )
-                        if genotype == (0, 0):
-                            continue
 
                         record = header.new_record(
                             contig=str(chrom),
@@ -310,13 +311,13 @@ class SnpVcfExporter(
     def _get_chunks(
         self,
         ci: int,
-        offsets: np.array,
+        offsets: np.ndarray,
         gt_data: Array,
         pos_data: Array,
         contig_data: Array,
         allele_data: Array,
-        optional_arrays: dict,
-    ) -> tuple:
+        optional_arrays: dict[str, Array],
+    ) -> VariantChunkData:
         start = offsets[ci]
         stop = offsets[ci + 1]
 
@@ -365,7 +366,7 @@ class SnpVcfExporter(
 
     def _get_optional_data(
         self, include_gq: bool, include_ad: bool, include_mq: bool, ds: Dataset
-    ) -> dict:
+    ) -> dict[str, Array]:
         # Optional field arrays — may not exist in all datasets.
         gq_data = None
         ad_data = None
