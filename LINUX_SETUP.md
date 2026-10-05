@@ -80,7 +80,7 @@ exec bash
 
 ## 4. Install Poetry and Python 3.12
 
-The package requires `>=3.10,<3.13`. We use Poetry's built-in installer to handle the Python version universally across all distributions.
+The package requires `>=3.10,<3.14`. We use Poetry's built-in installer to handle the Python version universally across all distributions.
 
 ```bash
 pipx install poetry
