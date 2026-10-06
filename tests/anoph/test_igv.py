@@ -130,9 +130,13 @@ def test_view_alignments_with_local_snp_vcf(monkeypatch):
 
     snp_track = next(track for track in captured["tracks"] if track["name"] == "SNPs")
     assert snp_track["url"] == local_vcf_url
-    assert snp_track["indexURL"] == f"{local_vcf_url}.tbi"
+    # A local VCF has no index, so IGV must load it in full.
+    assert snp_track["indexed"] is False
+    assert "indexURL" not in snp_track
 
     captured.clear()
     api.view_alignments(region="2L:1-10", sample="S1", init=False)
     snp_track = next(track for track in captured["tracks"] if track["name"] == "SNPs")
     assert snp_track["url"] == "https://example.org/S1.vcf.gz"
+    assert snp_track["indexURL"] == "https://example.org/S1.vcf.gz.tbi"
+    assert "indexed" not in snp_track

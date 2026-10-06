@@ -100,9 +100,6 @@ class AnophelesIgv(
         # Locate record for sample.
         cat_rec = df_cat.set_index("sample_id").loc[sample]
         bam_url = cat_rec["alignments_bam"]
-        vcf_url = (
-            snp_vcf_url if snp_vcf_url is not None else cat_rec["snp_genotypes_vcf"]
-        )
 
         # Set up site filters tracks.
         contig = region.contig
@@ -112,17 +109,23 @@ class AnophelesIgv(
         )
 
         # Add SNPs track.
-        tracks.append(
-            {
-                "name": "SNPs",
-                "url": vcf_url,
-                "indexURL": f"{vcf_url}.tbi",
-                "format": "vcf",
-                "type": "variant",
-                "visibilityWindow": visibility_window,  # bp
-                "height": 50,
-            }
-        )
+        snp_track = {
+            "name": "SNPs",
+            "format": "vcf",
+            "type": "variant",
+            "visibilityWindow": visibility_window,  # bp
+            "height": 50,
+        }
+        if snp_vcf_url is not None:
+            # A local VCF, e.g. from snp_calls_to_vcf(), has no index, so
+            # IGV loads it in full.
+            snp_track["url"] = snp_vcf_url
+            snp_track["indexed"] = False
+        else:
+            vcf_url = cat_rec["snp_genotypes_vcf"]
+            snp_track["url"] = vcf_url
+            snp_track["indexURL"] = f"{vcf_url}.tbi"
+        tracks.append(snp_track)
 
         # Add alignments track.
         tracks.append(
@@ -187,9 +190,11 @@ class AnophelesIgv(
             """,
             init="If True, call igv_notebook.init().",
             snp_vcf_url="""
-                Optional URL for a local, tabix-indexed VCF. For Jupyter Notebook
-                and Lab, the VCF and its `.tbi` index must be under the Jupyter
-                startup directory tree; pass a URL relative to that tree (e.g.
+                Optional URL for a local VCF, e.g. one written by
+                `snp_calls_to_vcf()`. The VCF is loaded without an index, so it
+                should be small (e.g. a single sample over a region). For Jupyter
+                Notebook and Lab, the VCF must be under the Jupyter startup
+                directory tree; pass a URL relative to that tree (e.g.
                 `/data/sample.vcf.gz`). If omitted, use the catalog VCF.
             """,
         ),

@@ -105,7 +105,6 @@ BioPython = "*"
 scikit-allel = ">=1.3.13"
 xarray = "*"
 plotly = "*"
-pysam = ">=0.22.0"
 # https://github.com/malariagen/malariagen-data-python/issues/845
 # https://github.com/malariagen/malariagen-data-python/issues/734
 # https://github.com/malariagen/malariagen-data-python/issues/743

@@ -9,7 +9,7 @@ import dask.array as da
 import xarray as xr
 import numpy as np
 from numpydoc_decorator import doc  # type: ignore
-import pysam
+from Bio import bgzf  # type: ignore
 
 from .snp_data import AnophelesSnpData
 from . import base_params
@@ -45,6 +45,17 @@ _FORMAT_HEADERS = {
     # under the reserved key's declared type.
     "MQ": '##FORMAT=<ID=MQ,Number=1,Type=Integer,Description="Mapping Quality">',
 }
+_HEADER_COLUMNS = (
+    "#CHROM",
+    "POS",
+    "ID",
+    "REF",
+    "ALT",
+    "QUAL",
+    "FILTER",
+    "INFO",
+    "FORMAT",
+)
 
 # snp_calls_to_vcf() only supports exporting a single sample at a time
 # (its current use case is generating a per-sample VCF for IGV), so
@@ -52,6 +63,11 @@ _FORMAT_HEADERS = {
 _SINGLE_SAMPLE_QUERY_PATTERN = re.compile(
     r"""^\s*sample_id\s*==\s*(['"])[^'"]+\1\s*$"""
 )
+
+
+def _format_int(value) -> str:
+    # Negative values are missing data.
+    return "." if value < 0 else str(int(value))
 
 
 def _validate_single_sample_selection(
@@ -107,8 +123,9 @@ class SnpVcfExporter(
         extended_summary="""
             This function writes SNP calls to a VCF file. Data is written
             in chunks to avoid loading the entire genotype matrix into
-            memory. Output is BGZF-compressed and tabix-indexed; the
-            `output_path` must end with `.vcf.gz`.
+            memory. Output is BGZF-compressed; the `output_path` must end
+            with `.vcf.gz`. No index is created, so the output is intended
+            to be small enough to load in full (e.g. by IGV).
 
             `sample_sets` and `sample_query` are both required: a VCF is
             only meaningful with respect to an explicit sample basis for
@@ -117,9 +134,7 @@ class SnpVcfExporter(
             required to select exactly one sample, and must be of the
             form `"sample_id == '<sample_id>'"`. Any other query (e.g.
             selecting samples by cohort, or more than one sample_id) is
-            rejected. An accompanying tabix-format index file is created
-            in the same location as the VCF output file, with the same name but a
-            `.tbi` suffix.
+            rejected.
         """,
         returns="""
         Path to the VCF output file.
@@ -143,8 +158,7 @@ class SnpVcfExporter(
         )
         if not output_path.endswith(".vcf.gz"):
             raise ValueError(
-                "output_path must end with .vcf.gz: "
-                "BGZF compression and tabix indexing require this suffix."
+                "output_path must end with .vcf.gz: output is BGZF-compressed."
             )
 
         # Validate fields parameter.
@@ -162,8 +176,6 @@ class SnpVcfExporter(
         fields = tuple(f for f in _FIELD_ORDER if f in fields)
 
         if os.path.exists(output_path) and not overwrite:
-            if not os.path.exists(output_path + ".tbi"):
-                pysam.tabix_index(output_path, preset="vcf")
             return output_path
 
         ds = self.snp_calls(
@@ -198,20 +210,23 @@ class SnpVcfExporter(
         include_gq = "GQ" in fields
         include_ad = "AD" in fields
         include_mq = "MQ" in fields
-        header = pysam.VariantHeader()
-        for header_record in list(header.records):
-            if header_record.key in {"fileformat", "FILTER"}:
-                header_record.remove()
-        header.add_meta("fileformat", value="VCFv4.3")
-        header.add_meta("fileDate", value=date.today().strftime("%Y%m%d"))
-        header.add_meta("source", value="malariagen_data")
-        for contig in contigs:
-            header.contigs.add(str(contig))
-        for field in fields:
-            header.add_line(_FORMAT_HEADERS[field])
-        header.add_sample(sample_id)
+        format_str = ":".join(fields)
 
-        with pysam.VariantFile(output_path, mode="w", header=header) as f:
+        header_lines = [
+            "##fileformat=VCFv4.3",
+            '##FILTER=<ID=PASS,Description="All filters passed">',
+            f"##fileDate={date.today().strftime('%Y%m%d')}",
+            "##source=malariagen_data",
+        ]
+        header_lines += [f"##contig=<ID={contig}>" for contig in contigs]
+        header_lines += [_FORMAT_HEADERS[field] for field in fields]
+        header_lines.append("\t".join(_HEADER_COLUMNS + (sample_id,)))
+
+        # BGZF is valid gzip, and is the block-compressed variant that
+        # genomics tools (e.g. IGV, bcftools) expect for .vcf.gz files.
+        with bgzf.BgzfWriter(output_path, "wb") as f:
+            f.write(("\n".join(header_lines) + "\n").encode())
+
             # Extract dask arrays.
             gt_data = ds["call_genotype"].data
             pos_data = ds["variant_position"].data
@@ -238,6 +253,7 @@ class SnpVcfExporter(
                         optional_arrays,
                     )
 
+                    lines = []
                     for j in range(variant_chunk_data.gt_chunk.shape[0]):
                         genotype_data = variant_chunk_data.gt_chunk[j, 0]
                         if np.array_equal(genotype_data, (0, 0)):
@@ -256,52 +272,57 @@ class SnpVcfExporter(
                             if s:
                                 alt_alleles.append(s)
 
-                        genotype: tuple[Optional[int], ...]
                         if np.any(genotype_data < 0):
-                            genotype = (None,) * len(genotype_data)
+                            gt = "/".join("." for _ in genotype_data)
                         else:
-                            genotype = tuple(int(allele) for allele in genotype_data)
-
-                        record = header.new_record(
-                            contig=str(chrom),
-                            start=pos - 1,
-                            alleles=(ref, *alt_alleles),
-                        )
-                        sample = record.samples[sample_id]
-                        sample["GT"] = genotype
+                            gt = "/".join(str(int(allele)) for allele in genotype_data)
+                        sample_values = [gt]
                         # GQ.
                         if include_gq:
                             if variant_chunk_data.gq_chunk is not None:
-                                value = variant_chunk_data.gq_chunk[j, 0]
-                                sample["GQ"] = None if value < 0 else int(value)
+                                sample_values.append(
+                                    _format_int(variant_chunk_data.gq_chunk[j, 0])
+                                )
                             else:
-                                sample["GQ"] = None
+                                sample_values.append(".")
                         # AD.
                         if include_ad:
                             if variant_chunk_data.ad_chunk is not None:
                                 ad_values = variant_chunk_data.ad_chunk[j, 0]
-                                sample["AD"] = tuple(
-                                    None if value < 0 else int(value)
-                                    for value in ad_values
+                                sample_values.append(
+                                    ",".join(_format_int(value) for value in ad_values)
                                 )
                             else:
-                                sample["AD"] = None
+                                sample_values.append(".")
                         # MQ. Rounded to the nearest integer: the
                         # underlying data is a float, but the VCF spec
                         # fixes the reserved FORMAT/MQ key as Integer.
                         if include_mq:
                             if variant_chunk_data.mq_chunk is not None:
                                 value = variant_chunk_data.mq_chunk[j, 0]
-                                sample["MQ"] = (
-                                    None
+                                sample_values.append(
+                                    "."
                                     if math.isnan(value) or value < 0
-                                    else round(value)
+                                    else str(round(float(value)))
                                 )
                             else:
-                                sample["MQ"] = None
-                        f.write(record)
+                                sample_values.append(".")
 
-        pysam.tabix_index(output_path, preset="vcf", force=True)
+                        record = (
+                            str(chrom),
+                            str(pos),
+                            ".",
+                            ref,
+                            ",".join(alt_alleles) or ".",
+                            ".",
+                            ".",
+                            ".",
+                            format_str,
+                            ":".join(sample_values),
+                        )
+                        lines.append("\t".join(record) + "\n")
+                    f.write("".join(lines).encode())
+
         return output_path
 
     def _get_chunks(

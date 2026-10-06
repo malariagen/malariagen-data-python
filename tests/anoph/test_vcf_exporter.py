@@ -6,9 +6,9 @@ import subprocess
 
 import dask.array as da
 import numpy as np
-import pysam
 import pytest
 import xarray as xr
+from Bio import bgzf  # type: ignore
 from pytest_cases import parametrize_with_cases
 
 from malariagen_data import af1 as _af1
@@ -328,9 +328,8 @@ def test_vcf_exporter_overwrite(fixture, api: SnpVcfExporter, tmp_path):
         overwrite=True,
     )
     assert os.path.exists(output_path)
-    assert os.path.exists(output_path + ".tbi")
-    with pysam.VariantFile(output_path) as vcf:
-        list(vcf.fetch())
+    with bgzf.BgzfReader(output_path, "rt") as f:
+        assert f.readline().strip() == "##fileformat=VCFv4.3"
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -358,7 +357,17 @@ def test_vcf_exporter_gzip(fixture, api: SnpVcfExporter, tmp_path):
     # Verify it's specifically valid BGZF, not just plain gzip: this is
     # what tools like tabix/bedtools require for .vcf.gz files, and
     # what distinguishes genuine BGZF from a plain gzip stream that
-    # happens to decompress fine but isn't block-structured.
+    # happens to decompress fine but isn't block-structured. IGV also
+    # relies on the "BC" extra subfield to decompress every block.
+    with open(output_path, "rb") as f:
+        data = f.read()
+    assert data[12:14] == b"BC", "missing BGZF extra subfield"
+    assert data.endswith(bgzf._bgzf_eof), "missing BGZF EOF marker"
+    with bgzf.BgzfReader(output_path, "rt") as f:
+        bgzf_text = "".join(iter(lambda: f.read(65536), ""))
+    with gzip.open(output_path, "rt") as f:
+        assert f.read() == bgzf_text
+
     if shutil.which("bgzip") is not None:
         result = subprocess.run(
             ["bgzip", "-t", output_path], capture_output=True, text=True
