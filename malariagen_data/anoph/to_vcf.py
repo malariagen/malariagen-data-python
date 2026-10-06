@@ -29,9 +29,7 @@ class VariantChunkData:
 
 
 # Supported FORMAT fields, the fixed order in which their values are
-# always written per sample (regardless of what order the caller's
-# `fields` argument happens to iterate in — e.g. a set has no
-# guaranteed order at all), and their VCF header definitions.
+# always written per sample , and their VCF header definitions.
 _VALID_FIELDS = {"GT", "GQ", "AD", "MQ"}
 _FIELD_ORDER = ("GT", "GQ", "AD", "MQ")
 _FORMAT_HEADERS = {
@@ -41,8 +39,7 @@ _FORMAT_HEADERS = {
     # N.B., "MQ" is a reserved FORMAT key in the VCF specification,
     # fixed there as Integer, Number=1 — even though the underlying
     # data is a float (RMS mapping quality), so values are rounded to
-    # the nearest integer when written below to stay spec-compliant
-    # under the reserved key's declared type.
+    # the nearest integer
     "MQ": '##FORMAT=<ID=MQ,Number=1,Type=Integer,Description="Mapping Quality">',
 }
 _HEADER_COLUMNS = (
