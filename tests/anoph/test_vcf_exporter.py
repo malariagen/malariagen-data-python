@@ -81,6 +81,40 @@ def _pick_single_sample_query(api: SnpVcfExporter, sample_sets):
     return sample_id, sample_query
 
 
+def _synthetic_snp_calls(sample, contig, call_genotype, positions):
+    """Build a small single-sample SNP calls dataset, with REF "A" and
+    ALT "C,T,G" at every site and no GQ, AD or MQ arrays."""
+    n_variants = len(positions)
+    variant_allele = np.array(
+        [[b"A", b"C", b"T", b"G"]] * n_variants,
+        dtype="S1",
+    )
+    return xr.Dataset(
+        data_vars={
+            "call_genotype": (
+                ["variants", "samples", "ploidy"],
+                da.from_array(call_genotype, chunks=(n_variants, 1, 2)),
+            ),
+            "variant_allele": (
+                ["variants", "alleles"],
+                da.from_array(variant_allele, chunks=(n_variants, 4)),
+            ),
+        },
+        coords={
+            "variant_position": (
+                "variants",
+                da.from_array(np.array(positions), chunks=n_variants),
+            ),
+            "variant_contig": (
+                "variants",
+                da.from_array(np.zeros(n_variants, dtype="u1"), chunks=n_variants),
+            ),
+            "sample_id": ("samples", np.array([sample])),
+        },
+        attrs={"contigs": (contig,)},
+    )
+
+
 @parametrize_with_cases("fixture,api", cases=".")
 def test_vcf_exporter(fixture, api: SnpVcfExporter, tmp_path):
     region = random.choice(api.contigs)
@@ -523,6 +557,83 @@ def test_vcf_exporter_fields_gt_required(fixture, api: SnpVcfExporter, tmp_path)
 
 
 @parametrize_with_cases("fixture,api", cases=".")
+def test_vcf_exporter_fields_unknown(fixture, api: SnpVcfExporter, tmp_path):
+    region = api.contigs[0]
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = [all_sample_sets[0]]
+    _, sample_query = _pick_single_sample_query(api, sample_sets)
+    output_path = str(tmp_path / "test_unknown_field.vcf.gz")
+
+    with pytest.raises(ValueError, match="Unknown FORMAT fields"):
+        api.snp_calls_to_vcf(
+            output_path=output_path,
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            fields=("GT", "DP"),
+        )
+
+
+@pytest.mark.parametrize("filename", ["test.vcf", "test.vcf.bgz", "test.gz"])
+@parametrize_with_cases("fixture,api", cases=".")
+def test_vcf_exporter_output_path_suffix(
+    fixture, api: SnpVcfExporter, tmp_path, filename
+):
+    region = api.contigs[0]
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = [all_sample_sets[0]]
+    _, sample_query = _pick_single_sample_query(api, sample_sets)
+    output_path = str(tmp_path / filename)
+
+    with pytest.raises(ValueError, match="must end with .vcf.gz"):
+        api.snp_calls_to_vcf(
+            output_path=output_path,
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+        )
+    assert not os.path.exists(output_path)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_vcf_exporter_missing_optional_fields(
+    fixture, api: SnpVcfExporter, tmp_path, monkeypatch
+):
+    # If GQ, AD or MQ are requested but the dataset has no such array,
+    # the FORMAT column still lists them and their values are written
+    # as missing (".").
+    sample = str(api.sample_metadata()["sample_id"].iloc[0])
+    contig = api.contigs[0]
+    call_genotype = np.array([[[0, 1]], [[-1, -1]], [[2, 2]]], dtype="i1")
+    ds = _synthetic_snp_calls(sample, contig, call_genotype, [100, 200, 300])
+    monkeypatch.setattr(api, "snp_calls", lambda **kwargs: ds)
+
+    output_path = str(tmp_path / "test_missing_optional.vcf.gz")
+    api.snp_calls_to_vcf(
+        output_path=output_path,
+        region=contig,
+        sample_sets=["dummy"],
+        sample_query=f"sample_id == '{sample}'",
+        fields=("GT", "GQ", "AD", "MQ"),
+    )
+
+    with gzip.open(output_path, "rt") as f:
+        lines = f.readlines()
+    data_lines = [line for line in lines if not line.startswith("#")]
+
+    written = {}
+    for line in data_lines:
+        fields_row = line.strip().split("\t")
+        assert fields_row[8] == "GT:GQ:AD:MQ"
+        written[int(fields_row[1])] = fields_row[9]
+    assert written == {
+        100: "0/1:.:.:.",
+        200: "./.:.:.:.",
+        300: "2/2:.:.:.",
+    }
+
+
+@parametrize_with_cases("fixture,api", cases=".")
 def test_vcf_exporter_synthetic_genotypes(
     fixture, api: SnpVcfExporter, tmp_path, monkeypatch
 ):
@@ -533,10 +644,6 @@ def test_vcf_exporter_synthetic_genotypes(
     sample = str(api.sample_metadata()["sample_id"].iloc[0])
     contig = api.contigs[0]
 
-    variant_allele = np.array(
-        [[b"A", b"C", b"T", b"G"]] * 5,
-        dtype="S1",
-    )
     call_genotype = np.array(
         [
             [[0, 1]],  # het
@@ -555,31 +662,7 @@ def test_vcf_exporter_synthetic_genotypes(
         500: "2/2",
     }
 
-    n_variants = len(positions)
-    ds = xr.Dataset(
-        data_vars={
-            "call_genotype": (
-                ["variants", "samples", "ploidy"],
-                da.from_array(call_genotype, chunks=(n_variants, 1, 2)),
-            ),
-            "variant_allele": (
-                ["variants", "alleles"],
-                da.from_array(variant_allele, chunks=(n_variants, 4)),
-            ),
-        },
-        coords={
-            "variant_position": (
-                "variants",
-                da.from_array(np.array(positions), chunks=n_variants),
-            ),
-            "variant_contig": (
-                "variants",
-                da.from_array(np.zeros(n_variants, dtype="u1"), chunks=n_variants),
-            ),
-            "sample_id": ("samples", np.array([sample])),
-        },
-        attrs={"contigs": (contig,)},
-    )
+    ds = _synthetic_snp_calls(sample, contig, call_genotype, positions)
     monkeypatch.setattr(api, "snp_calls", lambda **kwargs: ds)
 
     output_path = str(tmp_path / "test_synthetic.vcf.gz")
