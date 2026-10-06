@@ -1,5 +1,3 @@
-from types import SimpleNamespace
-
 import igv_notebook  # type: ignore
 import numpy as np
 import pandas as pd
@@ -10,6 +8,7 @@ from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 import malariagen_data.anoph.igv as igv_module
 from malariagen_data.anoph.igv import AnophelesIgv
+from malariagen_data.util import Region
 
 
 @pytest.fixture
@@ -113,7 +112,7 @@ def test_view_alignments_with_local_snp_vcf(monkeypatch):
     monkeypatch.setattr(
         igv_module,
         "_parse_single_region",
-        lambda self, region: SimpleNamespace(contig="2L"),
+        lambda self, region: Region("2L", 1, 10),
     )
     monkeypatch.setattr(
         api,

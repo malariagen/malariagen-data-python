@@ -448,28 +448,27 @@ def test_vcf_exporter_fields(fixture, api: SnpVcfExporter, tmp_path):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_vcf_exporter_fields_as_set(fixture, api: SnpVcfExporter, tmp_path):
-    # A `set` has no guaranteed iteration order. The FORMAT column must
-    # still come out in the same fixed order (GT, GQ, AD, MQ) that the
-    # per-sample values are actually written in, regardless of what
-    # order `fields` iterates in as passed by the caller. Previously
-    # the FORMAT column used the caller's (here, arbitrary) order while
-    # values were always written GT:GQ:AD:MQ, so a `set` could easily
-    # produce a VCF whose header lied about which value was which —
-    # e.g. declaring the first value as "MQ" when it was actually the
-    # GT string, which bcftools then fails to parse.
+def test_vcf_exporter_fields_order(fixture, api: SnpVcfExporter, tmp_path):
+    # The FORMAT column must come out in the same fixed order (GT, GQ,
+    # AD, MQ) that the per-sample values are actually written in,
+    # regardless of the order of `fields` as passed by the caller.
+    # Previously the FORMAT column used the caller's order while values
+    # were always written GT:GQ:AD:MQ, producing a VCF whose header lied
+    # about which value was which — e.g. declaring the first value as
+    # "MQ" when it was actually the GT string, which bcftools then
+    # fails to parse.
     region = api.contigs[0]
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = [all_sample_sets[0]]
     _, sample_query = _pick_single_sample_query(api, sample_sets)
 
-    output_path = str(tmp_path / "test_fields_set.vcf.gz")
+    output_path = str(tmp_path / "test_fields_order.vcf.gz")
     api.snp_calls_to_vcf(
         output_path=output_path,
         region=region,
         sample_sets=sample_sets,
         sample_query=sample_query,
-        fields={"GT", "GQ", "AD", "MQ"},
+        fields=("MQ", "AD", "GT", "GQ"),
     )
 
     with gzip.open(output_path, "rt") as f:
@@ -521,7 +520,7 @@ def test_vcf_exporter_output_is_valid_per_bcftools(
         region=region,
         sample_sets=sample_sets,
         sample_query=sample_query,
-        fields={"GT", "GQ", "AD", "MQ"},
+        fields=("MQ", "AD", "GT", "GQ"),
     )
 
     result = subprocess.run(
