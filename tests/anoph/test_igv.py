@@ -1,11 +1,17 @@
+import base64
+import gzip
+
 import igv_notebook  # type: ignore
 import numpy as np
+import pandas as pd
 import pytest
 from pytest_cases import parametrize_with_cases
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
+import malariagen_data.anoph.igv as igv_module
 from malariagen_data.anoph.igv import AnophelesIgv
+from malariagen_data.util import Region
 
 
 @pytest.fixture
@@ -84,3 +90,72 @@ def test_view_alignments(fixture, api: AnophelesIgv):
     ret = api.view_alignments(region=region, sample=sample, init=False)
     # No return value to avoid cluttering notebook output.
     assert ret is None
+
+
+def test_view_alignments_with_local_snp_vcf(monkeypatch, tmp_path):
+    class FakeAnophelesIgv(AnophelesIgv):
+        @property
+        def site_mask_ids(self):
+            return []
+
+        def sample_metadata(self):
+            return pd.DataFrame({"sample_id": ["S1"], "sample_set": ["set1"]})
+
+        def wgs_data_catalog(self, sample_set):
+            return pd.DataFrame(
+                {
+                    "sample_id": ["S1"],
+                    "alignments_bam": ["https://example.org/S1.bam"],
+                    "snp_genotypes_vcf": ["https://example.org/S1.vcf.gz"],
+                }
+            )
+
+    api = object.__new__(FakeAnophelesIgv)
+    captured = {}
+    monkeypatch.setattr(
+        igv_module,
+        "_parse_single_region",
+        lambda self, region: Region("2L", 1, 10),
+    )
+    monkeypatch.setattr(
+        api,
+        "igv",
+        lambda **kwargs: captured.update(kwargs),
+    )
+    vcf_text = b"##fileformat=VCFv4.3\n"
+    vcf_gz_path = tmp_path / "sample.vcf.gz"
+    with gzip.open(vcf_gz_path, "wb") as f:
+        f.write(vcf_text)
+    vcf_plain_path = tmp_path / "sample.vcf"
+    vcf_plain_path.write_bytes(vcf_text)
+
+    for path, media_type in [
+        (vcf_gz_path, "application/gzip"),
+        (str(vcf_plain_path), "text/plain"),
+    ]:
+        captured.clear()
+        api.view_alignments(
+            region="2L:1-10",
+            sample="S1",
+            init=False,
+            snp_vcf_path=path,
+        )
+
+        snp_track = next(
+            track for track in captured["tracks"] if track["name"] == "SNPs"
+        )
+        # The local VCF is embedded in the track as a data URI.
+        prefix = f"data:{media_type};base64,"
+        assert snp_track["url"].startswith(prefix)
+        with open(path, "rb") as f:
+            assert base64.b64decode(snp_track["url"][len(prefix) :]) == f.read()
+        # A local VCF has no index, so IGV must load it in full.
+        assert snp_track["indexed"] is False
+        assert "indexURL" not in snp_track
+
+    captured.clear()
+    api.view_alignments(region="2L:1-10", sample="S1", init=False)
+    snp_track = next(track for track in captured["tracks"] if track["name"] == "SNPs")
+    assert snp_track["url"] == "https://example.org/S1.vcf.gz"
+    assert snp_track["indexURL"] == "https://example.org/S1.vcf.gz.tbi"
+    assert "indexed" not in snp_track

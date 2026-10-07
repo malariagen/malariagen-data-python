@@ -16,3 +16,15 @@ repos:
           - "--fix"
       # Run the formatter.
       - id: ruff-format
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.9.1
+    hooks:
+      # Strip outputs, execution counts and volatile metadata (kernel
+      # display name, language version — these change depending on
+      # which local environment a notebook was last run under, not on
+      # any real edit) from notebooks before they're committed, so
+      # `git diff` only shows real cell-source changes.
+      - id: nbstripout
+        args:
+          - "--extra-keys"
+          - "metadata.kernelspec.display_name metadata.language_info.version"
