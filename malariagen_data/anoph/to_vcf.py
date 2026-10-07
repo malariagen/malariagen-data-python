@@ -15,6 +15,7 @@ from .snp_data import AnophelesSnpData
 from . import base_params
 from . import plink_params
 from . import vcf_params
+from ..util import _parse_multi_region
 
 
 @dataclass
@@ -145,6 +146,7 @@ class SnpVcfExporter(
         sample_query: base_params.sample_query,
         sample_query_options: Optional[base_params.sample_query_options] = None,
         site_mask: Optional[base_params.site_mask] = None,
+        max_region_size: Optional[int] = 1_000_000,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
         overwrite: plink_params.overwrite = False,
@@ -168,6 +170,18 @@ class SnpVcfExporter(
             )
         if "GT" not in fields:
             raise ValueError("GT must be included in fields.")
+        # IGV loads the whole (unindexed) VCF into the browser, so cap the
+        # total region size.
+        region_size = sum(
+            self.genome_sequence(region=r).shape[0]
+            for r in _parse_multi_region(self, region)
+        )
+        if max_region_size is not None and region_size > max_region_size:
+            raise ValueError(
+                f"region {region!r} spans {region_size:,} bp, more than "
+                f"max_region_size ({max_region_size:,} bp). Use a smaller region, "
+                'e.g. "2R:2,400,000-2,500,000", or set max_region_size=None.'
+            )
 
         # Canonicalise the field order to _FIELD_ORDER
         fields = tuple(f for f in _FIELD_ORDER if f in fields)
