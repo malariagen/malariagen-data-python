@@ -1,6 +1,6 @@
 """Parameters for VCF exporter functions."""
 
-from typing import Tuple
+from typing import Optional, Tuple
 
 from typing_extensions import Annotated, TypeAlias
 
@@ -17,5 +17,14 @@ vcf_fields: TypeAlias = Annotated[
     """
     FORMAT fields to include in the VCF output. Must include "GT".
     Supported fields: "GT", "GQ", "AD", "MQ".
+    """,
+]
+
+vcf_max_region_size: TypeAlias = Annotated[
+    Optional[int],
+    """
+    Maximum total size of `region` in base pairs. The VCF is loaded in
+    full by IGV, so large regions are rejected. Set to None to disable
+    this check.
     """,
 ]

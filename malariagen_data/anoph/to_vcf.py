@@ -146,7 +146,7 @@ class SnpVcfExporter(
         sample_query: base_params.sample_query,
         sample_query_options: Optional[base_params.sample_query_options] = None,
         site_mask: Optional[base_params.site_mask] = None,
-        max_region_size: Optional[int] = 1_000_000,
+        max_region_size: vcf_params.vcf_max_region_size = 1_000_000,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
         overwrite: plink_params.overwrite = False,
