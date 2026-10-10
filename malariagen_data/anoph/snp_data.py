@@ -885,7 +885,7 @@ class AnophelesSnpData(
             # always removes the *least*-recently-used entry.
             self._cache_locate_site_class.move_to_end(cache_key)
 
-        except KeyError as exc:
+        except KeyError:
             # Access site annotations data.
             ds_ann = self._site_annotations_raw(
                 contig=region.contig,
@@ -1009,7 +1009,7 @@ class AnophelesSnpData(
                 ) | ((seq_cls == SEQ_CLS_DOWNSTREAM) & (seq_relpos_start > 10_000))
 
             else:
-                raise NotImplementedError(site_class) from exc
+                raise NotImplementedError(site_class) from None
 
             # N.B., site annotations data are provided for every position in the genome. We need to
             # therefore subset to SNP positions.
