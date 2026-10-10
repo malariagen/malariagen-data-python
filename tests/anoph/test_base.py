@@ -261,11 +261,11 @@ def test_prep_sample_sets_param(ag3_sim_api: AnophelesBase):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_lookup_study(fixture, api):
+def test_lookup_study(fixture, api, rng: np.random.Generator):
     # Set up test.
     df_sample_sets = api.sample_sets()
     all_sample_sets = df_sample_sets["sample_set"].values
-    sample_set = np.random.choice(all_sample_sets)
+    sample_set = rng.choice(all_sample_sets)
 
     study_rec_by_sample_set = api.lookup_study(sample_set)
     df_sample_set = df_sample_sets.set_index("sample_set").loc[sample_set]

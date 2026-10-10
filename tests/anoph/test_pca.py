@@ -124,13 +124,13 @@ def case_as1_sim(as1_sim_fixture, as1_sim_api):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_pca_plotting(fixture, api: AnophelesPca):
+def test_pca_plotting(fixture, rng: np.random.Generator, api: AnophelesPca):
     # Parameters for selecting input data.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     data_params = dict(
-        region=str(np.random.choice(api.contigs)),
-        sample_sets=np.random.choice(all_sample_sets, size=2, replace=False).tolist(),
-        site_mask=np.random.choice(list(api.site_mask_ids) + [None]),
+        region=rng.choice(api.contigs),
+        sample_sets=rng.choice(all_sample_sets, 2, replace=False).tolist(),
+        site_mask=rng.choice(list(api.site_mask_ids) + [None]),
     )
     ds = api.biallelic_snp_calls(
         min_minor_ac=pca_params.min_minor_ac_default,
@@ -141,10 +141,10 @@ def test_pca_plotting(fixture, api: AnophelesPca):
     # PCA parameters.
     n_samples = ds.sizes["samples"]
     n_snps_available = ds.sizes["variants"]
-    n_snps = int(np.random.randint(4, n_snps_available + 1))
+    n_snps = rng.integers(4, n_snps_available, endpoint=True, dtype=int)
     # PC3 required for plot_pca_coords_3d()
     assert min(n_samples, n_snps) > 3
-    n_components = int(np.random.randint(3, min(n_samples, n_snps, 10) + 1))
+    n_components = rng.integers(3, min(n_samples, n_snps, 10), endpoint=True, dtype=int)
 
     # Run the PCA.
     pca_df, pca_evr = api.pca(
@@ -210,13 +210,13 @@ def test_pca_plotting(fixture, api: AnophelesPca):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_pca_exclude_samples(fixture, api: AnophelesPca):
+def test_pca_exclude_samples(fixture, rng: np.random.Generator, api: AnophelesPca):
     # Parameters for selecting input data.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     data_params = dict(
-        region=str(np.random.choice(api.contigs)),
-        sample_sets=np.random.choice(all_sample_sets, size=2, replace=False).tolist(),
-        site_mask=np.random.choice(list(api.site_mask_ids) + [None]),
+        region=rng.choice(api.contigs),
+        sample_sets=rng.choice(all_sample_sets, 2, replace=False).tolist(),
+        site_mask=rng.choice(list(api.site_mask_ids) + [None]),
     )
     ds = api.biallelic_snp_calls(
         min_minor_ac=pca_params.min_minor_ac_default,
@@ -225,17 +225,15 @@ def test_pca_exclude_samples(fixture, api: AnophelesPca):
     )
 
     # Exclusion parameters.
-    n_samples_excluded = int(np.random.randint(1, 6))
+    n_samples_excluded = rng.integers(1, 6, dtype=int)
     samples = ds["sample_id"].values.tolist()
-    exclude_samples = np.random.choice(
-        samples, size=n_samples_excluded, replace=False
-    ).tolist()
+    exclude_samples = rng.choice(samples, n_samples_excluded, replace=False).tolist()
 
     # PCA parameters.
     n_samples = ds.sizes["samples"] - n_samples_excluded
     n_snps_available = ds.sizes["variants"]
-    n_snps = int(np.random.randint(4, n_snps_available + 1))
-    n_components = int(np.random.randint(2, min(n_samples, n_snps, 10) + 1))
+    n_snps = rng.integers(4, n_snps_available, endpoint=True, dtype=int)
+    n_components = rng.integers(2, min(n_samples, n_snps, 10), endpoint=True, dtype=int)
 
     # Run the PCA.
     pca_df, pca_evr = api.pca(
@@ -273,13 +271,13 @@ def test_pca_exclude_samples(fixture, api: AnophelesPca):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_pca_fit_exclude_samples(fixture, api: AnophelesPca):
+def test_pca_fit_exclude_samples(fixture, rng: np.random.Generator, api: AnophelesPca):
     # Parameters for selecting input data.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     data_params = dict(
-        region=str(np.random.choice(api.contigs)),
-        sample_sets=np.random.choice(all_sample_sets, size=2, replace=False).tolist(),
-        site_mask=np.random.choice(list(api.site_mask_ids) + [None]),
+        region=rng.choice(api.contigs),
+        sample_sets=rng.choice(all_sample_sets, 2, replace=False).tolist(),
+        site_mask=rng.choice(list(api.site_mask_ids) + [None]),
     )
     ds = api.biallelic_snp_calls(
         min_minor_ac=pca_params.min_minor_ac_default,
@@ -288,17 +286,15 @@ def test_pca_fit_exclude_samples(fixture, api: AnophelesPca):
     )
 
     # Exclusion parameters.
-    n_samples_excluded = int(np.random.randint(1, 6))
+    n_samples_excluded = rng.integers(1, 6, dtype=int)
     samples = ds["sample_id"].values.tolist()
-    exclude_samples = np.random.choice(
-        samples, size=n_samples_excluded, replace=False
-    ).tolist()
+    exclude_samples = rng.choice(samples, n_samples_excluded, replace=False).tolist()
 
     # PCA parameters.
     n_samples = ds.sizes["samples"]
     n_snps_available = ds.sizes["variants"]
-    n_snps = int(np.random.randint(4, n_snps_available + 1))
-    n_components = int(np.random.randint(2, min(n_samples, n_snps, 10) + 1))
+    n_snps = rng.integers(4, n_snps_available, endpoint=True, dtype=int)
+    n_components = rng.integers(2, min(n_samples, n_snps, 10), endpoint=True, dtype=int)
 
     # Run the PCA.
     pca_df, pca_evr = api.pca(
@@ -430,10 +426,10 @@ def test_jitter_determinism():
     fraction = 0.1
 
     rng1 = np.random.default_rng(seed=42)
-    result1 = _jitter(a, fraction, random_state=rng1)
+    result1 = _jitter(a, fraction, rng1)
 
     rng2 = np.random.default_rng(seed=42)
-    result2 = _jitter(a, fraction, random_state=rng2)
+    result2 = _jitter(a, fraction, rng2)
 
     np.testing.assert_array_equal(result1, result2)
 
@@ -446,10 +442,10 @@ def test_jitter_different_seeds():
     fraction = 0.1
 
     rng1 = np.random.default_rng(seed=42)
-    result1 = _jitter(a, fraction, random_state=rng1)
+    result1 = _jitter(a, fraction, rng1)
 
     rng2 = np.random.default_rng(seed=99)
-    result2 = _jitter(a, fraction, random_state=rng2)
+    result2 = _jitter(a, fraction, rng2)
 
     assert not np.array_equal(result1, result2)
 
@@ -462,7 +458,7 @@ def test_jitter_no_global_rng_side_effect():
     state_before = np.random.get_state()[1].copy()
 
     rng = np.random.default_rng(seed=42)
-    _jitter(np.array([1.0, 2.0, 3.0]), 0.1, random_state=rng)
+    _jitter(np.array([1.0, 2.0, 3.0]), 0.1, rng)
 
     state_after = np.random.get_state()[1].copy()
     np.testing.assert_array_equal(state_before, state_after)
