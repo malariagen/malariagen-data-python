@@ -606,17 +606,19 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             # Put the pointer above or below the gene rectangle, depending on + or - strand.
             neg_strand_pointer_y = orig_mid_y_range - 1.1
             pos_strand_pointer_y = orig_mid_y_range + 1.1
-            # Vectorized operation: use np.where instead of Series.apply
             data["pointer_y"] = np.where(
-                data["strand"] == "+", pos_strand_pointer_y, neg_strand_pointer_y
+                data["strand"] == "+",
+                pos_strand_pointer_y,
+                neg_strand_pointer_y,
             )
 
             # Put the label above or below the gene rectangle, depending on + or - strand.
             neg_strand_label_y = orig_mid_y_range - 1.25
             pos_strand_label_y = orig_mid_y_range + 1.3
-            # Vectorized operation: use np.where instead of Series.apply
             data["label_y"] = np.where(
-                data["strand"] == "+", pos_strand_label_y, neg_strand_label_y
+                data["strand"] == "+",
+                pos_strand_label_y,
+                neg_strand_label_y,
             )
 
             # Get the data as a ColumnDataSource.
