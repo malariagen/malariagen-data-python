@@ -705,10 +705,21 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         if len(periods) == 0:
             raise ValueError("No periods available in dataset.")
 
+        def _update_map(variant, taxon, period):
+            if variant is None or taxon is None or period is None:
+                return
+
+            self.plot_frequencies_map_markers(
+                m=freq_map,
+                ds=ds,
+                variant=variant,
+                taxon=taxon,
+                period=period,
+                clear=True,
+            )
+
         controls = ipywidgets.interactive(
-            self.plot_frequencies_map_markers,
-            m=ipywidgets.fixed(freq_map),
-            ds=ipywidgets.fixed(ds),
+            _update_map,
             variant=ipywidgets.Dropdown(
                 options=variants, value=variants[0], description="Variant: "
             ),
@@ -718,7 +729,6 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
             period=ipywidgets.Dropdown(
                 options=periods, value=periods[0], description="Period: "
             ),
-            clear=ipywidgets.fixed(True),
         )
 
         # Lay out widgets.
