@@ -3,6 +3,7 @@ import xarray as xr
 from typing import Callable, Optional, List, Any, TYPE_CHECKING
 import warnings
 import fsspec
+import posixpath
 from numpydoc_decorator import doc  # type: ignore
 
 from ..util import _check_types
@@ -41,13 +42,13 @@ class AnophelesPhenotypeData:
         Load raw phenotypic data from GCS for given sample sets.
         """
         phenotype_dfs = []
+        #base_phenotype_path = f"{self._url}v3.2/phenotypes/all"
+        release = getattr(self, "release", "v3.2")
+        base_phenotype_path = posixpath.join(self._url, release, "phenotypes", "all")
 
         for sample_set in sample_sets:
+            phenotype_path = posixpath.join(base_phenotype_path,sample_set,"phenotypes.csv")
             try:
-                release = self.lookup_release(sample_set=sample_set)
-                release_path = self._release_to_path(release)
-
-                phenotype_path = f"{self._base_path}/{release_path}/phenotypes/all/{sample_set}/phenotypes.csv"
 
                 if not self._fs.exists(phenotype_path):
                     warnings.warn(
@@ -473,13 +474,12 @@ class AnophelesPhenotypeData:
 
         all_sample_sets = self.sample_sets()["sample_set"].tolist()  # type: ignore[operator]
         phenotype_sample_sets = []
+        #base_phenotype_path = f"{self._url}v3.2/phenotypes/all"
+        release = getattr(self,"release","v3.2")
+        base_phenotype_path = posixpath.join(self._url,release,"phenotypes","all")
 
         for sample_set in all_sample_sets:
             try:
-                release = self.lookup_release(sample_set=sample_set)
-                release_path = self._release_to_path(release)
-
-                phenotype_path = f"{self._base_path}/{release_path}/phenotypes/all/{sample_set}/phenotypes.csv"
 
                 if self._fs.exists(phenotype_path):
                     phenotype_sample_sets.append(sample_set)
