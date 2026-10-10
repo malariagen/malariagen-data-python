@@ -224,6 +224,7 @@ Inversion karyotypes
     :toctree: generated/
 
     karyotype
+    load_inversion_tags
 
 Phenotype data access
 ---------------------

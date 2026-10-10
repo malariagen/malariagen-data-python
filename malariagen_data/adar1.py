@@ -130,7 +130,6 @@ class Adar1(AnophelesDataResource):
             tqdm_class=tqdm_class,
             taxon_colors=TAXON_COLORS,
             virtual_contigs=None,
-            inversion_tag_path=None,
             unrestricted_use_only=unrestricted_use_only,
             surveillance_use_only=surveillance_use_only,
         )
