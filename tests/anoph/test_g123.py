@@ -175,7 +175,7 @@ def test_g123_gwss_with_default_sites(fixture, api: AnophelesG123Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     g123_params = dict(
-        contig=str(np.random.choice(api.contigs)),
+        region=fixture.random_region_str(region_size=10_000),
         sample_sets=[str(np.random.choice(all_sample_sets))],
         window_size=int(np.random.randint(100, 501)),
         min_cohort_size=10,
@@ -194,7 +194,7 @@ def test_g123_gwss_with_phased_sites(fixture, api: AnophelesG123Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     g123_params = dict(
-        contig=str(np.random.choice(api.contigs)),
+        region=fixture.random_region_str(region_size=10_000),
         sites=str(np.random.choice(api.phasing_analysis_ids)),
         sample_sets=[str(np.random.choice(all_sample_sets))],
         window_size=int(np.random.randint(100, 501)),
@@ -210,7 +210,7 @@ def test_g123_gwss_with_segregating_sites(fixture, api: AnophelesG123Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     g123_params = dict(
-        contig=str(np.random.choice(api.contigs)),
+        region=fixture.random_region_str(region_size=5000),
         sites="segregating",
         site_mask=str(np.random.choice(api.site_mask_ids)),
         sample_sets=[str(np.random.choice(all_sample_sets))],
@@ -227,7 +227,7 @@ def test_g123_gwss_with_all_sites(fixture, api: AnophelesG123Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     g123_params = dict(
-        contig=str(np.random.choice(api.contigs)),
+        region=fixture.random_region_str(region_size=5000),
         sites="all",
         site_mask=None,
         sample_sets=[str(np.random.choice(all_sample_sets))],
@@ -244,7 +244,7 @@ def test_g123_gwss_with_bad_sites(fixture, api: AnophelesG123Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     g123_params = dict(
-        contig=str(np.random.choice(api.contigs)),
+        region=fixture.random_region_str(region_size=5000),
         sample_sets=[str(np.random.choice(all_sample_sets))],
         window_size=int(np.random.randint(100, 501)),
         min_cohort_size=10,
@@ -270,7 +270,7 @@ def test_g123_calibration(fixture, api: AnophelesG123Analysis):
         ).tolist()
     )
     g123_params = dict(
-        contig=str(np.random.choice(api.contigs)),
+        region=fixture.random_region_str(region_size=10_000),
         sites=str(np.random.choice(api.phasing_analysis_ids)),
         sample_sets=[str(np.random.choice(all_sample_sets))],
         min_cohort_size=10,

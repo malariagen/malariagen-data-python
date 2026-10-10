@@ -715,7 +715,7 @@ class AnophelesDataResource(
     )
     def ihs_gwss(
         self,
-        contig: base_params.contig,
+        region: base_params.region,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
@@ -748,7 +748,7 @@ class AnophelesDataResource(
         name = self._get_ihs_gwss_cache_name()
 
         params = dict(
-            contig=contig,
+            region=region,
             analysis=self._prep_phasing_analysis_param(analysis=analysis),
             window_size=window_size,
             percentiles=percentiles,
@@ -789,7 +789,7 @@ class AnophelesDataResource(
     def _ihs_gwss(
         self,
         *,
-        contig,
+        region,
         analysis,
         sample_sets,
         sample_query,
@@ -814,7 +814,7 @@ class AnophelesDataResource(
         inline_array,
     ):
         ds_haps = self.haplotypes(
-            region=contig,
+            region=region,
             analysis=analysis,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
@@ -888,7 +888,7 @@ class AnophelesDataResource(
     )
     def plot_ihs_gwss_track(
         self,
-        contig: base_params.contig,
+        region: base_params.region,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
@@ -926,7 +926,7 @@ class AnophelesDataResource(
     ) -> gplt_params.optional_figure:
         # compute ihs
         x, ihs = self.ihs_gwss(
-            contig=contig,
+            region=region,
             analysis=analysis,
             window_size=window_size,
             percentiles=percentiles,
@@ -1026,7 +1026,7 @@ class AnophelesDataResource(
 
         # tidy up the plot
         fig.yaxis.axis_label = "ihs"
-        self._bokeh_style_genome_xaxis(fig, contig)
+        self._bokeh_style_genome_xaxis(fig, region)
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
@@ -1037,7 +1037,7 @@ class AnophelesDataResource(
     )
     def plot_ihs_gwss(
         self,
-        contig: base_params.contig,
+        region: base_params.region,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
@@ -1077,7 +1077,7 @@ class AnophelesDataResource(
     ) -> gplt_params.optional_figure:
         # gwss track
         fig1 = self.plot_ihs_gwss_track(
-            contig=contig,
+            region=region,
             analysis=analysis,
             sample_sets=sample_sets,
             sample_query=sample_query,
@@ -1113,7 +1113,7 @@ class AnophelesDataResource(
 
         # plot genes
         fig2 = self.plot_genes(
-            region=contig,
+            region=region,
             sizing_mode=sizing_mode,
             width=width,
             height=genes_height,
