@@ -1,4 +1,6 @@
-from typing import List, Optional
+import base64
+import os
+from typing import List, Optional, Union
 
 import igv_notebook  # type: ignore
 from numpydoc_decorator import doc  # type: ignore
@@ -6,6 +8,15 @@ from numpydoc_decorator import doc  # type: ignore
 from ..util import Region, _check_types, _parse_single_region
 from . import base_params
 from .snp_data import AnophelesSnpData
+
+
+def _vcf_data_uri(path: Union[str, os.PathLike]) -> str:
+    """Read a local VCF file and return it as a data URI."""
+    with open(path, "rb") as f:
+        data = f.read()
+    is_gzip = data[:2] == b"\x1f\x8b"
+    media_type = "application/gzip" if is_gzip else "text/plain"
+    return f"data:{media_type};base64,{base64.b64encode(data).decode()}"
 
 
 class AnophelesIgv(
@@ -82,6 +93,7 @@ class AnophelesIgv(
         region: Region,
         sample: str,
         visibility_window: int = 20_000,
+        snp_vcf_path: Optional[Union[str, os.PathLike]] = None,
     ):
         # Look up sample set for sample.
         try:
@@ -99,7 +111,6 @@ class AnophelesIgv(
         # Locate record for sample.
         cat_rec = df_cat.set_index("sample_id").loc[sample]
         bam_url = cat_rec["alignments_bam"]
-        vcf_url = cat_rec["snp_genotypes_vcf"]
 
         # Set up site filters tracks.
         contig = region.contig
@@ -109,17 +120,25 @@ class AnophelesIgv(
         )
 
         # Add SNPs track.
-        tracks.append(
-            {
-                "name": "SNPs",
-                "url": vcf_url,
-                "indexURL": f"{vcf_url}.tbi",
-                "format": "vcf",
-                "type": "variant",
-                "visibilityWindow": visibility_window,  # bp
-                "height": 50,
-            }
-        )
+        snp_track = {
+            "name": "SNPs",
+            "format": "vcf",
+            "type": "variant",
+            "visibilityWindow": visibility_window,  # bp
+            "height": 50,
+        }
+        if snp_vcf_path is not None:
+            # Embed the local VCF, e.g. from snp_calls_to_vcf(), in the track
+            # as a data URI, so it doesn't need to be served over HTTP (which
+            # isn't possible in all notebook environments, e.g. VS Code). It
+            # has no index, so IGV loads it in full.
+            snp_track["url"] = _vcf_data_uri(snp_vcf_path)
+            snp_track["indexed"] = False
+        else:
+            vcf_url = cat_rec["snp_genotypes_vcf"]
+            snp_track["url"] = vcf_url
+            snp_track["indexURL"] = f"{vcf_url}.tbi"
+        tracks.append(snp_track)
 
         # Add alignments track.
         tracks.append(
@@ -183,6 +202,13 @@ class AnophelesIgv(
                 visible.
             """,
             init="If True, call igv_notebook.init().",
+            snp_vcf_path="""
+                Optional path to a local VCF file (`.vcf` or `.vcf.gz`), e.g. one
+                written by `snp_calls_to_vcf()`, to show as the SNPs track. The
+                file is embedded in the notebook and loaded in full, so it should
+                be small (e.g. a single sample over a region). If omitted, use
+                the catalog VCF.
+            """,
         ),
     )
     def view_alignments(
@@ -191,6 +217,7 @@ class AnophelesIgv(
         sample: str,
         visibility_window: int = 20_000,
         init: bool = True,
+        snp_vcf_path: Optional[Union[str, os.PathLike]] = None,
     ):
         # Parse region.
         region_prepped: Region = _parse_single_region(self, region)
@@ -201,6 +228,7 @@ class AnophelesIgv(
             region=region_prepped,
             sample=sample,
             visibility_window=visibility_window,
+            snp_vcf_path=snp_vcf_path,
         )
 
         # Create IGV browser.
