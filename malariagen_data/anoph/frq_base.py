@@ -70,7 +70,7 @@ def _prep_samples_for_cohort_grouping(
 
         # Validate the specified period_by column contains pandas Periods (or nulls).
         s_period_by = df_samples[period_by]
-        if not pd.api.types.is_period_dtype(s_period_by.dtype):
+        if not isinstance(s_period_by.dtype, pd.PeriodDtype):
             non_null = s_period_by.dropna()
             if len(non_null) > 0 and not non_null.map(type).eq(pd.Period).all():
                 raise TypeError(
@@ -115,7 +115,7 @@ def _build_cohorts_from_sample_grouping(
     # Add cohort helper variables.
     # Vectorized extraction of period start/end times.
     period = df_cohorts["period"]
-    if pd.api.types.is_period_dtype(period.dtype):
+    if isinstance(period.dtype, pd.PeriodDtype):
         df_cohorts["period_start"] = period.dt.start_time
         df_cohorts["period_end"] = period.dt.end_time
     else:
