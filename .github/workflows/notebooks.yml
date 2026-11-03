@@ -19,7 +19,7 @@ jobs:
       - name: Setup python
         uses: ./.github/actions/setup-python
         with:
-          python-version: "3.12"
+          python-version: "3.13.8"
 
       - id: 'auth'
         name: 'Set up Google Cloud authentication'

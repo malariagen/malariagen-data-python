@@ -18,7 +18,7 @@ jobs:
             - name: Setup python
               uses: ./.github/actions/setup-python
               with:
-                  python-version: '3.12'
+                  python-version: '3.13.8'
 
             - name: Run pre-commit checks
               uses: pre-commit/action@v3.0.0
