@@ -15,7 +15,7 @@ jobs:
       - name: Setup python 🐍
         uses: ./.github/actions/setup-python
         with:
-          python-version: '3.13.8'
+          python-version: '3.13'
 
       - name: Eyeball native environment 👀
         run: python --version ; pip --version ; poetry --version ; pwd ; ls -la

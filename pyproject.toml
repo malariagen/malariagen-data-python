@@ -1,7 +1,7 @@
 [project]
 name = "malariagen_data"
 dynamic = ["version"]
-requires-python = ">=3.13.8,<3.14"
+requires-python = ">=3.13,<3.14"
 
 dependencies = [
 
@@ -87,7 +87,7 @@ license = "MIT"
 # We should try to remain compatible with the latest
 # package versions in Google Colab:
 # https://github.com/googlecolab/backend-info
-python = ">=3.13.8,<3.14"
+python = ">=3.13,<3.14"
 numpy = "2.4.6"
 numba = ">=0.60.0"
 llvmlite = "*"

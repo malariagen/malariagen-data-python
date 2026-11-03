@@ -6447,5 +6447,5 @@ test = ["pytest", "pytest-cases", "pytest-cov", "pytest-mock", "pytest-xdist"]
 
 [metadata]
 lock-version = "2.1"
-python-versions = ">=3.13.8,<3.14"
-content-hash = "7c096064c50635425c771dc2956eca9af4f427e8ec0ed6beebdb517959c1b308"
+python-versions = ">=3.13,<3.14"
+content-hash = "caedb1d1b3ff64fb5b6c7bd4e988c373ab32b54f6d005d8386edb4d365992ce9"
