@@ -88,7 +88,7 @@ license = "MIT"
 # package versions in Google Colab:
 # https://github.com/googlecolab/backend-info
 python = ">=3.13,<3.14"
-numpy = "2.4.6"
+numpy = "==2.4.6"
 numba = ">=0.60.0"
 llvmlite = "*"
 scipy = "*"
