@@ -3,10 +3,12 @@
 from typing import Tuple
 
 import pandas as pd
+from pydantic import Field
 from typing_extensions import Annotated, TypeAlias
 
 window_size: TypeAlias = Annotated[
     int,
+    Field(ge=1),
     "Number of sites per window.",
 ]
 
@@ -14,6 +16,7 @@ window_size_default: window_size = 20_000
 
 phet_roh: TypeAlias = Annotated[
     float,
+    Field(ge=0, le=1),
     "Probability of observing a heterozygote in a ROH.",
 ]
 
@@ -28,6 +31,7 @@ phet_nonroh_default: phet_nonroh = (0.003, 0.01)
 
 transition: TypeAlias = Annotated[
     float,
+    Field(ge=0, le=1),
     """
     Probability of moving between states. A larger window size may call
     for a larger transitional probability.
@@ -38,6 +42,7 @@ transition_default: transition = 0.001
 
 y_max: TypeAlias = Annotated[
     float,
+    Field(gt=0),
     "Y axis limit.",
 ]
 

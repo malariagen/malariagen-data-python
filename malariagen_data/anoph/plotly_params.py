@@ -7,6 +7,7 @@
 from typing import List, Literal, Mapping, Optional, Union
 
 import plotly.graph_objects as go  # type: ignore
+from pydantic import Field
 from typing_extensions import Annotated, TypeAlias
 
 x_label: TypeAlias = Annotated[
@@ -118,11 +119,13 @@ symbol: TypeAlias = Annotated[
 
 jitter_frac: TypeAlias = Annotated[
     Optional[float],
+    Field(ge=0, le=1),
     "Randomly jitter points by this fraction of their range.",
 ]
 
 marker_size: TypeAlias = Annotated[
     Union[int, float],
+    Field(gt=0),
     "Marker size.",
 ]
 

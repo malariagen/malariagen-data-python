@@ -2,10 +2,12 @@
 
 from typing import Mapping
 
+from pydantic import Field
 from typing_extensions import Annotated, TypeAlias
 
 max_dist: TypeAlias = Annotated[
     int,
+    Field(ge=0),
     "Join network components up to a maximum distance of 2 SNP differences.",
 ]
 
@@ -13,6 +15,7 @@ max_dist_default: max_dist = 2
 
 node_size_factor: TypeAlias = Annotated[
     int,
+    Field(gt=0),
     "Control the sizing of nodes.",
 ]
 
