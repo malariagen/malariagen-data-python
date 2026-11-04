@@ -11,11 +11,13 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.12", "3.13"]
         numpy-spec:
-          # Keep this aligned with pyproject.toml: numpy = ">=2.0.2,<2.2"
-          - "==2.0.2"       # oldest allowed
-          - ">=2.0.2,<2.2"  # latest allowed in declared range
+          # Keep this aligned with pyproject.toml: numpy = ">=2.0.2"
+          - "==2.0.2"  #oldest version allowed - not compatible with python 3.13
+          - ">=2.1,<2.4"  #older versions for backward compatibility with 3.13
+          - "==2.4.6"  #current version on Colab as of 4/11/26
+          - "==2.5.0"  #latest version as of 4/11/26
         exclude:
           # numpy 2.0.2 has no Python 3.13 wheels
           - python-version: "3.13"
