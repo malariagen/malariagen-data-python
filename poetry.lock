@@ -226,6 +226,7 @@ files = [
 
 [package.dependencies]
 frozenlist = ">=1.1.0"
+typing-extensions = {version = ">=4.2", markers = "python_version < \"3.13\""}
 
 [[package]]
 name = "alabaster"
@@ -291,6 +292,7 @@ markers = {main = "extra == \"dev\""}
 [package.dependencies]
 idna = ">=2.8"
 sniffio = ">=1.1"
+typing_extensions = {version = ">=4.5", markers = "python_version < \"3.13\""}
 
 [package.extras]
 trio = ["trio (>=0.31.0)"]
@@ -1751,7 +1753,10 @@ files = [
 [package.dependencies]
 google-auth = ">=2.14.1,<3.0.0"
 googleapis-common-protos = ">=1.56.2,<2.0.0"
-proto-plus = {version = ">=1.25.0,<2.0.0", markers = "python_version >= \"3.13\""}
+proto-plus = [
+    {version = ">=1.25.0,<2.0.0", markers = "python_version >= \"3.13\""},
+    {version = ">=1.22.3,<2.0.0", markers = "python_version < \"3.13\""},
+]
 protobuf = ">=3.19.5,<3.20.0 || >3.20.0,<3.20.1 || >3.20.1,<4.21.0 || >4.21.0,<4.21.1 || >4.21.1,<4.21.2 || >4.21.2,<4.21.3 || >4.21.3,<4.21.4 || >4.21.4,<4.21.5 || >4.21.5,<7.0.0"
 requests = ">=2.18.0,<3.0.0"
 
@@ -4398,7 +4403,7 @@ files = [
     {file = "pycparser-2.23-py3-none-any.whl", hash = "sha256:e5c6e8d3fbad53479cab09ac03729e0a9faf2bee3db8208a550daf5af81a5934"},
     {file = "pycparser-2.23.tar.gz", hash = "sha256:78816d4f24add8f10a06d6f05b4d424ad9e96cfebf68a4ddc99c65c0720d00c2"},
 ]
-markers = {main = "extra == \"dev\" and implementation_name != \"PyPy\" or implementation_name == \"pypy\"", dev = "implementation_name != \"PyPy\""}
+markers = {main = "(extra == \"dev\" or implementation_name == \"pypy\") and implementation_name != \"PyPy\"", dev = "implementation_name != \"PyPy\""}
 
 [[package]]
 name = "pydantic"
@@ -4971,6 +4976,7 @@ markers = {main = "extra == \"dev\""}
 [package.dependencies]
 attrs = ">=22.2.0"
 rpds-py = ">=0.7.0"
+typing-extensions = {version = ">=4.4.0", markers = "python_version < \"3.13\""}
 
 [[package]]
 name = "requests"
@@ -6447,5 +6453,5 @@ test = ["pytest", "pytest-cases", "pytest-cov", "pytest-mock", "pytest-xdist"]
 
 [metadata]
 lock-version = "2.1"
-python-versions = ">=3.13,<3.14"
-content-hash = "4e6cb0bbe45b536c6c80dc6fa56e2d9237dc093dfaa6fa9b3f844fe29a041756"
+python-versions = ">=3.12,<3.14"
+content-hash = "358dd8fac74073f8fc32f57013bd9b0364bf168378dcc7e41d332b2ceee41bcc"
