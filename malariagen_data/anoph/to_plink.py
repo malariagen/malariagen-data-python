@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Mapping, Optional
 
 import allel  # type: ignore
 import numpy as np
@@ -18,12 +18,17 @@ class PlinkConverter(
 ):
     def __init__(
         self,
+        plink_chrom_map: Optional[Mapping[str, int]] = None,
         **kwargs,
     ):
         # N.B., this class is designed to work cooperatively, and
         # so it's important that any remaining parameters are passed
         # to the superclass constructor.
         super().__init__(**kwargs)
+
+        # Store the PLINK chromosome mapping.
+        # Maps contig names to PLINK chromosome codes.
+        self._plink_chrom_map = plink_chrom_map or {}
 
     @doc(
         summary="""
@@ -52,7 +57,7 @@ class PlinkConverter(
         self,
         output_dir: plink_params.output_dir,
         region: base_params.regions,
-        n_snps: base_params.n_snps,
+        n_snps: Optional[base_params.n_snps] = None,
         overwrite: plink_params.overwrite = False,
         thin_offset: base_params.thin_offset = 0,
         sample_sets: Optional[base_params.sample_sets] = None,
@@ -70,6 +75,7 @@ class PlinkConverter(
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
         out: Optional[plink_params.out] = None,
+        phenotypes: Optional[plink_params.phenotypes] = None,
     ):
         # Check that either sample_query xor sample_indices are provided.
         base_params._validate_sample_selection_params(
@@ -80,7 +86,8 @@ class PlinkConverter(
         if out is not None:
             plink_file_path = f"{output_dir}/{out}"
         else:
-            plink_file_path = f"{output_dir}/{region}.{n_snps}.{min_minor_ac}.{max_missing_an}.{thin_offset}"
+            n_snps_label = n_snps if n_snps is not None else "all"
+            plink_file_path = f"{output_dir}/{region}.{n_snps_label}.{min_minor_ac}.{max_missing_an}.{thin_offset}"
 
         bed_file_path = f"{plink_file_path}.bed"
 
@@ -125,12 +132,65 @@ class PlinkConverter(
         val = gn_ref_final.T
         with self._spinner("Prepare output data"):
             alleles = ds_snps_final["variant_allele"].values
+
+            # Map chromosome indices to PLINK conventions using contig names.
+            raw_contigs = ds_snps_final["variant_contig"].values
+            contig_names = self.contigs
+            chrom_map = self._plink_chrom_map
+            mapped_contigs = np.array(
+                [
+                    chrom_map.get(
+                        contig_names[int(c)],  # look up name from index
+                        int(c) + 1,  # fallback: 1-based index
+                    )
+                    for c in raw_contigs
+                ]
+            )
+
+            # Get sample IDs for property lookups.
+            sample_ids = ds_snps_final["sample_id"].values
+
+            # Get sex calls from sample metadata and map to PLINK codes.
+            # PLINK sex codes: 0 = unknown, 1 = male, 2 = female.
+            df_samples = self.sample_metadata(
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                sample_query_options=sample_query_options,
+                sample_indices=sample_indices,
+            )
+            sex_map = {"M": 1, "F": 2}
+            if "sex_call" in df_samples.columns:
+                sex_lookup = dict(
+                    zip(
+                        df_samples["sample_id"].values,
+                        df_samples["sex_call"]
+                        .map(sex_map)
+                        .fillna(0)
+                        .astype(int)
+                        .values,
+                    )
+                )
+            else:
+                sex_lookup = {}
+            sex_values = np.array([sex_lookup.get(str(sid), 0) for sid in sample_ids])
+
+            # Build phenotype values. Default is -9 (missing) per PLINK convention.
+            if phenotypes is not None:
+                pheno_values = np.array(
+                    [phenotypes.get(str(sid), -9) for sid in sample_ids],
+                    dtype=float,
+                )
+            else:
+                pheno_values = np.full(len(sample_ids), -9, dtype=float)
+
             properties = {
-                "iid": ds_snps_final["sample_id"].values,
-                "chromosome": ds_snps_final["variant_contig"].values,
+                "iid": sample_ids,
+                "chromosome": mapped_contigs,
                 "bp_position": ds_snps_final["variant_position"].values,
                 "allele_1": alleles[:, 0],
                 "allele_2": alleles[:, 1],
+                "sex": sex_values,
+                "pheno": pheno_values,
             }
 
         bed_reader.to_bed(

@@ -23,6 +23,14 @@ XPEHH_GWSS_CACHE_NAME = "adir1_xpehh_gwss_v1"
 IHS_GWSS_CACHE_NAME = "adir1_ihs_gwss_v1"
 ROH_HMM_CACHE_NAME = "adir1_roh_hmm_v1"
 
+# Mapping from contig/scaffold names to PLINK chromosome codes.
+# Adir1 uses scaffold IDs; map to 1-based PLINK codes.
+PLINK_CHROM_MAP = {
+    "KB672490": 1,
+    "KB672868": 2,
+    "KB672979": 3,
+}
+
 
 class Adir1(AnophelesDataResource):
     """Provides access to data from Adir1.0 releases.
@@ -133,6 +141,7 @@ class Adir1(AnophelesDataResource):
             inversion_tag_path=None,
             unrestricted_use_only=unrestricted_use_only,
             surveillance_use_only=surveillance_use_only,
+            plink_chrom_map=PLINK_CHROM_MAP,
         )
 
     def __repr__(self):

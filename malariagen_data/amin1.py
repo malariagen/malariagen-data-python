@@ -133,6 +133,7 @@ class Amin1(AnophelesDataResource):
             inversion_tag_path=None,
             unrestricted_use_only=unrestricted_use_only,
             surveillance_use_only=surveillance_use_only,
+            plink_chrom_map=None,
         )
 
     def __repr__(self):
