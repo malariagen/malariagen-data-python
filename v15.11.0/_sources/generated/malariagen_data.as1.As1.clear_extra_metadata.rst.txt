@@ -1,0 +1,6 @@
+﻿malariagen\_data.as1.As1.clear\_extra\_metadata
+===============================================
+
+.. currentmodule:: malariagen_data.as1
+
+.. automethod:: As1.clear_extra_metadata

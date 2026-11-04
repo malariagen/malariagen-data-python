@@ -1,0 +1,6 @@
+﻿malariagen\_data.adir1.Adir1.site\_annotations
+==============================================
+
+.. currentmodule:: malariagen_data.adir1
+
+.. automethod:: Adir1.site_annotations

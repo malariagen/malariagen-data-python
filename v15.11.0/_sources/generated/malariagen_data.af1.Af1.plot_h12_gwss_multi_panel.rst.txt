@@ -1,0 +1,6 @@
+﻿malariagen\_data.af1.Af1.plot\_h12\_gwss\_multi\_panel
+======================================================
+
+.. currentmodule:: malariagen_data.af1
+
+.. automethod:: Af1.plot_h12_gwss_multi_panel

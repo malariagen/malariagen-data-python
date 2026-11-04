@@ -1,0 +1,6 @@
+﻿malariagen\_data.adir1.Adir1.njt
+================================
+
+.. currentmodule:: malariagen_data.adir1
+
+.. automethod:: Adir1.njt

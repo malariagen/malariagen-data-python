@@ -1,0 +1,6 @@
+﻿malariagen\_data.ag3.Ag3.biallelic\_diplotype\_pairwise\_distances
+==================================================================
+
+.. currentmodule:: malariagen_data.ag3
+
+.. automethod:: Ag3.biallelic_diplotype_pairwise_distances

@@ -1,0 +1,6 @@
+﻿malariagen\_data.ag3.Ag3.roh\_hmm
+=================================
+
+.. currentmodule:: malariagen_data.ag3
+
+.. automethod:: Ag3.roh_hmm

@@ -1,0 +1,6 @@
+﻿malariagen\_data.af1.Af1.haplotype\_sites
+=========================================
+
+.. currentmodule:: malariagen_data.af1
+
+.. automethod:: Af1.haplotype_sites

@@ -1,0 +1,6 @@
+﻿malariagen\_data.adar1.Adar1.wgs\_data\_catalog
+===============================================
+
+.. currentmodule:: malariagen_data.adar1
+
+.. automethod:: Adar1.wgs_data_catalog

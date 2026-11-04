@@ -1,0 +1,6 @@
+﻿malariagen\_data.as1.As1.cohort\_diversity\_stats
+=================================================
+
+.. currentmodule:: malariagen_data.as1
+
+.. automethod:: As1.cohort_diversity_stats

@@ -1,0 +1,52 @@
+[
+    {
+        "name": "15.6.0",
+        "version": "v15.6.0",
+        "url": "https://malariagen.github.io/malariagen-data-python/v15.6.0/",
+        "preferred": true
+    },
+    {
+        "name": "14.0.0",
+        "version": "v14.0.0",
+        "url": "https://malariagen.github.io/malariagen-data-python/v14.0.0/"
+    },
+    {
+        "name": "13.5.0",
+        "version": "v13.5.0",
+        "url": "https://malariagen.github.io/malariagen-data-python/v13.5.0/"
+    },
+    {
+        "name": "12.0.1",
+        "version": "v12.0.1",
+        "url": "https://malariagen.github.io/malariagen-data-python/v12.0.1/"
+    },
+    {
+        "name": "11.0.0",
+        "version": "v11.0.0",
+        "url": "https://malariagen.github.io/malariagen-data-python/v11.0.0/"
+    },
+    {
+        "name": "10.2.0",
+        "version": "v10.2.0",
+        "url": "https://malariagen.github.io/malariagen-data-python/v10.2.0/"
+    },
+    {
+        "name": "9.0.1",
+        "version": "v9.0.1",
+        "url": "https://malariagen.github.io/malariagen-data-python/v9.0.1/"
+    },
+    {
+        "name": "8.8.0",
+        "version": "v8.8.0",
+        "url": "https://malariagen.github.io/malariagen-data-python/v8.8.0/"
+    },
+    {
+        "name": "7.15.0",
+        "version": "v7.15.0",
+        "url": "https://malariagen.github.io/malariagen-data-python/v7.15.0/"
+    },
+    {
+        "version": "dev",
+        "url": "https://malariagen.github.io/malariagen-data-python/latest/"
+    }
+]

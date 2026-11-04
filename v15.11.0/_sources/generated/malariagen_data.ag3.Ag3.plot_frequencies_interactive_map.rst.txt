@@ -1,0 +1,6 @@
+﻿malariagen\_data.ag3.Ag3.plot\_frequencies\_interactive\_map
+============================================================
+
+.. currentmodule:: malariagen_data.ag3
+
+.. automethod:: Ag3.plot_frequencies_interactive_map

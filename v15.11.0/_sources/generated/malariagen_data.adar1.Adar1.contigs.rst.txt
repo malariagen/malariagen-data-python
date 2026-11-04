@@ -1,0 +1,6 @@
+﻿malariagen\_data.adar1.Adar1.contigs
+====================================
+
+.. currentmodule:: malariagen_data.adar1
+
+.. autoproperty:: Adar1.contigs
