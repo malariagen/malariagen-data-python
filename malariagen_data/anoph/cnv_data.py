@@ -626,6 +626,7 @@ class AnophelesCnvData(
             warnings.warn(
                 "Parameter 'contig' is deprecated; use 'contigs' instead.",
                 DeprecationWarning,
+                stacklevel=2,
             )
             contigs = contig
 
