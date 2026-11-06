@@ -275,6 +275,34 @@ class TestAnnotatorHelpers:
         del self.ann._genome["chr1"]
         assert self.ann.get_ref_seq("chr1", 4, 6) == "ATG"
 
+    def test_get_ref_seq_cache_lru_order(self):
+        genome = make_genome(
+            ("chr1", FWD_SEQ),
+            ("chr2", FWD_SEQ),
+            ("chr3", FWD_SEQ),
+        )
+        ann = Annotator(
+            genome=genome,
+            genome_features=FEATURES_BASIC_FWD.copy(),
+            genome_cache_maxsize=2,
+        )
+
+        ann._load_genome_seq("chr1")
+        ann._load_genome_seq("chr2")
+        ann._load_genome_seq("chr1")  # Promote chr1 to most recently used.
+        assert ann._load_genome_seq.cache_info().hits == 1
+
+        ann._load_genome_seq("chr3")
+        assert ann._load_genome_seq.cache_info().misses == 3
+
+        # chr1 was recently used, so it remains cached after chr3 is loaded.
+        ann._load_genome_seq("chr1")
+        assert ann._load_genome_seq.cache_info().hits == 2
+
+        # chr2 was least recently used and should have been evicted.
+        ann._load_genome_seq("chr2")
+        assert ann._load_genome_seq.cache_info().misses == 4
+
     def test_get_ref_allele_coords_correct(self):
         assert self.ann.get_ref_allele_coords("chr1", 4, "ATG") == (4, 6)
 
