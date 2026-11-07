@@ -444,20 +444,30 @@ def simulate_snp_genotypes(
         gt_chunks = (contig_n_sites // 5, n_samples // 3, None)
         calldata.create_dataset(name="GT", data=gt, chunks=gt_chunks)
 
-        # Create other arrays - these are never actually used currently
-        # so we'll create some empty arrays to avoid delaying the tests.
-        calldata.create_dataset(
-            name="GQ", shape=(contig_n_sites, n_samples), dtype="i1", fill_value=-1
+        # Simulate GQ, MQ and AD arrays with real (if arbitrary) values,
+        # reusing the missing call mask from GT above, rather than
+        # leaving them as constant fill-value arrays. A fill-value-only
+        # zarr array has no chunks actually written to the underlying
+        # store, and SafeStore (see malariagen_data/util.py) deliberately
+        # raises rather than silently substituting the fill value for an
+        # unwritten chunk, so code that fully computes these fields
+        # (e.g. VCF/coverage export) would otherwise hit a spurious
+        # FileNotFoundError against this fixture despite there being
+        # nothing wrong with the real data.
+        loc_missing_2d = loc_missing.reshape(contig_n_sites, n_samples)
+
+        gq = rng.integers(low=0, high=100, size=(contig_n_sites, n_samples), dtype="i1")
+        gq[loc_missing_2d] = -1
+        calldata.create_dataset(name="GQ", data=gq)
+
+        mq = rng.uniform(low=20, high=60, size=(contig_n_sites, n_samples)).astype("f4")
+        calldata.create_dataset(name="MQ", data=mq)
+
+        ad = rng.integers(
+            low=0, high=50, size=(contig_n_sites, n_samples, 4), dtype="i2"
         )
-        calldata.create_dataset(
-            name="MQ", shape=(contig_n_sites, n_samples), dtype="f4", fill_value=-1
-        )
-        calldata.create_dataset(
-            name="AD",
-            shape=(contig_n_sites, n_samples, 4),
-            dtype="i2",
-            fill_value=-1,
-        )
+        ad[loc_missing_2d] = -1
+        calldata.create_dataset(name="AD", data=ad)
 
     zarr.consolidate_metadata(zarr_path)
 
