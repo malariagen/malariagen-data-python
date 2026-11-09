@@ -158,7 +158,7 @@ class AnophelesBase:
                         """
                            Your Google account does not appear to have permission to access the data.
                            If you have not yet submitted a data access request, please complete the form
-                           at the following link: https://forms.gle/d1NV3aL3EoVQGSHYA
+                           at the following link: https://docs.google.com/forms/d/e/1FAIpQLSfYFfqk9vxgavvtIeD2SXOsx7RO1KqVNRCdHDznedI0uGpz3w/viewform
 
                            If you are still experiencing problems accessing data, please email
                            support@malariagen.net for assistance.
