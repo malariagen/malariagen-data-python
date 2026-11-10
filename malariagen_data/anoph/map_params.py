@@ -85,7 +85,7 @@ basemap: TypeAlias = Annotated[
     """,
 ]
 
-basemap_default: basemap = "mapnik"
+basemap_default: basemap = "worldstreetmap"
 
 height: TypeAlias = Annotated[
     Union[int, str], "Height of the map in pixels (px) or other units."

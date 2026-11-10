@@ -1049,6 +1049,10 @@ class AnophelesSampleMetadata(AnophelesBase):
         if isinstance(width, int):
             width = f"{width}px"
 
+        if basemap in ["mapnik", "positron"]:
+            raise ValueError(
+                f"Basemap {basemap!r} is not currently supported for interactive maps; try one of {['natgeoworldmap', 'opentopomap', 'satellite', 'worldimagery', 'worldstreetmap', 'worldtopomap']}"
+            )
         # Load sample metadata.
         df_samples = self.sample_metadata(
             sample_sets=sample_sets,
@@ -1880,7 +1884,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         # Set the size of the markers.
         fig.update_traces(marker=dict(size=marker_size))
-
+        fig.update_layout(map_style="carto-positron")
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
         return fig
