@@ -1049,6 +1049,10 @@ class AnophelesSampleMetadata(AnophelesBase):
         if isinstance(width, int):
             width = f"{width}px"
 
+        if basemap in ["mapnik", "positron"]:
+            raise ValueError(
+                f"Basemap {basemap!r} is not currently supported for interactive maps; try one of {['natgeoworldmap','opentopomap',  'satellite', 'worldimagery', 'worldstreetmap', 'worldtopomap']}"
+            )
         # Load sample metadata.
         df_samples = self.sample_metadata(
             sample_sets=sample_sets,
