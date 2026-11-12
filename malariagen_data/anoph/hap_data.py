@@ -126,8 +126,7 @@ class AnophelesHapData(
         else:
             if contig not in self.contigs:
                 raise ValueError(
-                    f"Contig {contig!r} not found. "
-                    f"Available contigs: {self.contigs}"
+                    f"Contig {contig!r} not found. Available contigs: {self.contigs}"
                 )
             root = self.open_haplotype_sites(analysis=analysis)
             z = root[f"{contig}/variants/{field}"]
@@ -263,8 +262,7 @@ class AnophelesHapData(
         else:
             if contig not in self.contigs:
                 raise ValueError(
-                    f"Contig {contig!r} not found. "
-                    f"Available contigs: {self.contigs}"
+                    f"Contig {contig!r} not found. Available contigs: {self.contigs}"
                 )
 
             # Open haplotypes zarr.

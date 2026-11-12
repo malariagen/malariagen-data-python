@@ -4,3 +4,11 @@
     overflow-y: auto !important;
     overflow-x: hidden;
 }
+
+/* Aapplying the rule (copied verbatim from pydata-sphinx-theme.css)
+   here so prsentation is same in both types of diagram gets the same result
+   for these diagrams. */
+html[data-theme="dark"] div.graphviz > object.graphviz:not(.inheritance) {
+    color-scheme: normal;
+    filter: brightness(0.8) invert(0.82) contrast(1.2);
+}

@@ -1429,9 +1429,10 @@ class Ag3Simulator(AnophelesSimulator):
                         / cohort_file
                     )
                     dst_path.parent.mkdir(parents=True, exist_ok=True)
-                    with open(src_path, mode="r") as src, open(
-                        dst_path, mode="w"
-                    ) as dst:
+                    with (
+                        open(src_path, mode="r") as src,
+                        open(dst_path, mode="w") as dst,
+                    ):
                         for line in src.readlines()[:5]:
                             print(line, file=dst)
 

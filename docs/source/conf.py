@@ -19,9 +19,32 @@ version = os.environ.get("VERSION_TAG", "dev")
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ["sphinx.ext.autosummary", "sphinx_design"]
+extensions = [
+    "sphinx.ext.autosummary",
+    "sphinx.ext.napoleon",
+    "sphinx_design",
+    "sphinx.ext.inheritance_diagram",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.graphviz",
+]
 
 autosummary_generate = True
+
+# Inheritance diagrams are pure server-side Graphviz -> static SVG, with no
+# browser-side JS That makes this approach reliable
+# across browsers. "sphinx.ext.viewcode" gives the
+# clickable-to-source part, via a "[source]" link on each class's
+# own doc entry (see architecture.rst).
+inheritance_graph_attrs = dict(rankdir="RL", fontsize=20, ratio="compress")
+inheritance_node_attrs = dict(  # https://graphviz.org/docs/nodes/
+    fontsize=20,
+    shape="box",
+    style='"filled,rounded"',
+    fillcolor='"#dcfce7"',
+    color='"#15803d"',
+    fontcolor='"#14532d"',
+)
+inheritance_edge_attrs = dict(color='"#16a34a"')  # https://graphviz.org/docs/edges/
 
 templates_path = ["_templates"]
 exclude_patterns = []
@@ -49,3 +72,5 @@ html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 html_logo = "_static/logo.svg"
 html_favicon = "_static/favicon.ico"
+
+graphviz_output_format = "svg"

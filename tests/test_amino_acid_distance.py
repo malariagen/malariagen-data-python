@@ -7,7 +7,6 @@ These tests verify:
 3. Edge cases: same amino acid (no change), stop codons, invalid inputs.
 """
 
-
 from malariagen_data.amino_acid_distance import grantham_score, sneath_dist
 
 
